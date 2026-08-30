@@ -16,7 +16,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { REQUIRED_NODE, parseVersion } from '../src/server/node-floor.ts';
 import { targetVersion } from '../src/schema/migrate.ts';
@@ -40,10 +40,10 @@ const DPM = join(import.meta.dirname, '..');
  * the two mean different things — one is the plugin, the other is what git tracks — and they were
  * only ever equal by the port's doing.
  *
- * **Left as `join(DPM, '..')` it does not fail, it passes for the wrong reason.** Every assertion
- * below is `existsSync` on a path outside the checkout, which is reliably absent — so "there is no
- * CI" held over a directory that was never this project's, and "the hook resolves into this working
- * tree" was asking about somebody's home directory.
+ * **Left as `join(DPM, '..')` it does not fail, it passes for the wrong reason.** What it reaches
+ * for is `existsSync` on a path outside the checkout, which is reliably absent — so "there is no
+ * CI" held over a directory that was never this project's, and the ENVR7 assertion below, which is
+ * the last reader of this constant, would have been answering about somebody's home directory.
  */
 const REPOSITORY = DPM;
 const TESTS = join(DPM, 'tests');
@@ -87,17 +87,30 @@ test('npm test is node --test, and no runner is resolved from node_modules', () 
   );
 });
 
-// --- ENVR3: the working tree and its guard ------------------------------------------------------
+// --- The checkout the sweeps are anchored in ----------------------------------------------------
 
-test('src and skills are in the working tree, and the hook points at this checkout', () => {
+/**
+ * Untagged, because no requirement in this specification asks for it.
+ *
+ * This section carried `ENVR3` from upstream, where that tag meant something else. In this fork
+ * ENVR3 is the type checker — which the `nothing to install` test below names correctly, in this
+ * same file. A stale tag is worse than no tag: it reads as a criterion somebody bound, and there is
+ * no coverage row anywhere to disagree with it.
+ *
+ * What is left is the control for `DPM` itself. Half this file sweeps `join(DPM, 'src')` and
+ * `join(DPM, 'tests')`, and a misresolved constant makes every one of those sweeps read an empty
+ * directory and pass. The `examined > 500` floors catch most of that; these two catch it at the
+ * source, and name the constant rather than the sweep that came up short.
+ *
+ * **The hook assertion that sat here is gone deliberately.** It pinned `.git/hooks/pre-commit` at
+ * this working tree, and this repository commits through the installed dpm release instead: the
+ * tool that writes `.dpm/dpm.db` is the tool that should check the projection built from it, and
+ * an artefact under port does not belong in its own commit path. That is a decision, recorded in
+ * the README, and not a criterion — so it is not asserted here in either direction.
+ */
+test('src and skills are in the working tree, so the constant the sweeps use resolves', () => {
   assert.ok(existsSync(join(DPM, 'src')), 'dpm/src is in the working tree');
   assert.ok(existsSync(join(DPM, 'skills')), 'and so is dpm/skills');
-
-  const hook = join(REPOSITORY, '.git', 'hooks', 'pre-commit');
-
-  assert.ok(existsSync(hook), 'a pre-commit hook is installed');
-  assert.equal(readlinkSync(hook), join(DPM, 'hooks', 'pre-commit'),
-    'and it resolves into this working tree rather than to a release in the plugin cache');
 });
 
 // --- ENVR4: where the test data comes from, and where it does not --------------------------------

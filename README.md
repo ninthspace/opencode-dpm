@@ -188,10 +188,20 @@ being forced past. `dpm-relink` is the upgrade command, kept separate precisely 
 is something you reach for deliberately — it prints what it made, which is the confirmation
 the target really was an older DPM. Both run from the repository root.
 
-**Neither belongs in a repository that develops DPM itself.** They link into the installed
-package, which holds whatever commit the specifier last resolved to; a checkout that is
-*editing the schema* needs a guard from the same checkout, or the guard goes stale against a
-schema three directories away. Link that one at the working tree instead.
+**In a repository that develops DPM itself, `dpm-relink` is the one to reach for and it is
+not automatic.** These link into the installed package, which holds whatever commit the
+specifier last resolved to — so an upgrade moves the version directory out from under the
+symlink and the link has to be remade deliberately. That indirection is the point rather
+than the cost: the release that writes `.dpm/dpm.db` is the release that should check the
+projection built from it, and a checkout under development does not belong in its own
+commit path, where a bug in the guard blocks committing the fix for that bug.
+
+Link the working tree's own `hooks/pre-commit` instead only while the *schema* is what you
+are editing, and only for as long as that lasts. Then the checkout's guard and the
+checkout's publisher agree with each other and neither agrees with the installed release,
+which is what you want while a migration is half-written and want nothing to do with
+afterwards. Verify a re-point either way by running `.git/hooks/pre-commit` the way git
+does — from the repository root, with no arguments — rather than by invoking `bin/` directly.
 
 The database itself is not committed — `.dpm/dpm.sql` is its committed text form, and it
 is what a checkout restores from. That restore is not a step either: on a fresh clone the
@@ -222,10 +232,11 @@ in a session, which is nearly always.
 
 ## Permissions
 
-Nothing here is a step. Under the stock `build` agent every rule below is already the
-answer, and DPM works with no permission configuration at all. The section is for the case
-where that stops being true: you have set a restrictive baseline, and DPM has to be let
-back through it.
+One entry here is a step, and the rest is not. Every skill reads a file from the package
+directory, which the host treats as outside your project and asks about by default — so
+that one rule is worth setting whatever your configuration looks like. Everything after it
+is for the case where you have set a restrictive baseline and DPM has to be let back
+through it; under the stock `build` agent those are already the answer.
 
 **None of it is about restricting DPM's skills.** The twenty-three are the product — they
 are meant to be used, they are how the method is followed at all, and a repository that
@@ -239,7 +250,40 @@ OpenCode evaluates one rule per **action** and **resource**. Rules live in an ar
 Entries in your `opencode.json` are appended to every agent's own rules, which is why they
 override the agent's defaults rather than being overridden by them.
 
-DPM occupies two actions, and telling them apart is the whole of this section:
+**The one entry to set.** Every skill body opens by reading `shared/skill-conventions.md`
+from the package, and the package lives in OpenCode's cache rather than in your repository
+— so the host classifies that read as leaving the project. The stock rules are a blanket
+`allow` followed by `{ "action": "external_directory", "resource": "*", "effect": "ask" }`,
+and the later rule wins. Interactively that is a prompt on the first skill of every
+session; non-interactively the request is rejected and the skill proceeds without the
+conventions it was told to read, which is the worse outcome because nothing announces it.
+
+```json
+{
+  "permissions": [
+    { "action": "external_directory",
+      "resource": "*/opencode/packages/*/node_modules/opencode-dpm/shared/*",
+      "effect": "allow" }
+  ]
+}
+```
+
+The resource is the *directory* the file sits in with `/*` appended — the host resolves a
+file's parent before it asks — and `*` matches any run of characters, so the glob spans the
+cache digest without your having to look it up. Running DPM from a clone, it is the same
+entry with the path spelled out:
+
+```json
+{
+  "permissions": [
+    { "action": "external_directory",
+      "resource": "/absolute/path/to/opencode-dpm/shared/*",
+      "effect": "allow" }
+  ]
+}
+```
+
+Beyond that, DPM occupies two actions, and telling them apart is the whole of this section:
 
 | What happens | Action | Resource |
 |---|---|---|
@@ -484,14 +528,27 @@ guide walks you through.
 
 ## Status
 
-In use, still settling. Three specs are built out, each across the epics sharing its
-number in `docs/epics/`:
+**Beta, and young — but not new.** This package is a standalone fork of DPM 0.7.0, ported
+to OpenCode v2. The method, the schema, the 183 tools and the 23 skills are DPM's and have
+been in use for some time; what is new is the host binding, and that is the part still
+settling. One spec is built out here, across the five epics sharing its number in
+`docs/epics/`:
 
-| Spec | What it delivered |
+| Epic | What it delivered |
 |---|---|
-| `47-spec-dpm-sqlite-persistence.md` | The schema, the tool surface, the skill corpus, the projection and the pre-commit guard |
-| `48-spec-dpm-board.md` | The cross-project board, which this package does not carry |
-| `49-spec-dpm-database-lifecycle.md` | Deferred creation, the automatic ignore file, restore-from-dump, and a guard that names the fix by direction |
+| `01-01-epic-repo-bootstrap.md` | The standalone repository and the JavaScript-to-TypeScript conversion, checked byte-for-byte against a dump v0.7.0 wrote |
+| `01-02-epic-plugin-entry.md` | The plugin entry, one MCP server, 183 `dpm_` tools, and the conventions path resolved to an absolute one at registration |
+| `01-03-epic-skill-port.md` | All twenty-three skill bodies off Claude Code's tool prefix and slash commands, with the prohibition enforced in CI |
+| `01-04-epic-guard-and-docs.md` | The pre-commit guard at OpenCode's hook path, where a package is cached, this README, and permission behaviour |
+| `01-05-epic-publish.md` | What the package ships, the install verified from a wholly cold clone, and the production restrictions |
+
+**What is not settled at 0.1.0.** Three things are on the record as unfinished rather than
+unknown. Starting a skill and following it through has not been watched inside a real
+session — the registry is verified, the walk is assumed. `ralph` is registered like the
+other twenty-two, but the loop it describes rests on a Claude Code stop hook that has no v2
+equivalent, so that loop does not run. And DPM's database path is relative, which means the
+working directory OpenCode hands a spawned MCP server is what decides which repository
+`.dpm/` lands in.
 
 ## Licence
 

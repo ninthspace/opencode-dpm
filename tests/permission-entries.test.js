@@ -136,6 +136,25 @@ test('every skill resource the README names resolves to a registered skill [unit
 
 // --- Every tool action the section names is a tool the server registers ----------------------
 
+/**
+ * The actions the section names that belong to the **host** rather than to dpm.
+ *
+ * `external_directory` is OpenCode's own. It gates a read that leaves the project, and every skill
+ * body opens by reading the conventions file out of the package directory — which is outside
+ * whatever repository the session is running in, wherever the package was installed. So the
+ * section has to recommend a rule for an action no dpm tool will ever be registered under, and
+ * the two-way partition this file was written around no longer covers what the README says.
+ *
+ * **Named individually, and asserted as an exact set in both directions.** A predicate — "not the
+ * dpm prefix, so presumably the host's" — would wave through `externl_directory` exactly as
+ * readily as the real thing, and a mistyped action is a rule that never fires, which is the one
+ * failure this whole file exists to catch. An exact set fails until somebody classifies a new
+ * arrival, and fails again if the guidance is deleted from the README, so the entry cannot quietly
+ * stop being documented either. Same shape `suite-integrity.test.js` uses for its own exceptions,
+ * and for the same reason: a rule loosened to admit one thing admits the next one silently.
+ */
+const HOST_ACTIONS = ['external_directory'];
+
 test('every tool action the README names resolves to a registered tool [unit]', () => {
   const actions = registeredActions();
 
@@ -145,14 +164,25 @@ test('every tool action the README names resolves to a registered tool [unit]', 
 
   assert.ok(named.length > 0, 'the section names no tool action at all');
 
-  for (const action of named) {
+  const host = named.filter((action) => HOST_ACTIONS.includes(action));
+
+  assert.deepEqual([...new Set(host)].sort(), [...HOST_ACTIONS].sort(),
+    'the section stopped naming a host action this file knows about — the rule a reader needs '
+    + 'before any skill can read its conventions is the one most easily lost in an edit');
+
+  for (const action of named.filter((candidate) => !HOST_ACTIONS.includes(candidate))) {
     assert.ok(action.startsWith(CALLABLE),
-      `the README recommends a rule for action "${action}", which is neither "skill" nor a dpm tool`);
+      `the README recommends a rule for action "${action}", which is neither "skill", a dpm tool, `
+      + `nor one of the host's own (${HOST_ACTIONS.join(', ')})`);
     assert.ok(actions.some((registered) => matches(registered, action)),
       `the README recommends a rule for action "${action}", which matches no registered tool`);
   }
 
   assert.equal(actions.some((registered) => matches(registered, `${CALLABLE}not_a_tool`)), false);
+
+  // The partition has to be capable of rejecting, or naming one host action opened the door to any
+  // string at all: a near-miss on the host action falls through to the dpm check and fails there.
+  assert.equal(HOST_ACTIONS.includes('externl_directory'), false);
 });
 
 // --- The claim the section is built around --------------------------------------------------
