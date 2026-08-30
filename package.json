@@ -1,16 +1,36 @@
 {
   "name": "opencode-dpm",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Data-Modelled Planning Method for OpenCode v2 — SQLite-backed persistence for planning artefacts.",
   "license": "MIT",
+  "author": "Chris Aves",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ninthspace/opencode-dpm.git"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "planning",
+    "sqlite",
+    "mcp",
+    "requirements",
+    "traceability"
+  ],
   "engines": {
     "node": ">=24.0.0"
   },
   "exports": {
     ".": "./src/plugin/index.ts"
   },
+  "files": [
+    "bin/",
+    "hooks/",
+    "shared/",
+    "skills/",
+    "src/"
+  ],
   "scripts": {
     "modules": "node scripts/module-sweep.ts",
     "skills": "node scripts/skill-body-check.ts",

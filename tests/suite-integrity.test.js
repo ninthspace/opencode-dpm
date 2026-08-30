@@ -157,12 +157,15 @@ const ADDED = [
   'dependency-isolation.test.js', //   01-02 story 4 — the empty production tree, read off the lockfile
   'executables-typescript.test.js', // story 3 — the five binaries under plain node
   'guard-hook-path.test.js', //        01-04 story 1 — the hook fires, and no refusal names a host mechanism
+  'installed-runtime.test.js', //      01-05 story 2 — the server starts from under node_modules, where it is installed
   'module-sweep.test.js', //           story 6 — every specifier resolves, and the sweep can fail
   'package-cache.test.js', //          01-04 story 2 — the README's link instruction, run against a built cache
   'parity-v070.test.js', //            story 5 — the port against v0.7.0's own dump and allocator
   'permission-entries.test.js', //     01-04 story 5 — the README's rules name skills and tools that exist
   'plugin-entry.test.js', //           01-02 story 1 — registration, the profile seam, the root
   'plugin-reload.test.js', //          01-02 story 5 — a reload leaves one of everything
+  'production-restrictions.test.js', // 01-05 story 3 — nothing contacted, no port bound, no host mechanism
+  'publish-package.test.js', //        01-05 story 1 — what the packed tarball ships, and what it must not
   'readme-v2.test.js', //              01-04 story 4 — every documented block, classified and run
   'session-scratch.test.js', //        01-04 story 3 — the environment audit, and nothing loose in the tree
   'skill-invocation.test.js', //       01-03 story 3 — the descriptions, and $ARGUMENTS retired
@@ -324,7 +327,17 @@ test('must NOT — a test requires a network connection in order to pass', () =>
   // temporary directories, and `journeys.test.js` clones and pulls between two of them. Those are
   // local paths, so the claim is stated over the sockets rather than over the ability to run
   // anything at all — a check that forbade spawning would forbid the guard's own integration tests.
-  assert.deepEqual(importsMatching((specifier) => OUTBOUND.includes(specifier)), [],
+  // **Two, and they are the instrument that enforces this very claim at runtime.**
+  // `support/network-watch.js` imports `node:net` and `node:dns` in order to *wrap* them, so that
+  // epic 01-05 story 3 can watch a plan-and-publish cycle and see that it calls neither. It reads
+  // two prototypes and a function and opens nothing, and the suite depends on no connection because
+  // of it rather than in spite of it.
+  //
+  // **Named rather than exempted**, exactly as the `--import` reading above names the FTS5 fixture:
+  // a rule relaxed to `unless it looks like a helper` would admit the next real one silently. A
+  // third entry arriving here fails until somebody says which kind it is.
+  assert.deepEqual(importsMatching((specifier) => OUTBOUND.includes(specifier)),
+    ['tests/support/network-watch.js imports node:dns', 'tests/support/network-watch.js imports node:net'],
     'a source imports a builtin that can open a connection');
 
   // The global APIs, which need no import and so would pass the reading above however careful it is.
@@ -333,7 +346,14 @@ test('must NOT — a test requires a network connection in order to pass', () =>
     .filter(({ text }) => CONNECTS.test(withoutComments(text)))
     .map(({ name }) => name);
 
-  assert.deepEqual(globals, [], 'a source calls a global that opens a connection');
+  // **One, and it is the control that proves the watch can see a `fetch`.**
+  // `production-restrictions.test.js` writes a child script that calls each of the four outbound
+  // primitives so the instrument's log can be shown to record them; every target is loopback or a
+  // port nothing answers on, so the call is made, recorded, and refused without leaving the machine.
+  // The suite therefore still passes with no network — which is the claim this test defends, and
+  // this file is where the exception is visible rather than buried in a regex.
+  assert.deepEqual(globals, ['tests/production-restrictions.test.js'],
+    'a source calls a global that opens a connection');
 
   // Both controls through the real readings. The `node:fs` line is the half that matters: a sweep
   // matching every import would report the first assertion clean for the wrong reason.

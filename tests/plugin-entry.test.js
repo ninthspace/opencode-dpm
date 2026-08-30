@@ -105,12 +105,18 @@ test('setup registers the bundled MCP server as a local command that exists [int
 
   assert.equal(config.type, 'local', 'a local server, so the host spawns it rather than dialling out');
 
-  // **`node` and the path, with nothing between them.** ADR 01-03: the sources run on what Node 24
-  // does by default, and a `--loader` arriving here would be the one invocation surface a
+  // **A runtime and the path, with nothing between them.** ADR 01-03: the sources run on what the
+  // runtime does by default, and a `--loader` arriving here would be the one invocation surface a
   // contributor never types. Asserted as the whole array rather than as a `startsWith`, because a
   // flag inserted at index 1 would pass the looser check.
+  //
+  // **`node` because the suite runs under node, not because the command is always `node`.** Which
+  // runtime is registered is now detected — the test below drives both branches — and this is the
+  // one this process produces. Writing `node` here without saying why would read as a claim about
+  // the installed artefact, where it is the opposite of true.
   assert.equal(config.command.length, 2, `the command carries an extra argument: ${config.command.join(' ')}`);
   assert.equal(config.command[0], 'node');
+  assert.equal(process.versions.bun, undefined, 'and node is what this process asked for');
   assert.match(config.command[1], /\/bin\/dpm-mcp\.ts$/);
 
   // Criterion 3's second half, and the reason it is checked here rather than read off the source:

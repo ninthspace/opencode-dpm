@@ -30,7 +30,7 @@ import { dirname, join } from 'node:path';
 
 import { runNode } from './support/run-node.js';
 import {
-  moduleFilesUnder, packageManifest, sweepSourcesUnder, withoutHashComments,
+  EXECUTABLES, moduleFilesUnder, packageManifest, sweepSourcesUnder, withoutHashComments,
 } from './support/sources.js';
 import { fullCorpus } from './support/corpus.js';
 import { HELLO, repliesFrom, wire } from './support/session.js';
@@ -42,17 +42,12 @@ const ROOT = join(import.meta.dirname, '..');
 const BIN = join(ROOT, 'bin');
 
 /**
- * The five, named rather than discovered.
+ * The flags that would mean a transpiler stands between `node` and the source.
  *
- * `vendoring.test.js` makes the same list for the same reason: an executable arriving after this
- * was written changes what the criterion counts, and an equality is how that surfaces. Here it also
- * carries the extension, which is the whole subject.
+ * The five executables this sweeps are `EXECUTABLES` in `support/sources.js`, which carries the
+ * argument for naming them rather than reading the directory. It lived here and in
+ * `vendoring.test.js` as two copies of one list until `publish-package.test.js` wanted a third.
  */
-const EXECUTABLES = [
-  'dpm-guard.ts', 'dpm-import.ts', 'dpm-mcp.ts', 'dpm-merge.ts', 'dpm-publish.ts',
-];
-
-/** The flags that would mean a transpiler stands between `node` and the source. */
 const TRANSPILED = [
   '--loader', '--experimental-loader', '--import', '--experimental-strip-types',
   '--experimental-transform-types', 'ts-node', 'tsx', '@swc', 'babel',

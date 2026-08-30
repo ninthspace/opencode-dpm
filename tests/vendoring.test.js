@@ -35,7 +35,8 @@ import { join } from 'node:path';
 import { REQUIRED_NODE } from '../src/server/node-floor.ts';
 import { runNode } from './support/run-node.js';
 import {
-  filesUnder, moduleFilesUnder, packageManifest, unsanctionedDependencies, withoutComments,
+  EXECUTABLES, filesUnder, moduleFilesUnder, packageManifest, unsanctionedDependencies,
+  withoutComments,
 } from './support/sources.js';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -54,15 +55,6 @@ const directoriesIn = (path) => readdirSync(join(ROOT, path), { withFileTypes: t
   .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
   .map((entry) => entry.name)
   .sort();
-
-/**
- * The five executables, named rather than discovered — the count is part of what is asserted, and
- * `skillNames`'s argument for reading the tree does not apply: an executable arriving after this
- * was written is a change to what the criterion counts, and the equality below is how it surfaces.
- */
-const EXECUTABLES = [
-  'dpm-guard.ts', 'dpm-import.ts', 'dpm-mcp.ts', 'dpm-merge.ts', 'dpm-publish.ts',
-];
 
 // --- The vendored tree ---------------------------------------------------------------------------
 

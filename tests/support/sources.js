@@ -105,6 +105,27 @@ export const pluginSources = () => [
 ];
 
 /**
+ * The five executables, named rather than discovered.
+ *
+ * **Named is the point.** `readdirSync(bin)` would return whatever is there, so a sixth executable
+ * arriving — or one of these five being deleted — would change what every caller counts without
+ * changing a line of any of them. The equality against this list is how that surfaces, and it has
+ * already surfaced one: a rename by extension turned `filter((name) => name.endsWith('.js'))` into
+ * an empty enumeration in two suites, and a `deepEqual` against a named set was the only thing that
+ * caught it.
+ *
+ * The extension is carried because it is the subject of one of the callers — the port's claim is
+ * that these run under plain `node` as TypeScript, with no loader and no build.
+ *
+ * `executables-typescript.test.js` and `vendoring.test.js` each had this list, with a paragraph
+ * each making the same argument; `publish-package.test.js` was about to be the third. Collected
+ * here when the third arrived rather than after there were five.
+ */
+export const EXECUTABLES = [
+  'dpm-guard.ts', 'dpm-import.ts', 'dpm-mcp.ts', 'dpm-merge.ts', 'dpm-publish.ts',
+];
+
+/**
  * dpm's own `package.json`, parsed.
  *
  * Five suites assert over this file — that nothing is declared to install, that the engine floor
