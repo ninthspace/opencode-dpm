@@ -2,7 +2,8 @@
 
 **Number**: 01-01  
 **Source spec**: 01  
-**Status**: pending  
+**Status**: complete  
+**Commit**: 6de9736  
 
 ## Story 1 — Vendor v0.7.0 and raise the Node floor to 24
 
@@ -239,7 +240,7 @@ Includes the control check: a deliberately extension-less internal import must m
 
 ## Story 7 — Stand up CI on Node 24
 
-**Status**: pending  
+**Status**: complete  
 **Blocked by**: —  
 
 ### Acceptance Criteria
@@ -264,6 +265,16 @@ No language toolchain present, networking controllable. Consumed by the clean-in
 **Status**: complete  
 
 Covers the criteria tagged `integration`: the workflow declares Node 24, runs all three checks, and the isolated environment job exists.
+
+### Retro
+
+- The first CI run was the first time this suite had ever run on a machine other than the one that wrote it, and it failed two tests out of 1015 — both for reasons no amount of local running could have surfaced.
+
+The sharper of the two is a genuine latent bug that had been passing for the wrong reason since v0.7.0. `coverage-retirement-environment.test.js` asserted that a fixture database is outside the repository by writing `file.path.includes(DPM)` — a substring test standing in for a path test. It asks whether the repository's path appears anywhere inside the fixture's, which is a different and much weaker question. On a checkout at `/Users/chris/Work/git/opencode-dpm` it is indistinguishable from the right check; in the container, where the checkout is `/dpm` and `mkdtempSync` produces `/tmp/dpm-XXXXXX`, it fired on a scratch file that was exactly where it belonged. Containment between two paths is `relative(a, b).startsWith('..')`, and nothing else.
+
+The second was not a bug but a missing environment: ENVR6 asks for a hook installed at `.git/hooks/pre-commit`, a fresh checkout has none, and the choice was between narrowing the assertion to accommodate CI or installing the hook so the assertion stays true. Installing it is right — it is what a contributor does on their first clone, so a CI run without it is a run against an environment the specification does not describe. The same problem arrived a second way in the container: `COPY` brings a symlink across as a symlink, so the host's hook link pointed at a path that exists on one machine and nowhere in the image, and a dangling link reads as no hook at all.
+
+The design decision worth carrying is that every absence in the isolated job is paired with something that would catch its presence. The Docker build fails if the base image already has Node or a compiler, so "installed into a bare environment" is a state the build passes through rather than a claim about it. And `.github/network-probe.js` is run twice — once with networking and once with `--network none` — because a step that runs the suite offline and passes is indistinguishable from a step whose `--network none` was silently ignored. The probe takes its target as an argument, so the suite drives it against a `data:` URL and a closed loopback port and exercises all four combinations without a packet leaving the machine, which keeps the suite offline-clean while still proving the control works.
 
 ## Dependencies
 

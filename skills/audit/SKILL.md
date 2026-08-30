@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Structured audit of the codebase across the project's dimensions of code health. Findings are rows carrying a citation, a dimension and a severity as typed references; the audit is pinned to the commit it was taken at, and its results can be piped into the library, a spec or a quick change. Triggers on "/dpm:audit".
+description: Structured audit of the codebase across the project's dimensions of code health. Findings are rows carrying a citation, a dimension and a severity as typed references; the audit is pinned to the commit it was taken at, and its results can be piped into the library, a spec or a quick change. Invoke with the skill tool, id "dpm-audit".
 ---
 
 # Codebase Audit
@@ -17,7 +17,7 @@ This skill uses **Gate Presentation**, **Conversational Output**, **Written Deli
 
 ## Input
 
-`$ARGUMENTS` is an optional scope hint — `/dpm:audit auth`, `/dpm:audit src/billing`.
+The request may carry a scope hint — `auth`, or `src/billing`.
 
 **A hint changes weight, not membership.** Every dimension is swept on every run; the hint says
 where to look hardest. Where it matches more than one plausible reading of the tree — `auth` as
@@ -69,8 +69,8 @@ project-shaped rather than from a blank slate.
 - **Two rankings**: the twenty largest files by line count, excluding vendored and generated trees,
   and the twenty most-modified from the six-month log. Compute the intersection explicitly — a large
   file that changes often is where debt collects.
-- **The planning rows, as context only**: `mcp__plugin_dpm_dpm__list_spec`, `mcp__plugin_dpm_dpm__list_epic`,
-  `mcp__plugin_dpm_dpm__list_adr` and `mcp__plugin_dpm_dpm__read_adr` on what bears on the code. Tell the user what the
+- **The planning rows, as context only**: `dpm_list_spec`, `dpm_list_epic`,
+  `dpm_list_adr` and `dpm_read_adr` on what bears on the code. Tell the user what the
   audit has seen.
 
   **Non-negotiable: none of it may skip a dimension, shorten a sweep, or soften a finding.** That a
@@ -97,7 +97,7 @@ filter, and it is the last chance to shape the sweep before it starts.
 
 ### Step 2: Sweep
 
-`mcp__plugin_dpm_dpm__list_taxonomy` in the `audit_dimension` domain, swept in `position` order.
+`dpm_list_taxonomy` in the `audit_dimension` domain, swept in `position` order.
 
 **The dimensions are rows, and that is what makes the sweep the project's rather than this file's.**
 A dimension the project added is swept because it is in the table, with no plugin change; a retired
@@ -162,13 +162,13 @@ selection from the record, not a filter on it.
 
 Gate first: "Record this audit?" with `Approve` / `Request changes` / `Stop`. On approval:
 
-1. `mcp__plugin_dpm_dpm__create_audit` with a short kebab-case `slug` and a `title`. That call assigns the
+1. `dpm_create_audit` with a short kebab-case `slug` and a `title`. That call assigns the
    number, which nothing here works out.
-2. `mcp__plugin_dpm_dpm__update_audit` setting `commit_sha` to the SHA captured at orient.
-3. `mcp__plugin_dpm_dpm__create_audit_finding` per finding — **every one, not the ranked ten** — with the audit,
+2. `dpm_update_audit` setting `commit_sha` to the SHA captured at orient.
+3. `dpm_create_audit_finding` per finding — **every one, not the ranked ten** — with the audit,
    its `position`, `dimension_id`, `severity_id`, `file`, `line` and `symbol` where they apply, its
    `summary`, and its `recommendation` where the sweep found one.
-4. `mcp__plugin_dpm_dpm__create_document_section` per section below, positioned in this order.
+4. `dpm_create_document_section` per section below, positioned in this order.
 
 **The dimension and the severity come from different vocabularies and the tool knows which.** Each
 is a domain-scoped reference, so a severity handed to `dimension_id` is refused rather than stored —
@@ -195,7 +195,7 @@ The sections, in order:
 them; a section holding a second copy disagrees with the rows the first time either is touched.
 
 **Report each finding under the disposition its row gives it.** Read the terms from
-`mcp__plugin_dpm_dpm__list_taxonomy` in the `disposition` domain and render them in `position` order.
+`dpm_list_taxonomy` in the `disposition` domain and render them in `position` order.
 A finding carrying a `recommendation` is waiting on the reader and names the change and where; one
 without is a record of something seen and left; and a dimension this environment could not sweep is
 still open, with what would close it — the same thing Open Questions holds, said as a disposition
@@ -210,16 +210,16 @@ signals box-ticking.
 ### Step 5: Handoff
 
 - **Into the library**, so other skills pick the findings up through their own Library Check:
-  `mcp__plugin_dpm_dpm__create_library` with `doc_type: 'reference'`, then `mcp__plugin_dpm_dpm__create_library_scope` per
+  `dpm_create_library` with `doc_type: 'reference'`, then `dpm_create_library_scope` per
   scope keyword — `audit`, plus the dimensions the findings cluster in, chosen with a multi-select —
-  then `mcp__plugin_dpm_dpm__create_dependency` with `kind: 'builds_on'`, the library document as
+  then `dpm_create_dependency` with `kind: 'builds_on'`, the library document as
   `source_document_id` and this audit as `target_document_id`.
 
   **One wrapper per audit, not one per dimension.** The scopes are rows on that one document, so the
   next skill's Library Check finds it by asking which documents are scoped to its own work, and the
   edge is what carries "this reference came from that audit" — both ends readable, neither a string.
-- `/dpm:spec` on this audit, where the priorities are work worth specifying.
-- `/dpm:quick` on this audit, for the quick wins.
+- `dpm-spec` on this audit, where the priorities are work worth specifying.
+- `dpm-quick` on this audit, for the quick wins.
 - Done.
 
 ## Output
@@ -238,15 +238,15 @@ where the debt clusters is visible without holding dozens of findings in the hea
 ten; the dashboard shows the distribution that ranking came out of. If you cannot write the one-line
 justification for what the visual carries that the prose cannot, it has not earned its place.
 
-Record it only once published, with `mcp__plugin_dpm_dpm__create_artifact` carrying its address, title and
-publication time, then `mcp__plugin_dpm_dpm__create_artifact_document` binding it to this audit.
+Record it only once published, with `dpm_create_artifact` carrying its address, title and
+publication time, then `dpm_create_artifact_document` binding it to this audit.
 
 ## Guidelines
 
 - **Cite, don't quote.** Every finding names a location. No secret's value ever enters a row.
 - **No rewrites.** A recommendation is a scoped change — which file, which symbol, what to change it
   to. "Rewrite", "replace entirely" and "rebuild" are not recommendations; a finding that genuinely
-  warrants one is a conversation for `/dpm:spec`, and the audit records the symptom.
+  warrants one is a conversation for `dpm-spec`, and the audit records the symptom.
 - **Sweep every dimension the vocabulary returns**, whatever the hint said and whatever the planning
   rows claim is already handled.
 - **Severity is a judgement, not a flourish.** An audit where everything is critical has ranked

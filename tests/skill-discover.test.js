@@ -29,7 +29,7 @@ import { openPlanningDatabase, handlers } from './support/planning-database.js';
 import { spineTools } from '../src/tools/index.ts';
 import {
   skillSource, toolNames, reachable, section, recorder, recoveries, bindings,
-  seedStartup, driveStartup,
+  seedStartup, driveStartup, CALLABLE,
 } from './support/skills.js';
 
 const SKILL = 'discover';
@@ -208,7 +208,7 @@ test('the run explores before it proposes, and a refused gate writes nothing', (
   assert.notEqual(summary, '', 'the summary phase still exists');
   assert.match(summary, /Write the rows only once the brief is approved/);
   assert.match(summary, /`Approve` \/ `Request changes` \/ `Stop`/);
-  assert.match(summary, /mcp__plugin_dpm_dpm__create_problem_brief/);
+  assert.match(summary, new RegExp(`${CALLABLE}create_problem_brief`));
 
   for (const phase of ['Phase 1: Why', 'Phase 3: Current State', 'Phase 5: Constraints']) {
     assert.notEqual(section(source, phase), '', `${phase} no longer exists`);

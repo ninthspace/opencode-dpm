@@ -34,7 +34,7 @@ const STARTUP = new Set(['Session', 'Startup']);
 /**
  * What makes a skill one that records a session, and therefore one with something to resume.
  *
- * **No leading `\b`.** Skills write the callable form, `mcp__plugin_dpm_dpm__create_session`, and the
+ * **No leading `\b`.** Skills write the callable form, `dpm_create_session`, and the
  * character before the verb is an underscore — a word character, so a word boundary never matches
  * there. The first draft carried one and found nothing anywhere, which made every exemption below
  * pass by never being tested. The planted control is what said so.
@@ -162,7 +162,7 @@ test('an exempt skill that records a session fails the check', () => {
   // exemption and writes a session row is caught.
   const planted = new Map([
     ['pretender', '## Startup\n\n**No session**: nothing to resume.\n\n## Work\n\n'
-      + 'Then `mcp__plugin_dpm_dpm__create_session` with the harness\'s id.\n'],
+      + 'Then `dpm_create_session` with the harness\'s id.\n'],
   ]);
 
   assert.deepEqual(

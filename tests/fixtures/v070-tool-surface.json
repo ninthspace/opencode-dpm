@@ -1,0 +1,6034 @@
+[
+  {
+    "name": "adopt_session",
+    "description": "Resume: point a predecessor at the session that continues it, and hand back the state it was carrying. Creates the adopting session if it does not exist yet.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The new CPM_SESSION_ID"
+        },
+        "predecessor_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The session being resumed, which this one supersedes"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return state as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id",
+        "predecessor_id"
+      ]
+    }
+  },
+  {
+    "name": "allocate_number",
+    "description": "Allocate the next number for a document kind, within a parent for child-numbered kinds. Numbers are never reused, including after archival.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A seeded document_kind.kind"
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Omit for a root-numbered kind; required for a child-numbered one"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "check_integrity",
+    "description": "Report orphaned rows and every cross-row invariant in the register, with the rows that locate each violation. Deliberately unbounded.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    }
+  },
+  {
+    "name": "create_acceptance_criterion",
+    "description": "Create a criterion under its requirement. Polarity is a value, not a prefix.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requirement_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "polarity": {
+          "type": "string",
+          "enum": [
+            "must",
+            "must_not",
+            "control"
+          ],
+          "default": "must",
+          "description": "'must_not' is a type here, not the words 'must NOT' at the front of the text"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "requirement_id",
+        "text",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_adr",
+    "description": "Create a adr and its adr row together. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "decision_status": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "accepted",
+            "rejected",
+            "superseded",
+            "deprecated"
+          ],
+          "default": "proposed"
+        },
+        "decision": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The decision itself, in one sentence — the ADR's reason for existing"
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the document this adr hangs off — one of discussion, problem_brief, product_brief, spec"
+        }
+      },
+      "required": [
+        "parent_id",
+        "slug",
+        "title",
+        "decision"
+      ]
+    }
+  },
+  {
+    "name": "create_adr_option",
+    "description": "Create one option an ADR considered.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "adr_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the ADR this option belongs to"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chosen": {
+          "type": "boolean",
+          "default": false,
+          "description": "exactly one option may be"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "adr_id",
+        "name",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_adr_option_tradeoff",
+    "description": "Create one option's assessment against one axis.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "option_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "axis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'cost', 'complexity', 'reversibility'"
+        },
+        "assessment": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "option_id",
+        "axis",
+        "assessment"
+      ]
+    }
+  },
+  {
+    "name": "create_agent",
+    "description": "Create a persona the party, review and consult rosters offer.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the id skills reference, e.g. 'architect'"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'Margot' — unique, or rendered output is ambiguous"
+        },
+        "icon": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a single emoji, the party-mode prefix"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'Architect'"
+        },
+        "personality": {
+          "type": "string",
+          "minLength": 1
+        },
+        "communication_style": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "name",
+        "display_name",
+        "icon",
+        "role",
+        "personality",
+        "communication_style",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_artifact",
+    "description": "Create a published artifact.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "unique; the artifact is the URL"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "published_at": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ISO 8601"
+        },
+        "retired_at": {
+          "type": "string",
+          "description": "ISO 8601; no longer pointed at. Set with a reason. Still readable"
+        },
+        "retired_reason": {
+          "type": "string",
+          "description": "Superseded, replaced, or gone — the register answers which"
+        }
+      },
+      "required": [
+        "url",
+        "title",
+        "published_at"
+      ]
+    }
+  },
+  {
+    "name": "create_artifact_document",
+    "description": "Create the record that an artifact was published from a document.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "any kind of document"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "document_id"
+      ]
+    }
+  },
+  {
+    "name": "create_audit",
+    "description": "Create a audit. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_audit_finding",
+    "description": "Create one finding of an audit, pinned to a file.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "audit_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dimension_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a taxonomy row in the 'audit_dimension' domain"
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "severity_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "what is wrong, in one sentence"
+        },
+        "recommendation": {
+          "type": "string",
+          "description": "the scoped change that would fix it, where one is known"
+        }
+      },
+      "required": [
+        "audit_id",
+        "position",
+        "dimension_id",
+        "file",
+        "severity_id",
+        "summary"
+      ]
+    }
+  },
+  {
+    "name": "create_communication",
+    "description": "Create a communication. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_coverage",
+    "description": "Bind a requirement fragment to a story criterion. One matrix row.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requirement_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "spec_fragment": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A verbatim fragment of the requirement — part of identity, not a summary"
+        },
+        "story_criterion_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Display order only; not identity"
+        },
+        "verified_at": {
+          "type": "string",
+          "description": "ISO 8601. Records the ✓; the server computes the binding hash that accompanies it"
+        }
+      },
+      "required": [
+        "requirement_id",
+        "spec_fragment",
+        "story_criterion_id",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_coverage_matrix",
+    "description": "Create a coverage_matrix. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the document this coverage_matrix hangs off — one of epic"
+        }
+      },
+      "required": [
+        "parent_id",
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_coverage_story",
+    "description": "Create the record that a story also delivers a coverage row.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "coverage_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "story_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "coverage_id",
+        "story_id"
+      ]
+    }
+  },
+  {
+    "name": "create_criterion_approach",
+    "description": "Create one test approach of a spec's acceptance criterion.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "criterion_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a seeded test_approach.tag"
+        }
+      },
+      "required": [
+        "criterion_id",
+        "tag"
+      ]
+    }
+  },
+  {
+    "name": "create_dependency",
+    "description": "Link two documents or stories with a typed edge, reading source-blocks-target. On a supersedes edge the source is the superseded end and the target replaces it. Refuses an edge that would close a cycle over a kind that gates work, and one whose ends are document kinds its own kind does not admit.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A seeded dependency_kind.kind"
+        },
+        "source_document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the source when it is a document; give exactly one of source_document_id or source_story_id"
+        },
+        "source_story_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the source when it is a story; give exactly one of source_document_id or source_story_id"
+        },
+        "target_document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the target when it is a document; give exactly one of target_document_id or target_story_id"
+        },
+        "target_story_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the target when it is a story; give exactly one of target_document_id or target_story_id"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "create_dependency_kind",
+    "description": "Create a kind of edge between two artefacts.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'blocks', 'builds_on', 'supersedes'…"
+        },
+        "gates_work": {
+          "type": "boolean",
+          "default": false,
+          "description": "whether this edge blocks readiness"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "kind",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_discussion",
+    "description": "Create a discussion. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_document_agent",
+    "description": "Create the record that one agent took part in a review or a discussion.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the review or discussion"
+        },
+        "document_kind": {
+          "type": "string",
+          "enum": [
+            "review",
+            "discussion"
+          ],
+          "description": "the kind of the document above — a participant attaches to no other"
+        },
+        "agent": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a seeded agent.name"
+        }
+      },
+      "required": [
+        "document_id",
+        "agent",
+        "document_kind"
+      ]
+    }
+  },
+  {
+    "name": "create_document_milestone",
+    "description": "Create the record that a document delivers a milestone.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "any kind of document"
+        },
+        "milestone_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "document_id",
+        "milestone_id"
+      ]
+    }
+  },
+  {
+    "name": "create_document_section",
+    "description": "Create one prose section of a document.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "any kind of document"
+        },
+        "heading": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the section's prose, verbatim"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "superseded_at": {
+          "type": "string",
+          "description": "ISO 8601; folded into a section that now says it better. Still readable"
+        }
+      },
+      "required": [
+        "document_id",
+        "heading",
+        "body",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_epic",
+    "description": "Create a epic. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the document this epic hangs off — one of spec"
+        }
+      },
+      "required": [
+        "parent_id",
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_finding",
+    "description": "Create one finding of a review.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "projection order within the review"
+        },
+        "agent": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a seeded agent.name; not every finding is attributed"
+        },
+        "category_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a taxonomy row in the 'finding' domain"
+        },
+        "severity_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a taxonomy row in the 'severity' domain"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "accepted",
+            "rejected",
+            "remediated"
+          ],
+          "default": "open"
+        },
+        "remediation_task_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "review_id",
+        "position",
+        "category_id",
+        "severity_id",
+        "summary"
+      ]
+    }
+  },
+  {
+    "name": "create_library",
+    "description": "Create a library and its library_document row together. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "doc_type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'architecture', 'coding-standards', 'domain' — what the Library Check reads"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where an imported document came from; omit for one written in this project"
+        }
+      },
+      "required": [
+        "slug",
+        "title",
+        "doc_type"
+      ]
+    }
+  },
+  {
+    "name": "create_library_scope",
+    "description": "Create the record that a library document applies to one skill.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a skill name, or 'all'"
+        }
+      },
+      "required": [
+        "document_id",
+        "scope"
+      ]
+    }
+  },
+  {
+    "name": "create_milestone",
+    "description": "Create one milestone of a specification's build order.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spec_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'M1' — unique within the spec, not globally"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'Substrate'"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "spec_id",
+        "label",
+        "title",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_observation",
+    "description": "Create one retro observation.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retro_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the grouping; set when the retro is written. At least one of retro_id, story_id or quick_id is required"
+        },
+        "story_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the origin; survives promotion into a retro. At least one of retro_id, story_id or quick_id is required"
+        },
+        "quick_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the origin, on the quick path; survives promotion into a retro. At least one of retro_id, story_id or quick_id is required"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "projection order. Defaults to 0 rather than allocating, and is unique per retro, so the second and later observations under one retro_id must each set it"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "synthesis": {
+          "type": "string",
+          "description": "written when grouped into a retro"
+        },
+        "note": {
+          "type": "string",
+          "description": "qualifiers, caveats, scope"
+        },
+        "library_doc_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "set on promotion"
+        },
+        "retired_at": {
+          "type": "string",
+          "description": "ISO 8601; set with retired_reason or not at all"
+        },
+        "retired_reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ]
+    }
+  },
+  {
+    "name": "create_observation_category",
+    "description": "Create one category of an observation.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "taxonomy_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a taxonomy row in the 'observation' domain"
+        }
+      },
+      "required": [
+        "observation_id",
+        "taxonomy_id"
+      ]
+    }
+  },
+  {
+    "name": "create_problem_brief",
+    "description": "Create a problem_brief. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_product_brief",
+    "description": "Create a product_brief. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the document this product_brief hangs off — one of problem_brief"
+        }
+      },
+      "required": [
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_quick",
+    "description": "Create a quick and its quick row together. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "closed_at": {
+          "type": "string",
+          "description": "ISO 8601; NULL while the record is open"
+        }
+      },
+      "required": [
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_quick_criterion",
+    "description": "Create one of a quick record's criteria.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "quick_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "met": {
+          "type": "boolean",
+          "description": "left unset while the record is open"
+        },
+        "note": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "quick_id",
+        "text",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_requirement",
+    "description": "Create a requirement. `class` is required and is never inferred from `label`.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spec_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display only: FR1, NFR3, ENVX2"
+        },
+        "class": {
+          "type": "string",
+          "enum": [
+            "functional",
+            "non_functional",
+            "environmental_requirement",
+            "environmental_restriction"
+          ],
+          "description": "Never inferred from label"
+        },
+        "moscow": {
+          "type": "string",
+          "enum": [
+            "must",
+            "should",
+            "could",
+            "wont"
+          ]
+        },
+        "exclusion": {
+          "type": "string",
+          "enum": [
+            "deferred",
+            "out_of_scope"
+          ]
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "FR1a's parent is FR1"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "spec_id",
+        "label",
+        "class",
+        "text",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_retro",
+    "description": "Create a retro. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the document this retro hangs off — one of epic, quick, spec"
+        }
+      },
+      "required": [
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_retro_application",
+    "description": "Create the record that a retro's lesson was applied to one artefact.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retro_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "applied_to_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "theme": {
+          "type": "string",
+          "description": "the observation category, where the record names one"
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "applied",
+            "not_applicable",
+            "deferred"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "description": "the how, the reason or the why"
+        }
+      },
+      "required": [
+        "retro_id",
+        "applied_to_id",
+        "disposition"
+      ]
+    }
+  },
+  {
+    "name": "create_review",
+    "description": "Create a review and its review row together. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "whole",
+            "story"
+          ],
+          "default": "whole"
+        },
+        "scope_story_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required when scope is 'story', and refused otherwise"
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the document this review hangs off — one of epic, spec"
+        }
+      },
+      "required": [
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_runbook",
+    "description": "Create a runbook. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_session",
+    "description": "Record a session under the id the harness issued. State is a skill-defined blob.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "CPM_SESSION_ID — the caller's, not ours"
+        },
+        "skill": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The CPM skill running, e.g. cpm:do"
+        },
+        "phase": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where in that skill the run has reached"
+        },
+        "state": {
+          "type": "string",
+          "description": "A JSON blob the skill defines and dpm does not read"
+        },
+        "superseded_by": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "create_spec",
+    "description": "Create a spec. Its number is allocated, not supplied.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "title"
+      ]
+    }
+  },
+  {
+    "name": "create_story",
+    "description": "Create a story under its epic.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "epic_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "ordinal within its epic_id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "plan": {
+          "type": "integer",
+          "enum": [
+            0,
+            1
+          ],
+          "default": 0,
+          "description": "whether this story is planned in full before any of its tasks are executed"
+        }
+      },
+      "required": [
+        "epic_id",
+        "number",
+        "title",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_story_criterion",
+    "description": "Create a criterion under its story. Polarity is a value, not a prefix.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "story_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "polarity": {
+          "type": "string",
+          "enum": [
+            "must",
+            "must_not",
+            "control"
+          ],
+          "default": "must",
+          "description": "'must_not' is a type here, not the words 'must NOT' at the front of the text"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warrant_adr_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The accepted decision that warrants this criterion, where no requirement does"
+        }
+      },
+      "required": [
+        "story_id",
+        "text",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_story_criterion_approach",
+    "description": "Create one test approach of a story's criterion.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "story_criterion_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a seeded test_approach.tag"
+        }
+      },
+      "required": [
+        "story_criterion_id",
+        "tag"
+      ]
+    }
+  },
+  {
+    "name": "create_task",
+    "description": "Create a task under its story.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "story_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "ordinal within its story_id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "story_id",
+        "number",
+        "title",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_taxonomy",
+    "description": "Create a controlled term — an observation category, finding category, audit dimension, severity or report disposition.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the stable term id, '<domain>:<slug>' — the same in every database"
+        },
+        "domain": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'observation', 'finding', 'audit_dimension', 'severity' or 'disposition'"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "canonical form, e.g. 'Testing Gaps'"
+        },
+        "singular": {
+          "type": "string",
+          "description": "per-item display form, where it differs"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "domain",
+        "name",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "create_test_approach",
+    "description": "Create a test approach tag.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'unit', 'integration', 'feature'…"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "level",
+            "mode"
+          ],
+          "description": "'level' is how much is under test; 'mode' is how it is run"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "tag",
+        "kind",
+        "position"
+      ]
+    }
+  },
+  {
+    "name": "delete_session",
+    "description": "Remove one session by id, returning the row as it was. Refused while another session was adopted from it, and refused if there is no such row.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return state as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "list_acceptance_criterion",
+    "description": "List acceptance_criterion rows, optionally within one requirement. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requirement_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this requirement"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return text as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_adr",
+    "description": "List adr rows, optionally within one parent. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this parent"
+        },
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_adr_option",
+    "description": "List adr_option rows, optionally within one adr. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "adr_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this adr"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return rationale as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_adr_option_tradeoff",
+    "description": "List adr_option_tradeoff rows, optionally within one option. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "option_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this option"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return assessment as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_agent",
+    "description": "List agent rows. Bounded by `limit`, which has a default and no ceiling. Rows with `retired_at` set are left out unless `include_retired` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include_retired": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include terms that have been retired. They stay readable and stay referenced by existing rows; what retirement stops is new rows arriving."
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return personality, communication_style as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_artifact",
+    "description": "List artifact rows. Bounded by `limit`, which has a default and no ceiling. Rows with `retired_at` set are left out unless `include_retired` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include_retired": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include terms that have been retired. They stay readable and stay referenced by existing rows; what retirement stops is new rows arriving."
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return description as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_artifact_document",
+    "description": "List artifact_document rows, optionally within one artifact. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this artifact"
+        },
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows whose document_id is this"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_audit",
+    "description": "List audit rows. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_audit_finding",
+    "description": "List audit_finding rows, optionally within one audit. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "audit_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this audit"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return summary, recommendation as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_communication",
+    "description": "List communication rows. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_coverage",
+    "description": "List coverage rows, optionally within one requirement. Bounded by `limit`, which has a default and no ceiling. Rows with `retired_at` set are left out unless `include_retired` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requirement_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this requirement"
+        },
+        "story_criterion_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows whose story_criterion_id is this"
+        },
+        "include_retired": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include terms that have been retired. They stay readable and stay referenced by existing rows; what retirement stops is new rows arriving."
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return spec_fragment as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_coverage_matrix",
+    "description": "List coverage_matrix rows, optionally within one parent. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this parent"
+        },
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_coverage_story",
+    "description": "List coverage_story rows, optionally within one coverage. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "coverage_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this coverage"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_criterion_approach",
+    "description": "List criterion_approach rows, optionally within one criterion. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "criterion_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this criterion"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_dependency",
+    "description": "List dependency rows. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows whose kind is this"
+        },
+        "source_document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows whose source_document_id is this"
+        },
+        "source_story_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows whose source_story_id is this"
+        },
+        "target_document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows whose target_document_id is this"
+        },
+        "target_story_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows whose target_story_id is this"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_dependency_kind",
+    "description": "List dependency_kind rows. Bounded by `limit`, which has a default and no ceiling. Rows with `retired_at` set are left out unless `include_retired` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include_retired": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include terms that have been retired. They stay readable and stay referenced by existing rows; what retirement stops is new rows arriving."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_discussion",
+    "description": "List discussion rows. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_document_agent",
+    "description": "List document_agent rows, optionally within one document. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this document"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_document_kind",
+    "description": "List document_kind rows. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_document_milestone",
+    "description": "List document_milestone rows, optionally within one document. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this document"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_document_section",
+    "description": "List document_section rows, optionally within one document. Bounded by `limit`, which has a default and no ceiling. Rows with `superseded_at` set are left out unless `include_superseded` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this document"
+        },
+        "include_superseded": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include terms that have been retired. They stay readable and stay referenced by existing rows; what retirement stops is new rows arriving."
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return body as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_epic",
+    "description": "List epic rows, optionally within one parent. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this parent"
+        },
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_finding",
+    "description": "List finding rows, optionally within one review. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this review"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return summary as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_library",
+    "description": "List library rows. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_library_scope",
+    "description": "List library_scope rows, optionally within one document. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this document"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_milestone",
+    "description": "List milestone rows, optionally within one spec. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spec_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this spec"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return summary as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_observation",
+    "description": "List observation rows, optionally within one retro. Bounded by `limit`, which has a default and no ceiling. Rows with `retired_at` set are left out unless `include_retired` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retro_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this retro"
+        },
+        "story_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows whose story_id is this"
+        },
+        "quick_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows whose quick_id is this"
+        },
+        "library_doc_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows whose library_doc_id is this"
+        },
+        "include_retired": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include terms that have been retired. They stay readable and stay referenced by existing rows; what retirement stops is new rows arriving."
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return text, synthesis as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_observation_category",
+    "description": "List observation_category rows, optionally within one observation. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this observation"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_problem_brief",
+    "description": "List problem_brief rows. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_product_brief",
+    "description": "List product_brief rows, optionally within one parent. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this parent"
+        },
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_quick",
+    "description": "List quick rows. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_quick_criterion",
+    "description": "List quick_criterion rows, optionally within one quick. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "quick_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this quick"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return text as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_requirement",
+    "description": "List requirement rows, optionally within one spec. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spec_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this spec"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return text as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_retro",
+    "description": "List retro rows, optionally within one parent. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this parent"
+        },
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_retro_application",
+    "description": "List retro_application rows, optionally within one retro. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retro_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this retro"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return note as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_review",
+    "description": "List review rows, optionally within one parent. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this parent"
+        },
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_runbook",
+    "description": "List runbook rows. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_session",
+    "description": "List sessions, newest last. `updated_before` selects stale rows by age; `superseded_by` is absent on the live end of every chain.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "skill": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updated_before": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ISO 8601. Rows last touched before this — the staleness cutoff."
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return state as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_spec",
+    "description": "List spec rows. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now. Rows with `archived_at` set are left out unless `include_archived` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "include_archived": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include documents that have been archived. Archival is orthogonal to status — an archived document is complete and true, just out of the working set — so this is what to pass when the question is the record rather than the work."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_story",
+    "description": "List story rows, optionally within one epic. Bounded by `limit`, which has a default and no ceiling. `ready` narrows to what can be worked on now.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "epic_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this epic"
+        },
+        "ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only rows that can be worked on now: not complete, and with no incomplete blocker over an edge kind whose `gates_work` is set. FR22 — the answer comes from the edges, so a blocker completing releases its work without anything being restated."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_story_criterion",
+    "description": "List story_criterion rows, optionally within one story. Bounded by `limit`, which has a default and no ceiling. Rows with `superseded_at` set are left out unless `include_superseded` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "story_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this story"
+        },
+        "include_superseded": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include terms that have been retired. They stay readable and stay referenced by existing rows; what retirement stops is new rows arriving."
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return text as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_story_criterion_approach",
+    "description": "List story_criterion_approach rows, optionally within one story_criterion. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "story_criterion_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this story_criterion"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_task",
+    "description": "List task rows, optionally within one story. Bounded by `limit`, which has a default and no ceiling.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "story_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this story"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return description as well. Withheld unless asked for."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_taxonomy",
+    "description": "List taxonomy rows, optionally within one domain. Bounded by `limit`, which has a default and no ceiling. Rows with `retired_at` set are left out unless `include_retired` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only rows under this domain"
+        },
+        "include_retired": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include terms that have been retired. They stay readable and stay referenced by existing rows; what retirement stops is new rows arriving."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "list_test_approach",
+    "description": "List test_approach rows. Bounded by `limit`, which has a default and no ceiling. Rows with `retired_at` set are left out unless `include_retired` asks for them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include_retired": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include terms that have been retired. They stay readable and stay referenced by existing rows; what retirement stops is new rows arriving."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "preview_document_kind",
+    "description": "Render an example document of one kind and return its markdown. The bytes come from the projection template the kind actually uses, so the preview cannot differ from what a real document of that kind produces. Writes nothing.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A seeded document_kind.kind"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "publish",
+    "description": "Regenerate the markdown projection and .dpm/dpm.sql from the database, removing generated files no document produces any more. Returns what was written, rewritten, left unchanged and removed.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dry_run": {
+          "type": "boolean",
+          "default": false,
+          "description": "Report what a publish would write, rewrite, leave unchanged and remove, without touching anything. Ask before removing; a removal cannot be undone."
+        }
+      }
+    }
+  },
+  {
+    "name": "read_acceptance_criterion",
+    "description": "Read one criterion by id, with its polarity as a column.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return text as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_adr",
+    "description": "Read one adr by id, with its adr columns.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_adr_option",
+    "description": "Read one one option an ADR considered by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return rationale as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_adr_option_tradeoff",
+    "description": "Read one one option's assessment against one axis by option_id and axis.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "option_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "axis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'cost', 'complexity', 'reversibility'"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return assessment as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "option_id",
+        "axis"
+      ]
+    }
+  },
+  {
+    "name": "read_agent",
+    "description": "Read one a persona the party, review and consult rosters offer by name.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the id skills reference, e.g. 'architect'"
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return personality, communication_style as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  },
+  {
+    "name": "read_artifact",
+    "description": "Read one a published artifact by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return description as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_artifact_document",
+    "description": "Read one the record that an artifact was published from a document by artifact_id and document_id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "any kind of document"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "document_id"
+      ]
+    }
+  },
+  {
+    "name": "read_audit",
+    "description": "Read one audit by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_audit_finding",
+    "description": "Read one one finding of an audit, pinned to a file by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return summary, recommendation as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_communication",
+    "description": "Read one communication by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_coverage",
+    "description": "Read one coverage row by id, with its verification state as columns.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return spec_fragment as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_coverage_matrix",
+    "description": "Read one coverage_matrix by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_coverage_story",
+    "description": "Read one the record that a story also delivers a coverage row by coverage_id and story_id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "coverage_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "story_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "coverage_id",
+        "story_id"
+      ]
+    }
+  },
+  {
+    "name": "read_criterion_approach",
+    "description": "Read one one test approach of a spec's acceptance criterion by criterion_id and tag.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "criterion_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a seeded test_approach.tag"
+        }
+      },
+      "required": [
+        "criterion_id",
+        "tag"
+      ]
+    }
+  },
+  {
+    "name": "read_dependency",
+    "description": "Read one edge by id, with both its ends and its kind as columns.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_dependency_kind",
+    "description": "Read one a kind of edge between two artefacts by kind.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'blocks', 'builds_on', 'supersedes'…"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "read_discussion",
+    "description": "Read one discussion by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_document_agent",
+    "description": "Read one the record that one agent took part in a review or a discussion by document_id and agent.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the review or discussion"
+        },
+        "agent": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a seeded agent.name"
+        }
+      },
+      "required": [
+        "document_id",
+        "agent"
+      ]
+    }
+  },
+  {
+    "name": "read_document_kind",
+    "description": "One document kind: the directory its files land in, whether it is numbered from the root or within a parent, and its parentage in both directions. A null directory means the kind renders inside its parent and has no file of its own. `parents` names the kinds this one may hang off; `children` names the kinds that may hang off it, which is what a cascade walks.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A seeded document_kind.kind"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "read_document_milestone",
+    "description": "Read one the record that a document delivers a milestone by document_id and milestone_id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "any kind of document"
+        },
+        "milestone_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "document_id",
+        "milestone_id"
+      ]
+    }
+  },
+  {
+    "name": "read_document_section",
+    "description": "Read one one prose section of a document by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return body as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_epic",
+    "description": "Read one epic by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_finding",
+    "description": "Read one one finding of a review by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return summary as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_library",
+    "description": "Read one library by id, with its library_document columns.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_library_scope",
+    "description": "Read one the record that a library document applies to one skill by document_id and scope.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a skill name, or 'all'"
+        }
+      },
+      "required": [
+        "document_id",
+        "scope"
+      ]
+    }
+  },
+  {
+    "name": "read_milestone",
+    "description": "Read one one milestone of a specification's build order by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return summary as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_number_sequence",
+    "description": "Read the counter for a kind, or for a kind within one parent. Reports what the next allocation will return without taking it.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A seeded document_kind.kind"
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Omit for a root-numbered kind, whose counter has no parent"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "read_observation",
+    "description": "Read one one retro observation by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return text, synthesis as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_observation_category",
+    "description": "Read one one category of an observation by observation_id and taxonomy_id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "taxonomy_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a taxonomy row in the 'observation' domain"
+        }
+      },
+      "required": [
+        "observation_id",
+        "taxonomy_id"
+      ]
+    }
+  },
+  {
+    "name": "read_problem_brief",
+    "description": "Read one problem_brief by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_product_brief",
+    "description": "Read one product_brief by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_quick",
+    "description": "Read one quick by id, with its quick columns.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_quick_criterion",
+    "description": "Read one one of a quick record's criteria by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return text as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_requirement",
+    "description": "Read one requirement by id, with its class, band and exclusion as columns.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return text as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_retro",
+    "description": "Read one retro by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_retro_application",
+    "description": "Read one the record that a retro's lesson was applied to one artefact by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return note as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_review",
+    "description": "Read one review by id, with its review columns.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_runbook",
+    "description": "Read one runbook by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_session",
+    "description": "Read one session by id, with its state withheld unless asked for.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return state as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_spec",
+    "description": "Read one spec by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_story",
+    "description": "Read one story by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_story_criterion",
+    "description": "Read one criterion by id, with its polarity as a column.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return text as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_story_criterion_approach",
+    "description": "Read one one test approach of a story's criterion by story_criterion_id and tag.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "story_criterion_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a seeded test_approach.tag"
+        }
+      },
+      "required": [
+        "story_criterion_id",
+        "tag"
+      ]
+    }
+  },
+  {
+    "name": "read_task",
+    "description": "Read one task by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "include_body": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return description as well. Withheld unless asked for."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_taxonomy",
+    "description": "Read one a controlled term — an observation category, finding category, audit dimension, severity or report disposition by id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the stable term id, '<domain>:<slug>' — the same in every database"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "read_test_approach",
+    "description": "Read one a test approach tag by tag.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'unit', 'integration', 'feature'…"
+        }
+      },
+      "required": [
+        "tag"
+      ]
+    }
+  },
+  {
+    "name": "resolve_reference",
+    "description": "Resolve a human reference — `47`, `47-03` — to the document it names, returning that document's row. Pass `kind` to choose between documents that share a reference: an epic and its coverage matrix take the same one by design. A reference printed by any list or read tool is accepted here verbatim.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reference": {
+          "type": "string",
+          "minLength": 1,
+          "description": "As printed: `47` for a root document, `47-03` for a child"
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Narrow to one kind. Only needed where a reference names more than one document"
+        }
+      },
+      "required": [
+        "reference"
+      ]
+    }
+  },
+  {
+    "name": "retire_agent",
+    "description": "Retire a persona the party, review and consult rosters offer. Rows already referencing it stay intact and readable; new rows referencing it are refused. Not reversible through the tools.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the id skills reference, e.g. 'architect'"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  },
+  {
+    "name": "retire_coverage",
+    "description": "Withdraw a binding, with the reason it was withdrawn. The row stays readable and stops counting toward the requirement. Not reversible through the tools.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why the binding was withdrawn — the fragment was wrong, or the criterion it named was superseded. Required, and the only prose a coverage row carries"
+        }
+      },
+      "required": [
+        "id",
+        "reason"
+      ]
+    }
+  },
+  {
+    "name": "retire_dependency_kind",
+    "description": "Retire a kind of edge between two artefacts. Rows already referencing it stay intact and readable; new rows referencing it are refused. Not reversible through the tools.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'blocks', 'builds_on', 'supersedes'…"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "retire_taxonomy",
+    "description": "Retire a controlled term — an observation category, finding category, audit dimension, severity or report disposition. Rows already referencing it stay intact and readable; new rows referencing it are refused. Not reversible through the tools.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the stable term id, '<domain>:<slug>' — the same in every database"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "retire_test_approach",
+    "description": "Retire a test approach tag. Rows already referencing it stay intact and readable; new rows referencing it are refused. Not reversible through the tools.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'unit', 'integration', 'feature'…"
+        }
+      },
+      "required": [
+        "tag"
+      ]
+    }
+  },
+  {
+    "name": "search",
+    "description": "Search every indexed artefact — document section bodies and the prose held on the child rows beneath them. Each hit names the entity and the row id, so it can be opened with that entity's read tool. Scope with an `entity:` term in the query, e.g. `entity:requirement AND helpers`. What it cannot do, because an empty result is not evidence of absence: matching is by whole token, so `index` does not find `reindexing` and only a trailing `prefix*` widens it; there is no stemming, so `index` does not find `indexed` or `indexing`; and `rank` is bm25 within one index, so an unscoped query interleaves two rankings rather than ordering across both. Entities: document_section, acceptance_criterion, adr, adr_option, agent, artifact, audit_finding, coverage, finding, milestone, observation, quick_criterion, requirement, retro_application, story, story_criterion, task.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An FTS5 query. Bare words are ANDed; `OR`, `NOT`, `\"phrases\"` and `prefix*` work as FTS5 defines them."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Rows to return. Raise it as far as you like — there is no ceiling."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Rows to skip first."
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
+  {
+    "name": "update_acceptance_criterion",
+    "description": "Update a criterion's text, polarity or position.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "polarity": {
+          "type": "string",
+          "enum": [
+            "must",
+            "must_not",
+            "control"
+          ],
+          "default": "must",
+          "description": "'must_not' is a type here, not the words 'must NOT' at the front of the text"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_adr",
+    "description": "Update a adr's title, slug, status, archival, commit or adr columns.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        },
+        "decision_status": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "accepted",
+            "rejected",
+            "superseded",
+            "deprecated"
+          ],
+          "default": "proposed"
+        },
+        "decision": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The decision itself, in one sentence — the ADR's reason for existing"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_adr_option",
+    "description": "Update one option an ADR considered's name, chosen, rationale, position.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chosen": {
+          "type": "boolean",
+          "default": false,
+          "description": "exactly one option may be"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_adr_option_tradeoff",
+    "description": "Update one option's assessment against one axis's assessment.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "option_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "axis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'cost', 'complexity', 'reversibility'"
+        },
+        "assessment": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "option_id",
+        "axis"
+      ]
+    }
+  },
+  {
+    "name": "update_agent",
+    "description": "Update a persona the party, review and consult rosters offer's display_name, icon, role, personality, communication_style, position.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the id skills reference, e.g. 'architect'"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'Margot' — unique, or rendered output is ambiguous"
+        },
+        "icon": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a single emoji, the party-mode prefix"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'Architect'"
+        },
+        "personality": {
+          "type": "string",
+          "minLength": 1
+        },
+        "communication_style": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  },
+  {
+    "name": "update_artifact",
+    "description": "Update a published artifact's url, title, description, published_at, retired_at, retired_reason.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "unique; the artifact is the URL"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "published_at": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ISO 8601"
+        },
+        "retired_at": {
+          "type": "string",
+          "description": "ISO 8601; no longer pointed at. Set with a reason. Still readable"
+        },
+        "retired_reason": {
+          "type": "string",
+          "description": "Superseded, replaced, or gone — the register answers which"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_audit",
+    "description": "Update a audit's title, slug, status, archival or commit.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_audit_finding",
+    "description": "Update one finding of an audit, pinned to a file's position, dimension_id, file, line, symbol, severity_id, summary, recommendation.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dimension_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a taxonomy row in the 'audit_dimension' domain"
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "severity_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "what is wrong, in one sentence"
+        },
+        "recommendation": {
+          "type": "string",
+          "description": "the scoped change that would fix it, where one is known"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_communication",
+    "description": "Update a communication's title, slug, status, archival or commit.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_coverage",
+    "description": "Update a coverage row's position, or record its verification.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Display order only; not identity"
+        },
+        "verified_at": {
+          "type": "string",
+          "description": "ISO 8601. Records the ✓; the server computes the binding hash that accompanies it"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_coverage_matrix",
+    "description": "Update a coverage_matrix's title, slug, status, archival or commit.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_dependency_kind",
+    "description": "Update a kind of edge between two artefacts's gates_work, position.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'blocks', 'builds_on', 'supersedes'…"
+        },
+        "gates_work": {
+          "type": "boolean",
+          "default": false,
+          "description": "whether this edge blocks readiness"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "update_discussion",
+    "description": "Update a discussion's title, slug, status, archival or commit.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_document_section",
+    "description": "Update one prose section of a document's heading, body, position, superseded_at.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "heading": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the section's prose, verbatim"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "superseded_at": {
+          "type": "string",
+          "description": "ISO 8601; folded into a section that now says it better. Still readable"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_epic",
+    "description": "Update a epic's title, slug, status, archival or commit.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_finding",
+    "description": "Update one finding of a review's position, agent, category_id, severity_id, summary, status, remediation_task_id.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "projection order within the review"
+        },
+        "agent": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a seeded agent.name; not every finding is attributed"
+        },
+        "category_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a taxonomy row in the 'finding' domain"
+        },
+        "severity_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "a taxonomy row in the 'severity' domain"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "accepted",
+            "rejected",
+            "remediated"
+          ],
+          "default": "open"
+        },
+        "remediation_task_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_library",
+    "description": "Update a library's title, slug, status, archival, commit or library_document columns.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        },
+        "doc_type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'architecture', 'coding-standards', 'domain' — what the Library Check reads"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where an imported document came from; omit for one written in this project"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_milestone",
+    "description": "Update one milestone of a specification's build order's label, title, summary, position.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'M1' — unique within the spec, not globally"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'Substrate'"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_observation",
+    "description": "Update one retro observation's retro_id, story_id, quick_id, position, text, synthesis, note, library_doc_id, retired_at, retired_reason.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retro_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the grouping; set when the retro is written. At least one of retro_id, story_id or quick_id is required"
+        },
+        "story_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the origin; survives promotion into a retro. At least one of retro_id, story_id or quick_id is required"
+        },
+        "quick_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the origin, on the quick path; survives promotion into a retro. At least one of retro_id, story_id or quick_id is required"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "projection order. Defaults to 0 rather than allocating, and is unique per retro, so the second and later observations under one retro_id must each set it"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "synthesis": {
+          "type": "string",
+          "description": "written when grouped into a retro"
+        },
+        "note": {
+          "type": "string",
+          "description": "qualifiers, caveats, scope"
+        },
+        "library_doc_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "set on promotion"
+        },
+        "retired_at": {
+          "type": "string",
+          "description": "ISO 8601; set with retired_reason or not at all"
+        },
+        "retired_reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_problem_brief",
+    "description": "Update a problem_brief's title, slug, status, archival or commit.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_product_brief",
+    "description": "Update a product_brief's title, slug, status, archival or commit.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_quick",
+    "description": "Update a quick's title, slug, status, archival, commit or quick columns.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        },
+        "closed_at": {
+          "type": "string",
+          "description": "ISO 8601; NULL while the record is open"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_quick_criterion",
+    "description": "Update one of a quick record's criteria's text, met, note, position.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "met": {
+          "type": "boolean",
+          "description": "left unset while the record is open"
+        },
+        "note": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_requirement",
+    "description": "Update a requirement's label, class, band, exclusion, text or position, or claim that the coverage rows bound to it account for it whole.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display only: FR1, NFR3, ENVX2"
+        },
+        "class": {
+          "type": "string",
+          "enum": [
+            "functional",
+            "non_functional",
+            "environmental_requirement",
+            "environmental_restriction"
+          ],
+          "description": "Never inferred from label"
+        },
+        "moscow": {
+          "type": "string",
+          "enum": [
+            "must",
+            "should",
+            "could",
+            "wont"
+          ]
+        },
+        "exclusion": {
+          "type": "string",
+          "enum": [
+            "deferred",
+            "out_of_scope"
+          ]
+        },
+        "parent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "FR1a's parent is FR1"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage_claimed_at": {
+          "type": "string",
+          "description": "ISO 8601. Claims the bound coverage rows account for this requirement whole; the server computes the hash over the bound set that accompanies it"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_retro",
+    "description": "Update a retro's title, slug, status, archival or commit.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_retro_application",
+    "description": "Update the record that a retro's lesson was applied to one artefact's theme, disposition, note.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "theme": {
+          "type": "string",
+          "description": "the observation category, where the record names one"
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "applied",
+            "not_applicable",
+            "deferred"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "description": "the how, the reason or the why"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_review",
+    "description": "Update a review's title, slug, status, archival, commit or review columns.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "whole",
+            "story"
+          ],
+          "default": "whole"
+        },
+        "scope_story_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required when scope is 'story', and refused otherwise"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_runbook",
+    "description": "Update a runbook's title, slug, status, archival or commit.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_session",
+    "description": "Update a session's skill, phase or state. Stamps updated_at, which is what age is measured from.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "skill": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The CPM skill running, e.g. cpm:do"
+        },
+        "phase": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where in that skill the run has reached"
+        },
+        "state": {
+          "type": "string",
+          "description": "A JSON blob the skill defines and dpm does not read"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_spec",
+    "description": "Update a spec's title, slug, status, archival or commit.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "status_note": {
+          "type": "string",
+          "description": "The free-text qualifier a real epic appends"
+        },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601; orthogonal to status"
+        },
+        "commit_sha": {
+          "type": "string"
+        },
+        "retro_waived_at": {
+          "type": "string",
+          "description": "ISO 8601; this document is settled without a retro. Set with a reason"
+        },
+        "retro_waived_reason": {
+          "type": "string",
+          "description": "Why no retro is coming"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_story",
+    "description": "Update a story's number, title, status or position.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "ordinal within its epic_id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "plan": {
+          "type": "integer",
+          "enum": [
+            0,
+            1
+          ],
+          "default": 0,
+          "description": "whether this story is planned in full before any of its tasks are executed"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_story_criterion",
+    "description": "Update a criterion's text, polarity or position.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "polarity": {
+          "type": "string",
+          "enum": [
+            "must",
+            "must_not",
+            "control"
+          ],
+          "default": "must",
+          "description": "'must_not' is a type here, not the words 'must NOT' at the front of the text"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warrant_adr_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The accepted decision that warrants this criterion, where no requirement does"
+        },
+        "superseded_at": {
+          "type": "string",
+          "description": "ISO 8601; overtaken by an amendment. Set with superseded_reason or not at all"
+        },
+        "superseded_reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Which amendment overtook it. Set with superseded_at or not at all"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_task",
+    "description": "Update a task's number, title, status or position.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "ordinal within its story_id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete",
+            "superseded",
+            "withdrawn"
+          ],
+          "default": "pending"
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_taxonomy",
+    "description": "Update a controlled term — an observation category, finding category, audit dimension, severity or report disposition's name, singular, position.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "the stable term id, '<domain>:<slug>' — the same in every database"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "canonical form, e.g. 'Testing Gaps'"
+        },
+        "singular": {
+          "type": "string",
+          "description": "per-item display form, where it differs"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "update_test_approach",
+    "description": "Update a test approach tag's kind, position.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "'unit', 'integration', 'feature'…"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "level",
+            "mode"
+          ],
+          "description": "'level' is how much is under test; 'mode' is how it is run"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "tag"
+      ]
+    }
+  }
+]

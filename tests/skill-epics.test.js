@@ -446,7 +446,9 @@ test('a story marked for planning carries it as a value, and its title carries n
 test('the facilitation survives: the grouping gates, rejections propagate, and an untraceable binding is refused', (t) => {
   const front = frontMatter(source);
   assert.equal(front.name, SKILL);
-  assert.match(front.description, /\/dpm:epics/, 'the skill still triggers on its own command');
+  // The v2 invocation form is `skill-invocation.test.js`'s, over all twenty-three descriptions and
+  // with the control this pair had no room for; the slash form is `skill-port.test.js`'s corpus
+  // sweep. Neither is repeated here.
 
   // The grouping gate, and that it comes before any story is written — which is the part that
   // makes it worth having, and the part a reordering would quietly lose.

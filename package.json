@@ -8,13 +8,18 @@
   "engines": {
     "node": ">=24.0.0"
   },
+  "exports": {
+    ".": "./src/plugin/index.ts"
+  },
   "scripts": {
     "modules": "node scripts/module-sweep.ts",
+    "skills": "node scripts/skill-body-check.ts",
     "test": "node --test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {},
   "devDependencies": {
+    "@opencode-ai/plugin": "0.0.0-beta-18684",
     "@types/node": "24.13.3",
     "typescript": "5.9.3"
   }

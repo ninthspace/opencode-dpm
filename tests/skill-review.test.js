@@ -35,7 +35,7 @@ import { spineTools } from '../src/tools/index.ts';
 import { project } from '../src/projection/index.ts';
 import {
   skillSource, toolNames, section, prose, recorder, recoveries, bindings, reachable, seedStartup,
-  driveStartup,
+  driveStartup, CALLABLE,
 } from './support/skills.js';
 import { dispositionProblems } from './support/vocabulary.js';
 
@@ -281,11 +281,12 @@ test('a review run writes its scope, its panel by reference and its findings by 
 
   // **The link is asserted against the file as well as the rows**, because the rows cannot speak for
   // it. `remediation_task_id` is a foreign key rather than an enum, so the binding's valued-argument
-  // direction cannot see it, and `mcp__plugin_dpm_dpm__update_finding` is named again two paragraphs later for
+  // direction cannot see it, and `update_finding` is named again two paragraphs later for
   // the rejection path — so a Step 5 that told a run to *tabulate* the pairing instead of writing it
   // passed every test in this file while the run linked the rows regardless of what it was told.
   const remediation = prose(source, 'Step 5: Remediation');
-  assert.match(remediation, /`mcp__plugin_dpm_dpm__update_finding` setting `remediation_task_id`/);
+  assert.match(remediation,
+    new RegExp(`\`${CALLABLE}update_finding\` setting \`remediation_task_id\``));
   assert.match(remediation, /That link is the whole of the record/);
   assert.ok(passed.get('update_finding').has('remediation_task_id'));
 

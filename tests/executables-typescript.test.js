@@ -29,7 +29,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import { runNode } from './support/run-node.js';
-import { moduleFilesUnder, packageManifest, sweepSourcesUnder } from './support/sources.js';
+import {
+  moduleFilesUnder, packageManifest, sweepSourcesUnder, withoutHashComments,
+} from './support/sources.js';
 import { fullCorpus } from './support/corpus.js';
 import { HELLO, repliesFrom, wire } from './support/session.js';
 import { DUMP_PATH } from '../src/guard/index.ts';
@@ -137,8 +139,8 @@ test('no documented invocation passes a loader or transpiler flag [unit]', () =>
     ...Object.entries(scripts).map(([name, command]) => [`package.json scripts.${name}`, command]),
     // The comment prose is stripped, because the line explaining that no loader is needed says the
     // word `--loader` and would otherwise read to this sweep as a use of one.
-    ['hooks/pre-commit', hook.replaceAll(/^#.*$/gm, '')],
-    ['.github/workflows/ci.yml', workflow.replaceAll(/^\s*#.*$/gm, '')],
+    ['hooks/pre-commit', withoutHashComments(hook)],
+    ['.github/workflows/ci.yml', withoutHashComments(workflow)],
   ];
 
   assert.ok(documented.length > 1, 'there are invocations to check');

@@ -36,7 +36,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { packageManifest } from './support/sources.js';
+import { packageManifest, withoutHashComments } from './support/sources.js';
 import { runNode } from './support/run-node.js';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -66,8 +66,14 @@ function job(name) {
   return next === -1 ? body : body.slice(0, next + 1);
 }
 
-/** Comment lines stripped, for the readings that are about what runs rather than what is said. */
-const runnable = (text) => text.replaceAll(/^\s*#.*$/gm, '');
+/**
+ * Comment lines stripped, for the readings that are about what runs rather than what is said.
+ *
+ * Shared with `executables-typescript.test.js`, which sweeps the same file for transpiler flags and
+ * has to skip the same prose — the workflow's comments explain that no loader is passed, and say
+ * the word while doing it.
+ */
+const runnable = withoutHashComments;
 
 // --- Criterion 1: the suite, the type check and the sweep, on Node 24, on every push -------------
 
@@ -102,10 +108,22 @@ test('one job runs the suite, the type check and the sweep on Node 24 [integrati
 
   // Each is a `package.json` script, so CI and a contributor run the same string. A workflow that
   // inlined the command would drift from the script silently.
+  //
+  // **Read as a property rather than as a list**, because the list was the thing that went stale:
+  // it was written when there were three and epic 01-03 story 4 added a fourth, and a check that
+  // has to be edited every time a command is added is a check that gets edited without being read.
+  // What the criterion actually wants is that nothing is *declared and not run* — a script in the
+  // manifest that CI never invokes is a command a contributor runs and the build does not.
   const { scripts } = packageManifest();
+  const declared = Object.keys(scripts).sort();
 
-  assert.deepEqual(Object.keys(scripts).sort(), ['modules', 'test', 'typecheck'],
-    'the declared commands and the ones CI runs are no longer the same three');
+  assert.ok(declared.length >= 3, `only ${declared.length} commands are declared`);
+  assert.deepEqual(declared.filter((name) => !checks.includes(`npm run ${name}`) && name !== 'test'),
+    [], 'a command package.json declares is not run by the job that runs on every push');
+  assert.ok(checks.includes('npm test'), 'the suite itself is declared and not run');
+
+  // The control on that reading: a command nobody declared is not found among the ones that are.
+  assert.equal(declared.includes('lint'), false);
 
   // Node 24, from `.nvmrc`, so the floor is stated once. ENVR1 is the requirement; a runner set up
   // on 22 would fail on the first `.ts` import and name the wrong problem.

@@ -23,7 +23,7 @@ import { start } from '../src/start.ts';
 import { spineTools } from '../src/tools/index.ts';
 import {
   skillSource, prose, section, recorder, recoveries, sweep, bindings,
-  SQL, CONSTRUCTIONS,
+  SQL, CONSTRUCTIONS, toolNames,
 } from './support/skills.js';
 
 const SKILL = 'publish';
@@ -280,7 +280,7 @@ test('must NOT — the run reports the database\'s contents rather than what it 
   // The set, not the occurrences — how many times the file says `publish` is an editing detail,
   // and which tools it names is the claim.
   assert.deepEqual(
-    [...new Set([...source.matchAll(/mcp__plugin_dpm_dpm__([a-z_]+)/g)].map((hit) => hit[1]))],
+    toolNames(source),
     ['publish'],
     'the skill names a tool other than publish, which is how a report of contents gets built',
   );

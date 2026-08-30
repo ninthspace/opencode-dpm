@@ -94,8 +94,8 @@ test('every tool name is a searchable word built from the live schema', (t) => {
   for (const tool of tools) {
     assert.match(tool.name, SHAPE, `${tool.name} is not a searchable dpm tool name`);
 
-    // FR29's half of the rule. The harness dispatches `mcp__plugin_dpm_dpm__create_spec` and supplies the
-    // `mcp__plugin_dpm_dpm__` itself, so a `dpm` part in the export is the server's identity said twice. This
+    // FR29's half of the rule. The host dispatches `dpm_create_spec` and supplies the
+    // `dpm_` itself, so a `dpm` part in the export is the server's identity said twice. This
     // is asserted rather than merely not required, because the prefix was there for five epics and
     // the shape rule above admits it back without complaint.
     assert.ok(!tool.name.split('_').includes('dpm'),

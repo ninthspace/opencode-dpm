@@ -96,10 +96,10 @@ test('an ungated proposing write is reported by skill and heading', () => {
   const planted = new Map([
     ['invented', '## Process\n\nNo rule here.\n\n'
       + '### Step 1: Decide the thing\n\nPresent the options and **propose** one, then record it '
-      + 'with `mcp__plugin_dpm_dpm__create_requirement`.\n'],
+      + 'with `dpm_create_requirement`.\n'],
     ['gated', '## Process\n\nNo rule here either.\n\n'
       + '### Step 1: Decide the other thing\n\nPresent them, **propose** one, gate with '
-      + '`AskUserQuestion`, then record with `mcp__plugin_dpm_dpm__create_requirement`.\n'],
+      + '`AskUserQuestion`, then record with `dpm_create_requirement`.\n'],
   ]);
 
   assert.deepEqual(audit(planted), ['invented ### Step 1: Decide the thing proposes and writes with no gate'],
@@ -108,7 +108,7 @@ test('an ungated proposing write is reported by skill and heading', () => {
 
 test('coverage is read off the file, so a blanket rule reaches a section and not a sub-block', () => {
   const body = 'Present the draft, **propose** the rows, then write them with '
-    + '`mcp__plugin_dpm_dpm__create_requirement`.';
+    + '`dpm_create_requirement`.';
   const ruled = `## Process\n\nGate each section with \`AskUserQuestion\`.\n\n### Section 1: A section\n\n${body}\n`;
 
   assert.deepEqual(ungated(ruled), [], 'a ### block is reached by the preamble rule');

@@ -16,6 +16,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { staticImports } from './sources.js';
+
 /** A source under audit. `name` is what a complaint names, so it should be repo-relative. */
 /** @typedef {{name: string, text: string}} Source */
 
@@ -48,11 +50,25 @@ export function withoutComments(source) {
  * are properties of the *static* graph. A dynamic `await import()` is what `bin/dpm-mcp.ts` uses
  * precisely to stay out of it.
  *
+ * **Delegated rather than written out, because there were two readings of this and they
+ * disagreed.** `sources.js` grew `staticImports` during the TypeScript port, with the type-only
+ * case handled and a long note saying why; this file kept the original regex, which is the same
+ * pattern without that case. The disagreement stayed invisible for as long as nothing in `src/`
+ * imported a type — and surfaced the moment the plugin entry did, as six suites reporting that dpm
+ * had acquired a runtime dependency it had not acquired.
+ *
+ * A type-only import is erased before the file is evaluated, by Node's type-stripper and by `tsc`
+ * under `verbatimModuleSyntax`, so it fetches nothing at install and hoists nothing above the
+ * Node-floor check — which is to say it cannot break either property these sweeps defend. That it
+ * *resolves* is `tsc --noEmit`'s job and is checked there; `dependencies` staying `{}` is asserted
+ * in nine other places. What this must go on catching is a **value** import of a bare specifier,
+ * and the suites driving it plant one.
+ *
  * @param {string} source
  * @returns {string[]}
  */
 export function importSpecifiers(source) {
-  return [...source.matchAll(/^\s*import\s[^;]*?from\s+['"]([^'"]+)['"]/gm)].map((match) => match[1]);
+  return staticImports(source);
 }
 
 /**

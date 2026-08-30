@@ -151,11 +151,20 @@ const INHERITED = [
 
 /** What this epic added, one line per story, so a seventh file is a decision somebody writes here. */
 const ADDED = [
+  'ci-skill-body.test.js', //          01-03 story 4 — the build check, driven against planted breaches
   'ci.test.js', //                     story 7 — the workflow, and the environment two absences need
+  'dependency-isolation.test.js', //   01-02 story 4 — the empty production tree, read off the lockfile
   'executables-typescript.test.js', // story 3 — the five binaries under plain node
   'module-sweep.test.js', //           story 6 — every specifier resolves, and the sweep can fail
   'parity-v070.test.js', //            story 5 — the port against v0.7.0's own dump and allocator
+  'plugin-entry.test.js', //           01-02 story 1 — registration, the profile seam, the root
+  'plugin-reload.test.js', //          01-02 story 5 — a reload leaves one of everything
+  'skill-invocation.test.js', //       01-03 story 3 — the descriptions, and $ARGUMENTS retired
+  'skill-pilot.test.js', //            01-03 story 1 — one body ported, and the transition's tripwire
+  'skill-port.test.js', //             01-03 story 2 — no Claude Code mechanism, and ralph's recorded gap
+  'skill-supporting-files.test.js', // 01-02 story 3 — the conventions file, and the recorded go/no-go
   'suite-integrity.test.js', //        story 4 — this file
+  'tool-naming.test.js', //            01-02 story 2 — the v2 rendering, and v0.7.0's own surface
   'typescript-conversion.test.js', //  story 2 — erasable syntax, and node's refusal of the rest
   'vendoring.test.js', //              story 1 — the v0.7.0 tree arrived whole
 ];
@@ -234,7 +243,13 @@ test('the test script is node --test, and no third-party runner is installed or 
   // `left-pad` in the same sentence leaves a reader to work out which criterion just broke.
   assert.deepEqual(unsanctionedDependencies(manifest), [],
     'a dependency arrived that is neither the type checker ENVR3 requires nor its type definitions');
-  assert.deepEqual([...SANCTIONED_DEV_DEPENDENCIES].sort(), ['@types/node', 'typescript'],
+  // **The tripwire, and it has fired once — deliberately.** `@opencode-ai/plugin` joined the set
+  // when the plugin entry landed, and the point of writing the members out here is that widening
+  // the set is an edit someone has to make and explain rather than a silence. What it bought is in
+  // `sources.js`: the SDK is taken `import type` only, so `dependencies` stayed `{}` and the
+  // assertion above kept the meaning it had. A fourth name arriving still fails this line.
+  assert.deepEqual([...SANCTIONED_DEV_DEPENDENCIES].sort(),
+    ['@opencode-ai/plugin', '@types/node', 'typescript'],
     'the sanctioned set grew, so the assertion above now permits something it did not');
 
   // The package, not the specifier: `jest/globals` and `chai/register` are the same dependency

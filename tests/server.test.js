@@ -330,15 +330,24 @@ test('dpm has no dependency to install, which is the checkable half of NFR1', ()
   assert.deepEqual(unsanctionedDependencies(manifest), []);
   assert.equal(manifest.scripts?.build, undefined, 'and no build script to forget to run');
 
+  // **`staticImports` rather than a regex written out here, and the swap is the assertion getting
+  // its meaning back.** The pattern this replaced matched every `from '…'` in the file, type-only
+  // imports included — so when the plugin entry took `@opencode-ai/plugin` for its types alone,
+  // this reported that dpm had acquired a runtime dependency. It had not: a type-only import is
+  // erased by Node's type-stripper and by `tsc` before anything is evaluated, so there is nothing
+  // to install and nothing hoisted above the floor check. The claim is unchanged; the reading now
+  // matches it.
   const external = moduleFilesUnder(join(ROOT, 'src'))
-    .flatMap((file) =>
-      [...readFileSync(file, 'utf8').matchAll(/from\s+['"]([^'".][^'"]*)['"]/g)]
-        .map((match) => match[1])
-        .filter((specifier) => !specifier.startsWith('node:'))
-        .map((specifier) => `${file} imports ${specifier}`),
-    );
+    .flatMap((file) => staticImports(readFileSync(file, 'utf8'))
+      .filter((specifier) => !specifier.startsWith('.') && !specifier.startsWith('node:'))
+      .map((specifier) => `${file} imports ${specifier}`));
 
   assert.deepEqual(external, [], 'and no source file imports anything but Node built-ins');
+
+  // The control on both sides, driven through the real reading: a value import of a package is
+  // still found, and a type-only one is still skipped.
+  assert.deepEqual(staticImports("import { z } from 'zod';\n"), ['zod']);
+  assert.deepEqual(staticImports("import type { z } from 'zod';\n"), []);
 });
 
 // --- The advertised list, before any database exists (Epic 49-01 Story 1: FR2, AD12) ------------

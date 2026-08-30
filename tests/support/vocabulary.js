@@ -12,6 +12,7 @@
  */
 
 import { VOCABULARIES } from '../../src/schema/seeds/index.ts';
+import { CALLABLE } from './skills.js';
 
 /**
  * A seeded taxonomy domain's terms, in the order the domain positions them.
@@ -65,7 +66,7 @@ export function dispositionProblems(body, label = 'the section') {
     problems.push(`${label} reports dispositions without naming the domain they come from`);
   }
 
-  if (!/mcp__plugin_dpm_dpm__list_taxonomy/.test(body)) {
+  if (!new RegExp(`${CALLABLE}list_taxonomy`).test(body)) {
     problems.push(`${label} names the domain but never reads it, so the terms come from elsewhere`);
   }
 

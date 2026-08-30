@@ -102,6 +102,21 @@ export function packageManifest() {
 }
 
 /**
+ * dpm's `package-lock.json`, parsed.
+ *
+ * Kept beside the manifest reader for the same reason that one exists, and added the moment there
+ * was a second caller rather than after there were five. The lockfile answers a question the
+ * manifest cannot: `dependencies` being empty says what is *declared*, and the lockfile says what
+ * an install would actually fetch — every entry marked `dev`, which is what makes "a user installs
+ * nothing" a fact about the tree rather than a reading of the intent.
+ *
+ * @returns {object}
+ */
+export function packageLock() {
+  return JSON.parse(readFileSync(join(import.meta.dirname, '..', '..', 'package-lock.json'), 'utf8'));
+}
+
+/**
  * What may appear under `devDependencies`, and nothing else may.
  *
  * **The rule this replaces was "no dependencies at all", and it did not lapse — it was superseded.**
@@ -113,17 +128,34 @@ export function packageManifest() {
  * So the surviving claim is narrower and is written here once. Three things still hold, and they
  * are what the six suites are really about:
  *
- * - **Nothing at runtime.** `dependencies` stays empty until `@opencode-ai/plugin` arrives with the
- *   plugin entry, which is NFR1 and a later epic's to change.
+ * - **Nothing at runtime.** `dependencies` stays empty. It stayed empty when the plugin SDK
+ *   arrived, which is the paragraph below.
  * - **No test runner.** ENVR2 says `node --test` is the runner; a third-party one in
  *   `devDependencies` is the specific thing that would quietly displace it.
- * - **Nothing that compiles.** ENVX1 forbids native compilation, and both entries below are plain
- *   JavaScript and type declarations — no node-gyp, no C toolchain, no Python.
+ * - **Nothing that compiles.** ENVX1 forbids native compilation, and nothing below compiles —
+ *   see the qualification on the third entry.
  *
  * `node --test` itself still needs no install step, because the type check is a separate command.
  * That is why `npm test` on a fresh clone is unaffected by anything in this list.
+ *
+ * **`@opencode-ai/plugin` is here rather than under `dependencies`, and that is NFR1 met rather
+ * than NFR1 bent.** The requirement used to name it as the one runtime entry; it was amended when
+ * the package was read, because `Plugin.define` is `define(plugin) { return plugin }` — the
+ * identity function. Importing it at runtime would pull `effect`, `zod` and six more packages into
+ * every user's install in order to call a function that returns its argument. The entry takes it
+ * as `import type` and writes `satisfies Plugin`, which `tsc` checks exactly as hard and which
+ * both Node's type-stripper and `tsc` erase before anything is evaluated. So a user installing
+ * this plugin installs nothing, and the nine assertions that `dependencies` deep-equals `{}` are
+ * untouched by the SDK arriving.
+ *
+ * It is a large dev install — 99 packages — and one of them, `msgpackr-extract`, carries an
+ * install script. It compiles nothing: the script is `node-gyp-build-optional-packages`, which
+ * *selects* a prebuilt binary for the platform and only falls back to a compile when none matches,
+ * and the lockfile carries the prebuilt for every platform this project runs on. `plugin.test.js`
+ * checks that no compile happened rather than trusting the name, and CI checks it inside an
+ * environment that has no compiler at all.
  */
-export const SANCTIONED_DEV_DEPENDENCIES = ['@types/node', 'typescript'];
+export const SANCTIONED_DEV_DEPENDENCIES = ['@opencode-ai/plugin', '@types/node', 'typescript'];
 
 /**
  * Anything declared to install that the rule above does not sanction, as `"name@spec"` strings.
@@ -164,6 +196,25 @@ export function unsanctionedDependencies(manifest = packageManifest()) {
 export function withoutComments(source) {
   return source.replaceAll(/\/\*[\s\S]*?\*\//g, '').replaceAll(/\/\/.*$/gm, '');
 }
+
+/**
+ * The same, for a file whose comments open with `#` — YAML and shell.
+ *
+ * **Written here because two suites now strip the CI workflow and must not disagree about what a
+ * comment is.** `executables-typescript.test.js` sweeps it for transpiler flags and `ci.test.js`
+ * reads what its jobs run; both have to skip the prose, because the workflow's own comments explain
+ * that no loader is passed and say the word while doing it. Two copies of this regex would drift,
+ * and the direction they drift in is silent: the one that stopped matching indented comments would
+ * start reporting an explanation as a use.
+ *
+ * Leading whitespace is part of the match — a YAML comment is almost never at column 0 — and a `#`
+ * inside a quoted string is not distinguished, which is the same stated limit `withoutComments`
+ * carries. Nothing this is used on has one.
+ *
+ * @param {string} source
+ * @returns {string}
+ */
+export const withoutHashComments = (source) => source.replaceAll(/^\s*#.*$/gm, '');
 
 /**
  * The specifiers a module loads when it is evaluated — its static imports, type-only ones excluded.

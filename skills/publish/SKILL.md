@@ -1,6 +1,6 @@
 ---
 name: publish
-description: Regenerate the markdown projection and the committed dump from the database, so what is on disk matches what the planning database holds. Names every file that would be removed and asks before removing it. Triggers on "/dpm:publish".
+description: Regenerate the markdown projection and the committed dump from the database, so what is on disk matches what the planning database holds. Names every file that would be removed and asks before removing it. Invoke with the skill tool, id "dpm-publish".
 ---
 
 # Publish
@@ -21,7 +21,7 @@ place.
 the tree into agreement or it did not, and the answer to a half-finished run is to run it again.
 
 **It writes no file itself.** Every write, every removal and every decision about which is which
-belongs to `mcp__plugin_dpm_dpm__publish`. A skill that wrote a file would be a second renderer, and a skill
+belongs to `dpm_publish`. A skill that wrote a file would be a second renderer, and a skill
 that removed one would be a second answer to which files no longer belong — and the two answers
 would disagree the first time anything was renamed, silently, in the direction that deletes.
 
@@ -32,7 +32,7 @@ from it. It uses **Session Startup** for nothing, being stateless, and neither *
 
 ## Input
 
-`$ARGUMENTS` is optional and takes one value.
+What the request names is optional, and is one value.
 
 1. **`preview`** stops after step 1. Nothing is written and nothing is removed.
 2. **Nothing** runs the full flow.
@@ -44,7 +44,7 @@ what the two accepted values are.
 
 ### Step 1: What would change
 
-Call `mcp__plugin_dpm_dpm__publish` with `dry_run` set to true.
+Call `dpm_publish` with `dry_run` set to true.
 
 What comes back is the record the real run would produce: what is new, what would be rewritten, what
 already matches, and what would be removed. It is the same call with its last step withheld, not a
@@ -79,7 +79,7 @@ a tree holding half the orphans is one nothing describes, and the next run would
 
 ### Step 3: Publish
 
-Call `mcp__plugin_dpm_dpm__publish` with no arguments.
+Call `dpm_publish` with no arguments.
 
 **Report what the record says, and nothing else.** The record is the only account of what happened:
 

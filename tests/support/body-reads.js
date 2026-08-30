@@ -24,7 +24,7 @@
  *    a new site with no entry fails and an entry for a site that no longer exists fails.
  */
 
-import { CALLABLE, conventions, prose, skillNames, skillSource } from './skills.js';
+import { conventions, prose, skillNames, skillSource, toolMentions } from './skills.js';
 
 /** The shared conventions, under a name no skill directory can take. */
 export const SHARED = 'shared/skill-conventions.md';
@@ -48,7 +48,7 @@ export function withheld(tools) {
  * A markdown source split into the units that bind a read to its step.
  *
  * **This is the construction, and picking it is the whole design.** These files write a call as a
- * numbered instruction item — ``1. `mcp__plugin_dpm_dpm__list_agent`, passing `include_body`.`` —
+ * numbered instruction item — ``1. `dpm_list_agent`, passing `include_body`.`` —
  * or, where a step is prose, as a paragraph. Either way the tool and the arguments it carries sit
  * in one block, so the block is what a check should read.
  *
@@ -133,7 +133,7 @@ export function sites(source, names) {
   const units = blocks(source);
   const found = new Map();
 
-  for (const hit of source.matchAll(new RegExp(`${CALLABLE}([a-z_]+)`, 'g'))) {
+  for (const hit of toolMentions(source)) {
     if (!names.has(hit[1])) continue;
 
     const unit = units.findLast((block) => block.start <= hit.index);

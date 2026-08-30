@@ -219,21 +219,25 @@ test('the plugin manifest declares a server whose entry point exists', () => {
 
   assert.deepEqual(declarationProblems(manifest, DPM), []);
 
-  // The key is half the namespace and the plugin's own name is the other half.
-  // `mcp__plugin_dpm_dpm__create_spec` is what every skill in FR25's corpus writes, so renaming
-  // either one renames 171 tools in one edit and no other assertion would notice.
+  // The key is half the namespace and the plugin's own name is the other half. Under Claude Code
+  // that pair produced what every skill in FR25's corpus used to write, so renaming either one
+  // renamed 171 tools in a single edit with no other assertion noticing.
   assert.deepEqual(Object.keys(manifest.mcpServers), [SERVER],
     'exactly one server, keyed by the name the callable form is built from');
   assert.equal(manifest.name, 'dpm', 'and the plugin name, which the callable form also carries');
 
-  // And the prefix the corpus is read with is built from both rather than agreeing by coincidence.
+  // And the prefix the corpus is read with is paired with a side that differs in kind, so only the
+  // external rule makes the two equal.
   //
   // **Spelled here and computed there, which is the opposite of how this read before.** The old
-  // pairing recomputed the prefix from the same key `CALLABLE` was written against, so it compared
-  // one rule with itself and passed while both sides named a prefix no session dispatches. The two
-  // sides now differ in kind: `CALLABLE` reads the manifest, this is a literal, and only the
-  // external rule makes them equal.
-  assert.equal(CALLABLE, 'mcp__plugin_dpm_dpm__');
+  // pairing recomputed the prefix from the same manifest key it was written against, so it compared
+  // one rule with itself. `CALLABLE` now reads `SERVER_NAME` from the plugin entry and this is a
+  // literal; neither side recomputes the other.
+  //
+  // This manifest is Claude Code's and no longer names anything the corpus writes — the bodies were
+  // ported to `dpm_` by epic 01-03 — which is why the pairing that used to be made against it is
+  // gone rather than kept alongside.
+  assert.equal(CALLABLE, 'dpm_');
 });
 
 test('a manifest missing or misnaming its server is reported, not passed over', () => {
@@ -290,7 +294,7 @@ test('every tool a skill names is the callable form of a registered tool', (t) =
     assert.ok(named.length > 0, `${skill} names no tool at all — the extraction found nothing`);
 
     for (const name of named) {
-      assert.ok(registered.has(name), `${skill} calls ${CALLABLE}${name}, which is not a tool`);
+      assert.ok(registered.has(name), `${skill} calls ${name} in callable form, which is not a tool`);
     }
 
     // The other direction, and the one the extraction alone cannot give: a bare exported name is
@@ -305,7 +309,7 @@ test('every tool a skill names is the callable form of a registered tool', (t) =
     for (const registration of registered) {
       if (!source.includes(`\`${registration}\``)) continue;
 
-      assert.fail(`${skill} writes \`${registration}\` without the ${CALLABLE} prefix — `
+      assert.fail(`${skill} writes \`${registration}\` with no callable prefix — `
         + 'the exported name is not the one the harness dispatches');
     }
   }

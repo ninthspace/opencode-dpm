@@ -1,6 +1,6 @@
 ---
 name: consult
-description: A focused consultation with one agent persona, or a small panel. You control who is in the room and who is driving; the conversation is saved as a discussion when it ends. Triggers on "/dpm:consult".
+description: A focused consultation with one agent persona, or a small panel. You control who is in the room and who is driving; the conversation is saved as a discussion when it ends. Invoke with the skill tool, id "dpm-consult".
 ---
 
 # Consult Mode
@@ -18,7 +18,7 @@ This skill uses **Session Startup**, **Library Check**, **Conversational Output*
    consultation is the one thing here worth resuming: the session's `state` carries the topic, the
    active agents in order, who holds the lead, and the discussion highlights, and without it a
    resumed conversation is a different one with the same participants.
-2. **Roster** — `mcp__plugin_dpm_dpm__list_agent`, then `mcp__plugin_dpm_dpm__read_agent` with `include_body` for each
+2. **Roster** — `dpm_list_agent`, then `dpm_read_agent` with `include_body` for each
    agent brought into the room. **The traits are body columns**, so the list gives you names and
    roles and the read gives you the voice; rendering a persona off the list alone is rendering it
    off nothing. **The roster is rows, so a persona this project added and the plugin never shipped
@@ -27,20 +27,20 @@ This skill uses **Session Startup**, **Library Check**, **Conversational Output*
 
 ## Input
 
-`$ARGUMENTS` selects who and about what:
+The request selects who and about what:
 
-- **An agent name or role** — match it against `mcp__plugin_dpm_dpm__list_agent`, case-insensitively, against
+- **An agent name or role** — match it against `dpm_list_agent`, case-insensitively, against
   `display_name` and `role`. Start there and ask what they would like to discuss.
 - **A topic with no agent** — infer the most relevant agent from the roster's `role` values,
   **confirm the choice before starting** — *"I'd suggest {icon} **{display_name}** ({role}) for this
   — start with them?"* — and take a different one where the user names one. An inferred agent is a
   guess about expertise, and starting on it unasked spends the first exchange correcting it.
-- **A phrase naming something in the corpus** — `mcp__plugin_dpm_dpm__search` with it, and a `limit` above what
+- **A phrase naming something in the corpus** — `dpm_search` with it, and a `limit` above what
   the project plausibly holds. Hits come back as an `entity` and an `entity_id`; read each through
-  the tool for its entity, passing `include_body` — `mcp__plugin_dpm_dpm__read_document_section`,
-  `mcp__plugin_dpm_dpm__read_requirement`, `mcp__plugin_dpm_dpm__read_acceptance_criterion`,
-  `mcp__plugin_dpm_dpm__read_story_criterion`, `mcp__plugin_dpm_dpm__read_finding`, `mcp__plugin_dpm_dpm__read_observation` or
-  `mcp__plugin_dpm_dpm__read_task` — and use what they say as context. **The index covers requirement,
+  the tool for its entity, passing `include_body` — `dpm_read_document_section`,
+  `dpm_read_requirement`, `dpm_read_acceptance_criterion`,
+  `dpm_read_story_criterion`, `dpm_read_finding`, `dpm_read_observation` or
+  `dpm_read_task` — and use what they say as context. **The index covers requirement,
   criterion, finding, observation and task text as well as section bodies**, so a term used once
   inside a criterion is reachable, which is most of what a consultation is actually looking for.
 - **A URL** — fetch it and use the content as context. External, so it is read rather than queried.
@@ -53,7 +53,7 @@ For each message: check for a command first, then respond.
 ### Commands
 
 - **Invite** — *"bring in the architect"*. Resolve against the roster by `display_name` or `role`,
-  `mcp__plugin_dpm_dpm__read_agent` with `include_body` for their traits — `personality` and
+  `dpm_read_agent` with `include_body` for their traits — `personality` and
   `communication_style` are withheld by default, and they are the traits — append them to the active
   list, and have them introduce themselves and respond. Already present is a no-op, said once.
 - **Dismiss** — *"thanks Priya, you can go"*. Remove them. If they held the lead it returns to the
@@ -83,7 +83,7 @@ a panel: no multi-voice formatting, no roster header. Several means each respond
 answer the user rather than each other, and disagree where they genuinely differ — that tension is
 most of why a second agent was invited.
 
-**Research before asking.** A question about the corpus is answered with `mcp__plugin_dpm_dpm__search` and the
+**Research before asking.** A question about the corpus is answered with `dpm_search` and the
 read tools; a question about code is answered by reading it. Ask the user about intent, priorities
 and decisions — the things only they hold.
 
@@ -93,15 +93,15 @@ After each round, offer the exit quietly: *"Type **wrap up** to end the consulta
 
 On exit, acknowledge in one sentence and write it down:
 
-1. `mcp__plugin_dpm_dpm__create_discussion` with a `title` and a `slug` from the topic. The number is
+1. `dpm_create_discussion` with a `title` and a `slug` from the topic. The number is
    allocated; do not supply one.
-2. One `mcp__plugin_dpm_dpm__create_document_section` per part of the record — the key points, the decisions
+2. One `dpm_create_document_section` per part of the record — the key points, the decisions
    with their reasoning, and the thread that was open when it ended — at the positions they should
    read in.
-3. `mcp__plugin_dpm_dpm__create_document_agent` per agent who took part, with `document_kind` set to
+3. `dpm_create_document_agent` per agent who took part, with `document_kind` set to
    `discussion` and the `agent` name — everyone who was in the room, including any dismissed
    before the end.
-4. `mcp__plugin_dpm_dpm__update_session` to close the run.
+4. `dpm_update_session` to close the run.
 
 **Write the substance, not a summary of it.** The session state has been carrying decisions with
 their reasoning; a discussion record that compresses them to bullets throws away the thing it exists
@@ -112,7 +112,7 @@ see the names either way; nothing else can. A run asking which discussions an ag
 reads rows, and a persona mentioned in a paragraph is invisible to it — which is also why a
 dismissal is not a deletion here. The prose still reads however it needs to; it is not the record.
 
-Then **offer, and do not run**: `/dpm:discover`, `/dpm:spec` or `/dpm:epics` with this discussion as
+Then **offer, and do not run**: `dpm-discover`, `dpm-spec` or `dpm-epics` with this discussion as
 their starting context, or nothing.
 
 ## Degradation

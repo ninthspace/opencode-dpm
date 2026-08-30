@@ -13,7 +13,7 @@ than context, and belongs wherever the project keeps its documentation.
 
 **Nothing here describes what a tool already does.** Prose restating a tool's behaviour is a second
 specification of it, and the two drift — the prose being the copy that no test holds to account.
-Numbering is the clearest case: `mcp__plugin_dpm_dpm__create_epic` allocates, and a paragraph here explaining
+Numbering is the clearest case: `dpm_create_epic` allocates, and a paragraph here explaining
 how would be a rule nothing enforces.
 
 **A procedure carrying judgement the tool does not is a different thing, and it belongs here.**
@@ -32,15 +32,15 @@ changes — and the skill states that part and nothing else.
 
 Every skill's run is one `session` row, and nothing else on disk records where it reached.
 
-1. `mcp__plugin_dpm_dpm__list_session` for what is open. A row whose `updated_at` is more than three days old
+1. `dpm_list_session` for what is open. A row whose `updated_at` is more than three days old
    is stale; present those and let the user decide, deleting nothing that was not named.
-2. On a resume, `mcp__plugin_dpm_dpm__adopt_session` with the new session id and the predecessor's, passing
+2. On a resume, `dpm_adopt_session` with the new session id and the predecessor's, passing
    `include_body` so the state comes back. It returns what the earlier run carried and points the
    old row at this one.
-3. Otherwise `mcp__plugin_dpm_dpm__create_session` with the harness's session id, the skill's own name as
+3. Otherwise `dpm_create_session` with the harness's session id, the skill's own name as
    `skill`, and the step or phase about to start as `phase`.
 
-As each step closes, `mcp__plugin_dpm_dpm__update_session` moves `phase` on and carries the accumulated
+As each step closes, `dpm_update_session` moves `phase` on and carries the accumulated
 `state` — a blob the skill defines and dpm does not interpret.
 
 **What `state` holds is the per-skill part, and it is the part worth stating.** It is the run's
@@ -51,10 +51,10 @@ goes stale the moment the row moves.
 
 ## Library Check
 
-1. `mcp__plugin_dpm_dpm__list_library`, then `mcp__plugin_dpm_dpm__list_library_scope` on each, to find those scoped to
+1. `dpm_list_library`, then `dpm_list_library_scope` on each, to find those scoped to
    the skill's own keyword or to `all`.
-2. Read the ones that apply with `mcp__plugin_dpm_dpm__list_document_section` and
-   `mcp__plugin_dpm_dpm__read_document_section`, passing `include_body` — without it a section comes back as a
+2. Read the ones that apply with `dpm_list_document_section` and
+   `dpm_read_document_section`, passing `include_body` — without it a section comes back as a
    heading with no text, and a run that omitted it has read nothing and does not know.
 
 A section a consolidation has superseded is not returned — the list omits it — so a document that has
@@ -66,10 +66,10 @@ before code is written, an architecture document before a structural decision.
 
 ## Retro Awareness
 
-1. `mcp__plugin_dpm_dpm__list_retro`, then `mcp__plugin_dpm_dpm__list_observation` on the ones whose subject overlaps this
+1. `dpm_list_retro`, then `dpm_list_observation` on the ones whose subject overlaps this
    work, passing `include_body`.
-2. Each observation's category is `mcp__plugin_dpm_dpm__list_observation_category` resolved against
-   `mcp__plugin_dpm_dpm__list_taxonomy`, which is called with a `limit` above the seeded count so a project
+2. Each observation's category is `dpm_list_observation_category` resolved against
+   `dpm_list_taxonomy`, which is called with a `limit` above the seeded count so a project
    that added terms does not lose them to the default page.
 3. **Select the few most relevant rather than everything from the newest retro**, judging by subject
    overlap and category and using recency only to break a tie.
@@ -103,7 +103,7 @@ layout variant. They are transient and easy to miss, so nothing the user needs t
 
 Some sections invite agent personas to weigh in before the user decides.
 
-1. **Load the roster** with `mcp__plugin_dpm_dpm__list_agent`, passing `include_body`. Its rows carry
+1. **Load the roster** with `dpm_list_agent`, passing `include_body`. Its rows carry
    `display_name`, `icon`, `role`, `personality` and `communication_style` — **the last two are body
    columns**, so without that argument the list comes back with names and roles and the voices below
    are woven from nothing. A project that added a persona has it in that list; nothing is read from
@@ -117,7 +117,7 @@ Some sections invite agent personas to weigh in before the user decides.
 5. **Weave them into the facilitation** before the user decides, rather than presenting them as a
    section of their own.
 
-If `mcp__plugin_dpm_dpm__list_agent` returns nothing, skip perspectives and carry on.
+If `dpm_list_agent` returns nothing, skip perspectives and carry on.
 
 ## Conversational Output
 
@@ -216,7 +216,7 @@ turns a loose reference into a projection that will not build.
 ## Naming a Document
 
 **Say the reference and the title** — `<reference>`, then the document's own title, taken from the
-row you already hold. That pair is what a person can read back to you, type as an argument, and find
+row you already hold. That pair is what a person can read back to you, name in a request, and find
 in the rendered tree, and every list or read tool returns the reference on the row beside the columns
 it was asked for — so the naming costs the run nothing it has not already paid for.
 

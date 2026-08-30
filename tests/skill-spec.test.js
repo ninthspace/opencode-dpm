@@ -267,7 +267,11 @@ test('a spec run writes the document, its classed requirements and its tagged cr
 test('the facilitation survives: scope gates, the testing strategy is produced, and an untestable criterion is refused', () => {
   const front = frontMatter(source);
   assert.equal(front.name, SKILL);
-  assert.match(front.description, /\/dpm:spec/, 'the skill still triggers on its own command');
+  // **The invocation form is read across all twenty-three, not here.** Under Claude Code this line
+  // said `Triggers on "/dpm:spec"`; `skill-invocation.test.js` now holds every description to the
+  // sentence naming its own registered id, with the control that the reading tells a wrong id from
+  // a right one, and `skill-port.test.js` sweeps the corpus for the slash form. A per-skill copy of
+  // either was a second place to keep in step and a weaker claim than both.
 
   const scope = section(source, 'Scope boundary');
   assert.match(scope, /in scope[\s\S]*out of scope[\s\S]*deferred/i,

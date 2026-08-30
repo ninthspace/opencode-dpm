@@ -170,7 +170,7 @@ CLI and TUI plugin work — `cli.json` plugins, theme integration, keybinding in
 
 ### NFR1 (must)
 
-Zero runtime dependencies. `node:sqlite` stays; no native modules and no install-time compilation. The only entry under `dependencies` is `@opencode-ai/plugin`.
+Zero runtime dependencies. `node:sqlite` stays; no native modules and no install-time compilation. The only package the plugin needs is `@opencode-ai/plugin`, and it is needed for its types alone — `Plugin.define` is the identity function `define(plugin) { return plugin }`, so importing it at runtime would pull eight transitive packages in to call a function that returns its argument. The SDK is therefore taken as a type-only import, sits under `devDependencies`, and `dependencies` stays empty.
 
 - The package's `dependencies` contains exactly one entry, `@opencode-ai/plugin`. `[unit]`
 - must NOT — A `.node` binary, or a compile step, appears anywhere in the production install tree. `[integration]`
@@ -226,7 +226,7 @@ Development: TypeScript available for type checking. Checkable by `tsc --noEmit`
 
 ### ENVR4 (must)
 
-Development: an OpenCode v2 beta CLI on the contributor's machine. Checkable by `opencode2 --version` reporting a 2.x beta. Without it neither the effective tool naming nor the skill-registration behaviour can be verified, and both gate the skill port.
+Development: an OpenCode v2 beta CLI on the contributor's machine. Checkable by `opencode2 --version` reporting a `0.0.0-beta-*` build matching the `beta` dist-tag of `@opencode-ai/plugin`, so the CLI and the SDK the plugin is typed against are the same build. Without it neither the effective tool naming nor the skill-registration behaviour can be verified, and both gate the skill port.
 
 - `opencode2 --version` on the contributor's machine reports a 2.x beta release. `[manual]`
 

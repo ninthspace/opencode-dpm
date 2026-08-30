@@ -1,27 +1,27 @@
 ---
 name: inspect
-description: Code, after execution — presents what a change set actually did and where it sits in the repository. Resolves a commit range, branch or working tree, works out the axis that best explains the change, situates it against what was already there and what was deliberately left alone, and joins it to the planning rows that record intent. Triggers on "/dpm:inspect".
+description: Code, after execution — presents what a change set actually did and where it sits in the repository. Resolves a commit range, branch or working tree, works out the axis that best explains the change, situates it against what was already there and what was deliberately left alone, and joins it to the planning rows that record intent. Invoke with the skill tool, id "dpm-inspect".
 ---
 
 # Change-Set Inspection
 
-`/dpm:inspect` answers one question: **what did this work actually do, and where does it sit?**
+`dpm-inspect` answers one question: **what did this work actually do, and where does it sit?**
 
-Not "is this code any good" — that is `/dpm:audit`, over a different scope. Not "does this plan hold
-up" — that is `/dpm:review`, and it runs before execution rather than after. This skill takes a
+Not "is this code any good" — that is `dpm-audit`, over a different scope. Not "does this plan hold
+up" — that is `dpm-review`, and it runs before execution rather than after. This skill takes a
 change set and produces the account a colleague would want if they had to understand the work
 without opening the repository.
 
 | Skill | Question | When |
 |---|---|---|
-| `/dpm:review` | Do these plans hold up? | Before execution |
-| `/dpm:inspect` | What did this change do, and where does it sit? | After execution |
-| `/dpm:audit` | How healthy is this codebase? | Any time |
+| `dpm-review` | Do these plans hold up? | Before execution |
+| `dpm-inspect` | What did this change do, and where does it sit? | After execution |
+| `dpm-audit` | How healthy is this codebase? | Any time |
 
-**The line against `/dpm:audit` is the one worth holding.** Findings about code quality are
+**The line against `dpm-audit` is the one worth holding.** Findings about code quality are
 `audit`'s output, and a change-set analysis that drifts into them stops answering its own question.
 Where the work under inspection has quality problems worth raising, name them in a sentence and
-point at `/dpm:audit`.
+point at `dpm-audit`.
 
 **The repository does not need to be a dpm project.** Everything below degrades to whatever is
 actually there, and says which channel it fell back to.
@@ -32,7 +32,7 @@ Publishing** from it.
 
 ## Input
 
-`$ARGUMENTS` is a selector: a commit, tag, branch, range, `--since <ref>`, `--working-tree`, or a
+The request carries a selector: a commit, tag, branch, range, `--since <ref>`, `--working-tree`, or a
 phrase like "3 days ago".
 
 **If it is absent**, work out a baseline — the last release tag, the last merge to the default
@@ -122,16 +122,16 @@ Answer with figures actually measured:
 
 **Where the planning rows exist, they are the record**, and every one of them is a query:
 
-- The chain: `mcp__plugin_dpm_dpm__list_spec` and `mcp__plugin_dpm_dpm__read_spec`, `mcp__plugin_dpm_dpm__list_requirement`,
-  `mcp__plugin_dpm_dpm__list_epic`, `mcp__plugin_dpm_dpm__list_story`, `mcp__plugin_dpm_dpm__list_task` and
-  `mcp__plugin_dpm_dpm__list_story_criterion`.
-- The traceability: `mcp__plugin_dpm_dpm__list_coverage` scoped by `requirement_id` or by
+- The chain: `dpm_list_spec` and `dpm_read_spec`, `dpm_list_requirement`,
+  `dpm_list_epic`, `dpm_list_story`, `dpm_list_task` and
+  `dpm_list_story_criterion`.
+- The traceability: `dpm_list_coverage` scoped by `requirement_id` or by
   `story_criterion_id`. **Coverage is the join and it runs both ways**, which is what lets the gap
   queries below be asked from either end — "which requirement has nothing behind it" and "which
   criterion answers nothing" are the same rows read in opposite directions.
-- The rest of the pipeline: `mcp__plugin_dpm_dpm__list_retro` scoped by `parent_id` to the epic in hand,
-  `mcp__plugin_dpm_dpm__list_observation`, `mcp__plugin_dpm_dpm__list_quick`, `mcp__plugin_dpm_dpm__list_problem_brief`,
-  `mcp__plugin_dpm_dpm__list_product_brief`, `mcp__plugin_dpm_dpm__list_adr`, and `mcp__plugin_dpm_dpm__list_artifact` for what has
+- The rest of the pipeline: `dpm_list_retro` scoped by `parent_id` to the epic in hand,
+  `dpm_list_observation`, `dpm_list_quick`, `dpm_list_problem_brief`,
+  `dpm_list_product_brief`, `dpm_list_adr`, and `dpm_list_artifact` for what has
   been published.
 
 **Every one of these takes a `limit`, and the bound is a default with no ceiling** — so raise it
@@ -142,13 +142,13 @@ its whole output.
 
 The three gap queries worth running, each a comparison between two reads rather than a scan:
 
-- **A requirement with no coverage rows** — `mcp__plugin_dpm_dpm__list_coverage` on it comes back empty. The
+- **A requirement with no coverage rows** — `dpm_list_coverage` on it comes back empty. The
   breakdown missed it.
 - **A coverage row carrying `verified_at` with no automated approach behind it** —
-  `mcp__plugin_dpm_dpm__list_story_criterion_approach` says what the criterion was actually tagged, and
-  `mcp__plugin_dpm_dpm__list_criterion_approach` says what the spec asked for. A mark resting on `manual` or
+  `dpm_list_story_criterion_approach` says what the criterion was actually tagged, and
+  `dpm_list_criterion_approach` says what the spec asked for. A mark resting on `manual` or
   `target` is not a mark a test produced.
-- **A completed epic with no retro** — the scoped `mcp__plugin_dpm_dpm__list_retro` answers it directly. A
+- **A completed epic with no retro** — the scoped `dpm_list_retro` answers it directly. A
   retired epic is not one of these: asking what was learned from work that was dropped is asking
   about a decision to stop, and the gap query would report one for every such epic forever.
 
@@ -196,7 +196,7 @@ Lead with the finding: the one sentence that characterises this change set. Then
 sits either side of it, where the change sits in the repository, what it traces to, what was
 verified, and what was not read.
 
-**Report by disposition.** Read the terms from `mcp__plugin_dpm_dpm__list_taxonomy` in the
+**Report by disposition.** Read the terms from `dpm_list_taxonomy` in the
 `disposition` domain and render them in `position` order. An inspection changes nothing, so the
 first disposition never has items and never appears; something checked and found sound is a record;
 a claim this environment could not check is still open, with what would close it; and anything the
@@ -244,7 +244,7 @@ be a second account of the change set beside the one the rows already hold.
 
 ## Next Action
 
-After the report, offer — do not run — one of `/dpm:audit` where the change set raised
-code-quality questions worth a proper sweep, `/dpm:quick` for something small and well-defined it
-turned up, `/dpm:spec` where it describes work that needs planning, or `/dpm:retro` where the change
+After the report, offer — do not run — one of `dpm-audit` where the change set raised
+code-quality questions worth a proper sweep, `dpm-quick` for something small and well-defined it
+turned up, `dpm-spec` where it describes work that needs planning, or `dpm-retro` where the change
 set is the end of an epic chain.

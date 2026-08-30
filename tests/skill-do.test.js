@@ -533,7 +533,7 @@ test('the retro gate disposes of each observation, and the verification gate wai
   // other half — the file says the story's status is written at the gate and not before.
   const complete = section(source, '6. Complete');
   assert.notEqual(complete, '', 'the completion step still exists');
-  assert.match(complete, /mcp__plugin_dpm_dpm__update_story/);
+  assert.match(complete, new RegExp(`${CALLABLE}update_story`));
   assert.match(complete, /verification gate/i);
 
   // And a control on the ordering assertion itself: the gate is checkable only because a story
@@ -621,7 +621,7 @@ test('Step 8 derives its report from the rows rather than narrating beside them'
   assert.notEqual(step, '', 'the epic summary step still exists');
 
   // The three row sources the criterion names, each said to be where a report item comes from.
-  assert.match(step, /`mcp__plugin_dpm_dpm__list_coverage`/, 'the coverage rows are not read');
+  assert.match(step, new RegExp(`\`${CALLABLE}list_coverage\``), 'the coverage rows are not read');
   assert.match(step, /coverage row this run verified/,
     'no rule maps a coverage row to what the reader has to do about it');
   assert.match(step, /change moment resolved by amending a row/,
@@ -661,7 +661,7 @@ test('the skill names the disposition domain and writes none of its labels', () 
 
   assert.match(source, /`disposition` domain/,
     'the skill reports dispositions without naming the domain the terms come from');
-  assert.match(source, /mcp__plugin_dpm_dpm__list_taxonomy/,
+  assert.match(source, new RegExp(`${CALLABLE}list_taxonomy`),
     'the domain is named but never read, so the terms are still coming from somewhere else');
 
   // **The must-NOT, and it is the reason the domain reference above is worth anything.** A file

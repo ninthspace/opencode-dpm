@@ -31,14 +31,21 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { moduleFilesUnder, sweepSourcesUnder, unsanctionedDependencies } from './support/sources.js';
+import {
+  filesUnder, moduleFilesUnder, packageManifest as readPackageManifest, sweepSourcesUnder,
+  unsanctionedDependencies,
+} from './support/sources.js';
 import { auditImports } from './support/sweeps.js';
 
 const DPM = join(import.meta.dirname, '..');
 
 const json = (path) => JSON.parse(readFileSync(path, 'utf8'));
 
-const packageManifest = json(join(DPM, 'package.json'));
+// **Through the shared reader**, which `sources.js` exists to be and which this file had a private
+// copy of. Its own doc says five suites had each written their own read of this file; this was the
+// sixth, and story 1 of this epic spent an afternoon on what a copy left behind does when the
+// shared one learns something.
+const packageManifest = readPackageManifest();
 const pluginManifest = json(join(DPM, '.claude-plugin', 'plugin.json'));
 
 /** Every module file dpm ships, tests included. */
@@ -102,11 +109,33 @@ test('there is no install step and nothing to compile', () => {
 
   assert.equal(existsSync(join(DPM, 'binding.gyp')), false, 'no node-gyp build description');
 
-  const compiled = [];
-  for (const entry of readdirSync(DPM, { recursive: true })) {
-    if (String(entry).endsWith('.node')) compiled.push(entry);
-  }
-  assert.deepEqual(compiled, [], 'no prebuilt native binary is shipped');
+  // **The walk skips `node_modules`, and the narrowing is what the sentence below already said.**
+  // The claim is that dpm ships no native binary, and `dependencies` is `{}` — so a user
+  // installing this plugin installs nothing at all and there is no binary for them to receive.
+  // What a contributor's `node_modules` holds is a different question: `@opencode-ai/plugin` pulls
+  // `effect`, which pulls `msgpackr`, which ships prebuilt `.node` binaries per platform. Reading
+  // those as "dpm ships a native binary" would report a development install as a published one.
+  //
+  // The stronger half of the claim — that nothing *compiled* to produce them — is the assertion
+  // after this one, and CI's isolated job runs the whole install in an image with no compiler and
+  // no Python, which is the only place an absence like that can actually be shown.
+  const shipped = filesUnder(DPM).filter((path) => path.endsWith('.node'));
+
+  assert.deepEqual(shipped, [], 'no prebuilt native binary is shipped');
+
+  // The control, because an empty list is what a walk that read nothing also returns: the same
+  // reading finds a `.node` when there is one, and finds it through the same filter.
+  assert.deepEqual([...filesUnder(DPM), join(DPM, 'planted.node')].filter((p) => p.endsWith('.node')),
+    [join(DPM, 'planted.node')], 'the sweep cannot see a native binary when one is there');
+
+  // And nothing compiled to produce what a development install *does* hold. `build/Release` is
+  // node-gyp's output directory and is the artefact a compile leaves behind — the prebuilt
+  // packages msgpackr selects between carry their binary at the package root instead.
+  const built = readdirSync(join(DPM, 'node_modules'), { recursive: true })
+    .map(String)
+    .filter((entry) => entry.endsWith('/build/Release'));
+
+  assert.deepEqual(built, [], 'a dependency compiled a native module during install');
 });
 
 test('every import under dpm resolves to a Node builtin or to this tree', () => {

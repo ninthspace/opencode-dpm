@@ -1,6 +1,6 @@
 ---
 name: quick
-description: Lightweight execution for a small, well-defined change. Classifies the input as a fix or a change, diagnoses root cause before proposing anything on the fix path, confirms a written record, executes, and closes that same record by deciding each criterion met or not. Triggers on "/dpm:quick".
+description: Lightweight execution for a small, well-defined change. Classifies the input as a fix or a change, diagnoses root cause before proposing anything on the fix path, confirms a written record, executes, and closes that same record by deciding each criterion met or not. Invoke with the skill tool, id "dpm-quick".
 ---
 
 # Quick Execution
@@ -20,7 +20,7 @@ This skill uses **Gate Presentation**, **Conversational Output**, **Written Deli
 
 ## Input
 
-`$ARGUMENTS` is the change description — `/dpm:quick add a --verbose flag to the deploy script`. If
+The request is the change description — `add a --verbose flag to the deploy script`. If
 there is none, ask for one.
 
 The description seeds everything after it: the classification, the criteria, and the work.
@@ -83,8 +83,8 @@ exists, what depends on what. On the fix path this assesses the *fix*, not the s
 There are no thresholds. Ten files following an existing pattern are fine; two files introducing a
 new one may not be.
 
-If it looks too big, say why — which factors — and offer escalation **once**, to `/dpm:discover`,
-`/dpm:spec` or `/dpm:epics`, with carrying on as the fourth option. Then respect the answer. The
+If it looks too big, say why — which factors — and offer escalation **once**, to `dpm-discover`,
+`dpm-spec` or `dpm-epics`, with carrying on as the fourth option. Then respect the answer. The
 concern is raised once and not again.
 
 ### Step 2: Propose, confirm, and write the record
@@ -97,16 +97,16 @@ proves the specific failure cannot recur. The second is the one a happy-path che
 
 Gate: "Ready to execute?" with `Execute` / `Adjust`. Iterate until confirmed. Then:
 
-1. `mcp__plugin_dpm_dpm__create_quick` with a short kebab-case `slug` and a `title`. That call assigns the
+1. `dpm_create_quick` with a short kebab-case `slug` and a `title`. That call assigns the
    number, which nothing here works out. Leave `status` at its default and set `status_note` to say
    the record is confirmed and awaiting execution.
-2. `mcp__plugin_dpm_dpm__create_quick_criterion` per criterion, with its `text` and its `position`. Leave `met`
+2. `dpm_create_quick_criterion` per criterion, with its `text` and its `position`. Leave `met`
    unset — it is a tri-state, and unset means undecided rather than failed.
-3. `mcp__plugin_dpm_dpm__create_document_section` for the change summary and the files affected, so what was
+3. `dpm_create_document_section` for the change summary and the files affected, so what was
    agreed is readable next to what was decided.
 
 **The written record is a hard gate on Step 3, and it is the row that makes it one.** Implementation
-does not begin until `mcp__plugin_dpm_dpm__read_quick` returns the record and `mcp__plugin_dpm_dpm__list_quick_criterion`
+does not begin until `dpm_read_quick` returns the record and `dpm_list_quick_criterion`
 with `include_body` returns its criteria. Those criteria are what Step 4 decides against — read them
 back rather than working from the conversation, which is the only copy that can drift. Read without
 `include_body`, the rows are a count of criteria and the conversation is again the only copy.
@@ -114,7 +114,7 @@ back rather than working from the conversation, which is the only copy that can 
 ### Step 3: Execute
 
 Read the criteria back first, per the gate above. Then check whether the change touches an
-architectural decision: `mcp__plugin_dpm_dpm__list_adr` and `mcp__plugin_dpm_dpm__read_adr` on anything that bears on it.
+architectural decision: `dpm_list_adr` and `dpm_read_adr` on anything that bears on it.
 A decision already taken is a constraint on this change, not a suggestion.
 
 Break the confirmed work into tasks, do them in order, and write or update tests where the change
@@ -128,13 +128,13 @@ any; where they fail, report the output and let the user choose to fix, accept, 
 
 Then close it, in this order:
 
-1. `mcp__plugin_dpm_dpm__update_quick_criterion` per criterion, setting `met` and a `note` saying what settled
+1. `dpm_update_quick_criterion` per criterion, setting `met` and a `note` saying what settled
    it.
-2. `mcp__plugin_dpm_dpm__create_document_section` for what changed and how it was verified.
-3. `mcp__plugin_dpm_dpm__create_observation` with the quick record as `quick_id` and one sentence of `text`,
-   then `mcp__plugin_dpm_dpm__create_observation_category` with a term from `mcp__plugin_dpm_dpm__list_taxonomy` in the
+2. `dpm_create_document_section` for what changed and how it was verified.
+3. `dpm_create_observation` with the quick record as `quick_id` and one sentence of `text`,
+   then `dpm_create_observation_category` with a term from `dpm_list_taxonomy` in the
    `observation` domain.
-4. `mcp__plugin_dpm_dpm__update_quick` setting `status` to `complete` and `closed_at` to the time it closed.
+4. `dpm_update_quick` setting `status` to `complete` and `closed_at` to the time it closed.
 
 **The record is not replaced when it ships; its status moves.** The same row that was confirmed in
 Step 2 is the one that closes, so "what was agreed" and "what happened" are one artefact with a
@@ -146,7 +146,7 @@ decided against — a criterion that was not achieved is recorded as not met wit
 which is a different and more honest thing than a criterion quietly dropped.
 
 **Report each criterion under the disposition its own row gives it.** Read the terms from
-`mcp__plugin_dpm_dpm__list_taxonomy` in the `disposition` domain and render them in `position` order.
+`dpm_list_taxonomy` in the `disposition` domain and render them in `position` order.
 The column decides, not the sentence: `met` true is a criterion whose work is in the codebase now;
 `met` false whose `note` records a deliberate decision is one seen and not acted on; `met` false
 because nothing here could perform the check is still open, and the `note` says what would close it;
@@ -156,7 +156,7 @@ to draw.
 
 **The observation is mandatory, carries exactly one category, and hangs off this record rather than
 a retro.** `quick_id` is its origin, the same way `story_id` is for work done under an epic, so
-`/dpm:retro` gathers it later by setting `retro_id` and the origin is never cleared. Write it even
+`dpm-retro` gathers it later by setting `retro_id` and the origin is never cleared. Write it even
 when nothing went wrong — "smooth delivery" is a finding, and a corpus that only records trouble
 misreports how the work actually goes. Do not create a retro here to hold it: an observation that
 arrives already grouped is one no retro can gather.

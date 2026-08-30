@@ -1,6 +1,6 @@
 ---
 name: discover
-description: Facilitated problem discovery. Understand the problem before proposing solutions. Produces a problem brief as typed rows through guided conversation. Use when starting a new product, complex feature, or any work where the problem isn't well-defined yet. Triggers on "/dpm:discover".
+description: Facilitated problem discovery. Understand the problem before proposing solutions. Produces a problem brief as typed rows through guided conversation. Use when starting a new product, complex feature, or any work where the problem isn't well-defined yet. Invoke with the skill tool, id "dpm-discover".
 ---
 
 # Facilitated Problem Discovery
@@ -17,7 +17,7 @@ Deliverable Length**, **Cross-References** and **Artifact Publishing** from it.
 
 ## Input
 
-If `$ARGUMENTS` is given, use it as the starting context for Phase 1 rather than asking from
+Where the request carries a starting context, use it for Phase 1 rather than asking from
 scratch, and still confirm the understanding before proceeding. Otherwise begin at Phase 1.
 
 ## Startup
@@ -32,7 +32,7 @@ compaction.
 
 ### Roster
 
-`mcp__plugin_dpm_dpm__list_agent` with `include_body`, for **Perspectives** in Phases 1 and 5. The traits are
+`dpm_list_agent` with `include_body`, for **Perspectives** in Phases 1 and 5. The traits are
 body columns, so without it the roster arrives as names and roles. Use only what the row carries.
 
 ### Library
@@ -104,12 +104,12 @@ agents on scalability, on deployment, on testability.
 Render the complete brief in the message body from what the phases settled, then gate: "Approve
 this brief?" with `Approve` / `Request changes` / `Stop`.
 
-On approval, agree a title and a short kebab-case slug and call `mcp__plugin_dpm_dpm__create_problem_brief` —
+On approval, agree a title and a short kebab-case slug and call `dpm_create_problem_brief` —
 that call assigns the number, which nothing here works out. Each phase's prose is then one
-`mcp__plugin_dpm_dpm__create_document_section` row against the id it returned, with its heading and its
+`dpm_create_document_section` row against the id it returned, with its heading and its
 `position`: *Why*, *Who*, *Current State*, *Success Criteria*, *Constraints*, *Scope Boundaries*.
 
-Then `mcp__plugin_dpm_dpm__update_problem_brief` sets `status` to `complete`. On *Request changes*, return to the
+Then `dpm_update_problem_brief` sets `status` to `complete`. On *Request changes*, return to the
 phase the change belongs to and leave the status alone.
 
 **Write the rows only once the brief is approved.** A brief half-written and then abandoned at the
@@ -132,14 +132,14 @@ which constraint bites which user is visible at a glance, where six sequential s
 be inferred. If you cannot write the one-line justification for what the visual carries that the
 prose cannot, it has not earned its place.
 
-Record it only once published, with `mcp__plugin_dpm_dpm__create_artifact` carrying its address, title and
-publication time, then `mcp__plugin_dpm_dpm__create_artifact_document` binding it to this brief — so the rows never
+Record it only once published, with `dpm_create_artifact` carrying its address, title and
+publication time, then `dpm_create_artifact_document` binding it to this brief — so the rows never
 claim a visual a reader cannot reach.
 
 ### After the brief
 
-- `/dpm:brief` to explore vision, value propositions and key features (recommended for most problems)
-- `/dpm:spec` to go straight to requirements where the solution approach is already clear
+- `dpm-brief` to explore vision, value propositions and key features (recommended for most problems)
+- `dpm-spec` to go straight to requirements where the solution approach is already clear
 - `/plan` where the scope is small enough to skip planning artefacts entirely
 
 ## Guidelines

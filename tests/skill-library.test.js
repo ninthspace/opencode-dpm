@@ -28,7 +28,7 @@ import { spineTools } from '../src/tools/index.ts';
 import { collection } from '../src/projection/load.ts';
 import {
   skillSource, toolNames, reachable, prose, section, instructions, recorder, recoveries, bindings,
-  seedStartup, driveStartup,
+  seedStartup, driveStartup, CALLABLE,
 } from './support/skills.js';
 
 const SKILL = 'library';
@@ -295,9 +295,9 @@ test('the scope is suggested rather than applied, and every derived field is con
 
   // The three writes happen in the order the file gives, because scope rows reference the document.
   assert.match(instructions(source, '3. Write it'),
-    /`mcp__plugin_dpm_dpm__create_library` with the `slug`, `title`, `doc_type`/);
+    new RegExp(`\`${CALLABLE}create_library\` with the \`slug\`, \`title\`, \`doc_type\``));
   assert.match(instructions(source, '3. Write it'),
-    /`mcp__plugin_dpm_dpm__create_library_scope` per scope value/);
+    new RegExp(`\`${CALLABLE}create_library_scope\` per scope value`));
 });
 
 // --- Criterion 3 (must NOT): no recovery by reading what was written -----------------------------

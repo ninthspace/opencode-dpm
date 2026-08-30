@@ -1,6 +1,6 @@
 ---
 name: do
-description: Execute the stories and tasks of an epic, one at a time — load context, do the work, verify each acceptance criterion, record the verification, and move on. Reads readiness from the dependency graph and writes status, observations and verification as typed rows. Triggers on "/dpm:do".
+description: Execute the stories and tasks of an epic, one at a time — load context, do the work, verify each acceptance criterion, record the verification, and move on. Reads readiness from the dependency graph and writes status, observations and verification as typed rows. Invoke with the skill tool, id "dpm-do".
 ---
 
 # Task Execution
@@ -16,15 +16,15 @@ This skill uses **Gate Presentation**, **Conversational Output**, **Cross-Refere
 
 ## Input
 
-1. If `$ARGUMENTS` names an epic — a ULID, or a human reference as another skill printed it — work
-   that epic. A reference goes through `mcp__plugin_dpm_dpm__resolve_reference` first, which returns
+1. If the request names an epic — a ULID, or a human reference as another skill printed it — work
+   that epic. A reference goes through `dpm_resolve_reference` first, which returns
    the row it names or refuses; a ULID is already the id and needs no resolving.
-2. Otherwise `mcp__plugin_dpm_dpm__list_epic` with `ready: true`. That is the epics still `pending` with no
+2. Otherwise `dpm_list_epic` with `ready: true`. That is the epics still `pending` with no
    blocker short of `complete` — a query over the edges, not a status anyone maintains. One result
    is auto-selected; several go to `AskUserQuestion` showing each title.
 3. An empty result means every epic is complete, retired, or waiting on something — **three
    answers, and saying the wrong one is how a project loses track of what it decided to stop**. Say
-   which, from `mcp__plugin_dpm_dpm__list_epic` unfiltered and `mcp__plugin_dpm_dpm__list_dependency` on the ones still
+   which, from `dpm_list_epic` unfiltered and `dpm_list_dependency` on the ones still
    `pending`, and stop. Report a `superseded` or `withdrawn` epic as retired, with its
    `status_note` where it carries one: it is neither work outstanding nor work delivered.
 
@@ -52,7 +52,7 @@ changes this run), `Deferred` (say why not now), `Not relevant here` (say why it
 this work). One blanket acknowledgement does not satisfy this gate, and that is the whole of its
 value: a lesson nobody had to place is a lesson nobody read.
 
-Record each disposition as `mcp__plugin_dpm_dpm__create_retro_application` — `retro_id`, this epic as
+Record each disposition as `dpm_create_retro_application` — `retro_id`, this epic as
 `applied_to_id`, the observation's `theme`, and `disposition` as one of `applied`, `deferred` or
 `not_applicable`, with the reason as `note`. The row is per-run and changes nothing at the source,
 so a lesson set aside here is re-judged next time.
@@ -78,7 +78,7 @@ so; then `composer.json`, `package.json`, a `Makefile` target, `pyproject.toml`,
 ask. Put the answer in the session `state`, or `none` if the user declines.
 
 Skip this entirely when no criterion in the epic carries a `level` approach that a machine can run —
-which is a read of `mcp__plugin_dpm_dpm__list_test_approach` and the criteria's own tags, not a guess.
+which is a read of `dpm_list_test_approach` and the criteria's own tags, not a guess.
 
 ### Framework
 
@@ -87,7 +87,7 @@ in the session `state`. Nothing else is detected here yet.
 
 ## Story selection
 
-`mcp__plugin_dpm_dpm__list_story` with this `epic_id` and `ready: true`. That is the stories still `pending`
+`dpm_list_story` with this `epic_id` and `ready: true`. That is the stories still `pending`
 with no blocker short of `complete` over an edge whose kind gates work — **the same query that
 answers the same question for epics**, and the reason blocking is an edge rather than a status.
 Take the lowest `number`.
@@ -98,23 +98,23 @@ left undone. A *blocker* clears only on `complete`, so a story retired halfway g
 was waiting on it exactly as a pending one does: being stopped is not having delivered. Neither is
 applied here — both are in the query — but a run that reports the absence has to say which.
 
-When a story you expected is missing from that list, `mcp__plugin_dpm_dpm__list_dependency` with it as
+When a story you expected is missing from that list, `dpm_list_dependency` with it as
 `target_story_id` names the edges into it; each blocker's own row says whether it is done. That is
 the answer to *why not*, which a boolean cannot give.
 
-**Which of those edges actually hold work up is `mcp__plugin_dpm_dpm__list_dependency_kind`'s `gates_work`,
+**Which of those edges actually hold work up is `dpm_list_dependency_kind`'s `gates_work`,
 never a kind name written here.** A project can add an edge kind and decide for itself whether it
 gates; a rule naming `blocks` would be that decision taken away, one indirection down, and it would
 disagree with the readiness answer above without either side noticing.
 
 Then, for the selected story:
 
-- `mcp__plugin_dpm_dpm__read_story` — its `plan` column decides whether Step 3 opens formal plan mode.
-- `mcp__plugin_dpm_dpm__list_task` with this `story_id` — the work, in `number` order. The next one to do is
+- `dpm_read_story` — its `plan` column decides whether Step 3 opens formal plan mode.
+- `dpm_list_task` with this `story_id` — the work, in `number` order. The next one to do is
   the lowest-numbered whose `status` is still pending; tasks carry no edges of their own, so order
   is the whole of their sequencing.
-- `mcp__plugin_dpm_dpm__list_story_criterion` with `include_body: true`, and
-  `mcp__plugin_dpm_dpm__list_story_criterion_approach` per criterion — what the story is measured against.
+- `dpm_list_story_criterion` with `include_body: true`, and
+  `dpm_list_story_criterion_approach` per criterion — what the story is measured against.
 
 **Nothing here derives the story's shape from its title.** Whether it is planned in full is a
 column; whether it is blocked is an edge; whether it is done is a column. A marker inside a title
@@ -122,13 +122,13 @@ would have to be parsed back out, and a parse that can misread will.
 
 Mirror the tasks into the harness task list so the user can see the run's shape, plus one
 verification task blocked by them. That list is a view of the rows and never the record: task status
-is `task.status`, and the mirror is rebuilt from `mcp__plugin_dpm_dpm__list_task` rather than reconciled
+is `task.status`, and the mirror is rebuilt from `dpm_list_task` rather than reconciled
 against itself.
 
 When no ready story remains, go to Step 8 — **and no ready story is not the same as a finished
 epic**. Read the epic's stories unfiltered: complete throughout is done, and anything `superseded`
 or `withdrawn` is reported as retired beside the rest rather than counted into either column. A
-story still `pending` and held by a blocker is neither, and `mcp__plugin_dpm_dpm__list_dependency` on it says
+story still `pending` and held by a blocker is neither, and `dpm_list_dependency` on it says
 by what.
 
 ## Per-task workflow
@@ -138,7 +138,7 @@ cannot be evaluated goes to `AskUserQuestion`, then the task is skipped and the 
 
 ### 1. Load context
 
-`mcp__plugin_dpm_dpm__read_task` with `include_body` for the task, and the story's criteria already read above. A
+`dpm_read_task` with `include_body` for the task, and the story's criteria already read above. A
 task's `description` says what it contributes and is withheld unless asked for; the criteria it
 serves belong to the story, not to it.
 
@@ -146,7 +146,7 @@ Explore the code the task touches before planning it, carrying the applied retro
 
 ### 2. Start
 
-**Being in flight is the session's `phase`, not a status.** `mcp__plugin_dpm_dpm__update_session` names the
+**Being in flight is the session's `phase`, not a status.** `dpm_update_session` names the
 task about to start; the row itself moves from pending to complete in one step at Step 6, because
 there is no value between them. One place says what is happening now, and it is the place a resumed
 run reads.
@@ -180,7 +180,7 @@ up within the task's scope. A test that passes before the implementation exists 
 and ask, because either the test is not testing what it claims or the behaviour is already there.
 
 `tdd` is a `mode` and the levels are a separate axis — read that from
-`mcp__plugin_dpm_dpm__list_test_approach`'s `kind` column rather than from a list of tag names here. A project
+`dpm_list_test_approach`'s `kind` column rather than from a list of tag names here. A project
 that adds an approach decides for itself which axis it is on.
 
 ### 5. Verify
@@ -204,7 +204,7 @@ has not been verified, it has been asserted.
 Unmet criteria go to `AskUserQuestion` — keep working, or complete anyway.
 
 **Recording the verification.** When a story's criteria are met, for each criterion call
-`mcp__plugin_dpm_dpm__list_coverage` with its `story_criterion_id` and, for each row, `mcp__plugin_dpm_dpm__update_coverage`
+`dpm_list_coverage` with its `story_criterion_id` and, for each row, `dpm_update_coverage`
 with `verified_at`.
 
 That call is the whole of it. **Nothing here writes a table, clears a mark, or computes a hash**:
@@ -229,17 +229,17 @@ after, and revert whatever broke.
 
 ### 6. Complete
 
-**Status.** `mcp__plugin_dpm_dpm__update_task` with `status: 'complete'`. At a verification gate,
-`mcp__plugin_dpm_dpm__update_story` the same way.
+**Status.** `dpm_update_task` with `status: 'complete'`. At a verification gate,
+`dpm_update_story` the same way.
 
-**Observation.** Every completed story produces one, and it is the only input `/dpm:retro` has to
-work with. `mcp__plugin_dpm_dpm__create_observation` with this `story_id` and the text, then
-`mcp__plugin_dpm_dpm__create_observation_category` with the category's `taxonomy_id` from
-`mcp__plugin_dpm_dpm__list_taxonomy`. Use the vocabulary the project holds rather than a list of names here;
+**Observation.** Every completed story produces one, and it is the only input `dpm-retro` has to
+work with. `dpm_create_observation` with this `story_id` and the text, then
+`dpm_create_observation_category` with the category's `taxonomy_id` from
+`dpm_list_taxonomy`. Use the vocabulary the project holds rather than a list of names here;
 a smooth delivery is worth recording as much as a surprise. On an implementation task an observation
 is optional — the story's gate will cover it.
 
-**Session.** `mcp__plugin_dpm_dpm__update_session` immediately after, carrying `phase` and the accumulated
+**Session.** `dpm_update_session` immediately after, carrying `phase` and the accumulated
 `state`.
 
 Then go straight to Step 7. Finishing a task, a story, or a commit is **not** a checkpoint.
@@ -252,30 +252,30 @@ Silent. The next pending task under this story, or — when there is none — th
 ### 8. Epic summary
 
 **Close the epic.** Read its stories unfiltered. Complete throughout is a finished epic, and
-`mcp__plugin_dpm_dpm__update_epic` with `status: 'complete'` is what says so — the same one-step
+`dpm_update_epic` with `status: 'complete'` is what says so — the same one-step
 move Step 6 makes on a story, at the level above it.
 
 **Nothing else in dpm sets that column**, so an epic left `pending` is not merely untidy. It goes on
-being offered by `mcp__plugin_dpm_dpm__list_epic` with `ready: true` as work still to do, it goes on holding whatever
-edges into it gate on `complete`, and it never reaches `/dpm:retro`'s triage, which classifies the
+being offered by `dpm_list_epic` with `ready: true` as work still to do, it goes on holding whatever
+edges into it gate on `complete`, and it never reaches `dpm-retro`'s triage, which classifies the
 epics whose `status` is `complete` and can only ever see an empty set without this.
 
 Two cases are not a count and are not this run's to decide. Where any story is `superseded` or
 `withdrawn`, whether the retired work was part of what the epic promised is a judgement the rows do
 not answer — put it to `AskUserQuestion` and leave the status until it is answered. Where any story is
-still `pending`, the epic is unfinished: `mcp__plugin_dpm_dpm__list_dependency` on that story says
+still `pending`, the epic is unfinished: `dpm_list_dependency` on that story says
 what holds it, and that is the report rather than a status.
 
-**Roll up the coverage.** `mcp__plugin_dpm_dpm__list_requirement` on the epic's source spec, and
-`mcp__plugin_dpm_dpm__list_coverage` on each, both with `include_body` — the judgement below weighs bound
+**Roll up the coverage.** `dpm_list_requirement` on the epic's source spec, and
+`dpm_list_coverage` on each, both with `include_body` — the judgement below weighs bound
 `spec_fragment`s against the requirement's own `text`, and both are withheld by default. A
 requirement whose rows are all verified is discharged as far as the rows go; where the run judges
 the bound fragments account for the requirement whole, say so with
-`mcp__plugin_dpm_dpm__update_requirement` and `coverage_claimed_at`. **That is a claim and not a computation**,
+`dpm_update_requirement` and `coverage_claimed_at`. **That is a claim and not a computation**,
 which is why a human makes it: connective prose carries no obligation, and two obligations in one
 sentence can be discharged by a fragment covering either. Leave it unclaimed rather than guess.
 
-**A criterion is accounted for by `accounted_for`, which `mcp__plugin_dpm_dpm__list_story_criterion` returns
+**A criterion is accounted for by `accounted_for`, which `dpm_list_story_criterion` returns
 with `include_body` and nothing here works out.** It is true where the criterion has a live binding
 **or** carries a warrant — an accepted decision constrains a story exactly as a requirement does,
 and a criterion warranted by one has nothing to quote and so no coverage row to find. Report the
@@ -289,7 +289,7 @@ the summary reports what this run claimed, added up. "Nine of nine rows marked v
 is what happened; "nine of nine requirements verified" reads as something someone else confirmed.
 
 **And say which nine.** The denominator is the bindings still standing — what
-`mcp__plugin_dpm_dpm__list_coverage` returns, which is the live rows and not every row ever
+`dpm_list_coverage` returns, which is the live rows and not every row ever
 written. A binding somebody withdrew is
 readable and is not counted, so "nine of nine" is a claim about the nine that remain rather than
 about every binding this spec has ever held. Write the sentence so it says so: *"nine of the nine
@@ -299,7 +299,7 @@ short sentence quietly claims the larger one. **Do not pass `include_retired` to
 larger** — that argument is for auditing a withdrawal, and a roll-up that used it would count
 bindings nobody stands behind toward a requirement being discharged.
 
-**Retro.** Gather the epic's story observations with `mcp__plugin_dpm_dpm__list_observation` and `include_body`,
+**Retro.** Gather the epic's story observations with `dpm_list_observation` and `include_body`,
 without which the rows carry their categories and not what was observed. Synthesis is
 mandatory when any signal fired during the loop — a gate resolved unmet-but-continued, a `tdd` cycle
 that needed more than one red, a test command that returned failures, a story left unfinished, or a
@@ -307,7 +307,7 @@ change moment resolved by amending a row. With no signal, skipping is permitted 
 its reason**, so the absence is a decision rather than an oversight.
 
 **Report by disposition, derived rather than narrated.** Read the terms from
-`mcp__plugin_dpm_dpm__list_taxonomy` in the `disposition` domain and render the summary in their
+`dpm_list_taxonomy` in the `disposition` domain and render the summary in their
 `position` order. Every item comes from a row and takes its disposition from that row's state, not
 from how the sentence reads once written — the same distinction the coverage claim above draws,
 turned on the report itself:
@@ -321,11 +321,11 @@ turned on the report itself:
   artefact this run could not reach — still waiting on the reader, so each names what to do and
   where.
 
-A story observation is `/dpm:retro`'s input and not a report item: nothing is waiting on the reader
+A story observation is `dpm-retro`'s input and not a report item: nothing is waiting on the reader
 for it, and repeating it here is narration. The per-story refactoring outcomes come from the session
 `state` and are dispositioned by the third and first clauses above.
 
-Then offer the next ready epic from `mcp__plugin_dpm_dpm__list_epic` with `ready: true`.
+Then offer the next ready epic from `dpm_list_epic` with `ready: true`.
 
 ## Change moments
 
@@ -335,7 +335,7 @@ several stories — resolve it now rather than editing silently or deferring it 
 | Situation | Response |
 |---|---|
 | Wording fix or single-criterion clarification, no scope change | Amend the row, and record the change as a section on the epic |
-| Scope change, or anything affecting another story or another document | `/dpm:pivot` on the artefact that is wrong |
+| Scope change, or anything affecting another story or another document | `dpm-pivot` on the artefact that is wrong |
 | A pattern or discovery, no scope change | Observation only, at Step 6 |
 | Both | Pivot now, observation at story completion |
 
@@ -360,11 +360,11 @@ The retro gate branches by category rather than deferring everything. **Codebase
 **patterns worth reusing** are additive and low-ambiguity, so they are applied and carried into the
 run; **scope surprises, criteria gaps, complexity underestimates and testing gaps** each imply a
 re-planning call that belongs to a human, so they are deferred. Record both with
-`mcp__plugin_dpm_dpm__create_retro_application`, and report them at Step 8 under the dispositions
+`dpm_create_retro_application`, and report them at Step 8 under the dispositions
 that already separate them: a lesson applied with nobody watching changed this run, while a lesson
 deferred unreviewed is waiting on a human to read it.
 
-`/dpm:pivot` is never invoked: it is interactive, and calling it produces exactly the stall this
+`dpm-pivot` is never invoked: it is interactive, and calling it produces exactly the stall this
 branch exists to prevent. A change moment that would have gone there amends **this epic's rows and
 nothing else**, and every artefact it could not reach gets a section on the epic naming the change,
 the target, the story, and the citation that licensed it. One per artefact left out of step, so none
@@ -385,7 +385,7 @@ There is no file to save and no path to tell the user. Status, verification, obs
 dispositions are all rows; the epic doc and its coverage matrix are projections of them.
 
 Prose the run produces that belongs to the epic — the reasoning behind a resolved change moment, a
-gap found in the spec and left for a human — goes in `mcp__plugin_dpm_dpm__create_document_section`.
+gap found in the spec and left for a human — goes in `dpm_create_document_section`.
 
 ## Guidelines
 

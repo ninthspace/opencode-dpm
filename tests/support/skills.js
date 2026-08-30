@@ -19,6 +19,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { SERVER_NAME } from '../../src/plugin/index.ts';
+
 const SKILLS = join(import.meta.dirname, '..', '..', 'skills');
 
 /**
@@ -79,50 +81,55 @@ export function reachable(source) {
  * The front matter as key/value pairs. Deliberately shallow — the fields a skill declares are
  * flat strings, and a parser richer than the format invites assertions the format cannot carry.
  *
+ * **Re-exported from `src/` rather than kept here, and the direction is the point.** Epic 01-02
+ * gave the plugin entry its own reader, because the host needs each skill's `name` and
+ * `description` in order to register it — and for one release the same twelve lines existed twice,
+ * once in the code and once in the suite that checks the code. Two readers of one format disagree
+ * eventually, and the way they disagree is silent: the suite goes on passing against a format the
+ * plugin no longer reads. Four suites assert over this function, so what they now assert over is
+ * the reader the host actually uses.
+ *
  * @param {string} source
  * @returns {Record<string, string>}
  */
-export function frontMatter(source) {
-  const match = source.match(/^---\n([\s\S]*?)\n---\n/);
-  if (!match) return {};
-
-  return Object.fromEntries(match[1].split('\n')
-    .map((line) => line.match(/^([a-z_]+):\s*(.*)$/))
-    .filter(Boolean)
-    .map((field) => [field[1], field[2].trim()]));
-}
+export { frontMatter } from '../../src/plugin/skills.ts';
 
 /**
- * The prefix the harness supplies, **derived from the plugin manifest rather than written down**.
+ * The prefix the host supplies, **derived from the plugin entry rather than written down**.
  *
- * A plugin-bundled server's tools are dispatched as `mcp__plugin_<plugin>_<server>__<tool>`, so a
- * skill writes `mcp__plugin_dpm_dpm__create_spec` while the registry holds `create_spec` (FR29).
- * The two `dpm` parts are the plugin name and the server key, not one name said twice.
+ * Under OpenCode v2 an MCP server's tools render as `<server key>_<tool>`, so a skill writes
+ * `dpm_create_spec` while the registry holds `create_spec`. The server key is `SERVER_NAME` in
+ * `src/plugin/index.ts` — the same constant the registration uses — and the substitution follows
+ * the rule epic 01-02 established by experiment: any character outside `A-Z`, `a-z`, `0-9`, `_`
+ * and `-` becomes `_`, and the hyphen survives.
  *
- * **It is computed because the transcribed version was wrong for the whole of M4.** A constant
- * spelling out a prefix is a second copy of what the manifest already states, and nothing in this
- * repository can contradict it: every test here spawns the server itself, so none of them ever
- * meets the name the harness builds. Reading the manifest is the closest a test in this suite can
- * get to the thing that does the naming.
- *
- * The substitution follows the documented rule — any character outside `A-Z`, `a-z`, `0-9`, `_`
- * and `-` becomes `_` — rather than assuming dpm's own names need none, so a rename to something
- * with a dot or a space in it produces the prefix the harness would.
+ * **It is computed for the reason the previous one was**, and that reason has outlived the host it
+ * was written for: a constant spelling out a prefix is a second copy of what the entry already
+ * states, and nothing in this repository can contradict it, because every test here spawns the
+ * server itself and so never meets the name the host builds. Reading the entry is the closest a
+ * test in this suite can get to the thing that does the naming.
  */
-export const CALLABLE = (() => {
-  const manifest = JSON.parse(
-    readFileSync(join(SKILLS, '..', '.claude-plugin', 'plugin.json'), 'utf8'),
-  );
-  const keys = Object.keys(manifest.mcpServers ?? {});
+export const CALLABLE = `${SERVER_NAME.replaceAll(/[^A-Za-z0-9_-]/g, '_')}_`;
 
-  if (keys.length !== 1) {
-    throw new Error(`expected exactly one declared server, found ${keys.length}`);
-  }
-
-  const safe = (part) => part.replaceAll(/[^A-Za-z0-9_-]/g, '_');
-
-  return `mcp__plugin_${safe(manifest.name)}_${safe(keys[0])}__`;
-})();
+/**
+ * Every callable tool mention in a source, prefix stripped, in match order and with duplicates.
+ *
+ * **One definition of what counts as a mention, because two would be the failure the epic opened
+ * on.** `toolNames` below and `sites` in `body-reads.js` both walk a body for the same thing and
+ * report on it from different angles; if they drifted on the pattern, one would find a site the
+ * other could not classify and the disagreement would surface as a stale judgement rather than as a
+ * bug. The regex is rebuilt per call because a `g`-flagged one carries `lastIndex` between them.
+ *
+ * **This read both prefixes while the port was in flight, and no longer does.** Story 1 of the
+ * skill-port epic rewrote one body and story 2 rewrote the other twenty-two, so `LEGACY_CALLABLE`,
+ * the alternation, and the tripwire that kept the alternation honest all came out together on the
+ * day the list emptied. What stands in their place is stronger and is a criterion rather than a
+ * scaffold: `skill-port.test.js` refuses any body naming a Claude Code mechanism at all.
+ *
+ * @param {string} source
+ * @returns {RegExpStringIterator<RegExpExecArray>} Each match's `[1]` is the exported name.
+ */
+export const toolMentions = (source) => source.matchAll(new RegExp(`${CALLABLE}([a-z_]+)`, 'g'));
 
 /**
  * Every distinct tool the file names, given as **exported** names so they compare directly against
@@ -136,7 +143,7 @@ export const CALLABLE = (() => {
  * @returns {string[]}
  */
 export function toolNames(source) {
-  const found = [...source.matchAll(new RegExp(`${CALLABLE}([a-z_]+)`, 'g'))].map((hit) => hit[1]);
+  const found = [...toolMentions(source)].map((hit) => hit[1]);
 
   return [...new Set(found)].sort();
 }
@@ -697,7 +704,7 @@ const READ_DECISIONS = [
  *
  * **The discriminator is optionality, not type.** A *required* argument is forced by the call: a
  * section has to say which document it is on, a tradeoff which option — so a file that says "each
- * option as `mcp__plugin_dpm_dpm__create_adr_option`" has already prescribed `adr_id`, and demanding it name
+ * option as `dpm_create_adr_option`" has already prescribed `adr_id`, and demanding it name
  * the column would push every file into writing the mechanics down. An *optional* argument is the
  * opposite: nothing makes the run supply it, so if the file does not ask for it, it does not
  * happen. That is precisely the set the three survivors came from — `chosen`, `scope_story_id`,

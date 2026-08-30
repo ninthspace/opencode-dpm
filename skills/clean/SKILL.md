@@ -1,6 +1,6 @@
 ---
 name: clean
-description: Remove leftover session rows on demand. Lists every session with its skill, phase and age, marks the stale ones and this session's own, and deletes only the rows the user names. Triggers on "/dpm:clean".
+description: Remove leftover session rows on demand. Lists every session with its skill, phase and age, marks the stale ones and this session's own, and deletes only the rows the user names. Invoke with the skill tool, id "dpm-clean".
 ---
 
 # Clean Session State
@@ -21,10 +21,10 @@ from it. It uses **Session Startup** for nothing, being stateless, and neither *
 
 ## Input
 
-`$ARGUMENTS` is optional.
+What the request names is optional.
 
-1. **Session ids** are the user's selection. They do not skip the inventory or the confirmation — an
-   argument is a convenience, never a licence.
+1. **Session ids** are the user's selection. They do not skip the inventory or the confirmation — a
+   named selection is a convenience, never a licence.
 2. **A number of days** replaces the staleness cutoff for this run.
 3. **Nothing** runs the full flow at the default cutoff.
 
@@ -32,7 +32,7 @@ from it. It uses **Session Startup** for nothing, being stateless, and neither *
 
 ### Step 1: The inventory
 
-Call `mcp__plugin_dpm_dpm__list_session` with a `limit` above what the project plausibly holds and nothing else.
+Call `dpm_list_session` with a `limit` above what the project plausibly holds and nothing else.
 Every row comes back, whatever its age: this skill is the exhaustive counterpart to the staleness
 check every other skill runs at startup, and a filter here would make it a second copy of that
 instead of the thing it is.
@@ -44,8 +44,8 @@ needs the id, the skill, the phase and the age, and each of those is a column.
 
 ### Step 2: Which of them are stale
 
-Call `mcp__plugin_dpm_dpm__list_session` again with `updated_before` set to the cutoff — three days before now,
-unless `$ARGUMENTS` said otherwise. What comes back is the stale set, selected by a `WHERE` clause on
+Call `dpm_list_session` again with `updated_before` set to the cutoff — three days before now,
+unless the request said otherwise. What comes back is the stale set, selected by a `WHERE` clause on
 `updated_at`.
 
 Mark each row of the inventory:
@@ -66,13 +66,13 @@ Mark each row of the inventory:
 3. **Show the exact rows the selection came to and confirm those.** **Only what is named and
    confirmed is deleted**, and a row that was listed and not named stays.
 
-If the user wants to see what a row was carrying before it goes, `mcp__plugin_dpm_dpm__read_session` with
+If the user wants to see what a row was carrying before it goes, `dpm_read_session` with
 `include_body` returns its state. This is the last point at which anything can: the blob has no other
 home, and after the delete there is no row to ask.
 
 ### Step 4: Delete what was confirmed
 
-1. **Call `mcp__plugin_dpm_dpm__delete_session` once per confirmed row, oldest first.** It hands back the row it
+1. **Call `dpm_delete_session` once per confirmed row, oldest first.** It hands back the row it
    removed, which is what there is left to report it by.
 2. **A refusal on one row is not a reason to stop.** Report it and carry on with the rest.
 
@@ -84,7 +84,7 @@ inventory already came back in — never meets that refusal.
 ## Output
 
 The rows are the output, by their absence. **Report by disposition**: read the terms from
-`mcp__plugin_dpm_dpm__list_taxonomy` in the `disposition` domain and render them in `position` order.
+`dpm_list_taxonomy` in the `disposition` domain and render them in `position` order.
 A row this run deleted is gone from the database now; a row the user chose to keep was seen and
 deliberately left; and a deletion the database refused is waiting on the reader, carrying the
 refusal's own reason and what would clear it.

@@ -1,6 +1,6 @@
 ---
 name: pivot
-description: Course correction. Amend a planning artefact through its update tools, then walk the documents that hang off it and gate every downstream change on its own. Triggers on "/dpm:pivot".
+description: Course correction. Amend a planning artefact through its update tools, then walk the documents that hang off it and gate every downstream change on its own. Invoke with the skill tool, id "dpm-pivot".
 ---
 
 # Course Correction
@@ -21,7 +21,7 @@ This skill uses **Session Startup**, **Library Check**, **Retro Awareness**, **G
 
 ## Input
 
-`$ARGUMENTS` is optional.
+What the request names is optional.
 
 1. A **document id** names what to amend. It is resolved against Phase 1's lists rather than by
    guessing which read tool it belongs to — an id does not say what kind of thing it is.
@@ -47,8 +47,8 @@ having missed something informs Phase 2, where the amendment is drafted.
 ### Phase 1: Select
 
 Call the lists for the kinds a person pivots, each with a `limit` above what the project plausibly
-holds: `mcp__plugin_dpm_dpm__list_problem_brief`, `mcp__plugin_dpm_dpm__list_product_brief`, `mcp__plugin_dpm_dpm__list_spec`,
-`mcp__plugin_dpm_dpm__list_epic`, `mcp__plugin_dpm_dpm__list_adr`, `mcp__plugin_dpm_dpm__list_discussion`, `mcp__plugin_dpm_dpm__list_quick`.
+holds: `dpm_list_problem_brief`, `dpm_list_product_brief`, `dpm_list_spec`,
+`dpm_list_epic`, `dpm_list_adr`, `dpm_list_discussion`, `dpm_list_quick`.
 Present them and gate the selection.
 
 The selected row carries its own `kind`, which is what Phase 3 traverses from and the one thing an
@@ -60,20 +60,20 @@ assembled in advance for every artefact in the project.
 
 ### Phase 2: Amend
 
-1. **Read before proposing.** `mcp__plugin_dpm_dpm__list_document_section` on the artefact, then
-   `mcp__plugin_dpm_dpm__read_document_section` with `include_body` for the sections in question — a section
+1. **Read before proposing.** `dpm_list_document_section` on the artefact, then
+   `dpm_read_document_section` with `include_body` for the sections in question — a section
    listed without its body is a `heading` and a position, and a run amending from headings is
-   amending something it has not read. For a spec, `mcp__plugin_dpm_dpm__list_requirement` with `include_body`
+   amending something it has not read. For a spec, `dpm_list_requirement` with `include_body`
    as well.
 2. **Ask what to change**, in the user's own words.
 3. **Apply each change through the update tool of the thing being changed.** Prose is
-   `mcp__plugin_dpm_dpm__update_document_section`, which takes the new `body`. A document's own fields — its
-   `title`, its `slug`, its status — are its kind's tool: `mcp__plugin_dpm_dpm__update_spec`,
-   `mcp__plugin_dpm_dpm__update_epic`, `mcp__plugin_dpm_dpm__update_problem_brief`, `mcp__plugin_dpm_dpm__update_product_brief`,
-   `mcp__plugin_dpm_dpm__update_adr`, `mcp__plugin_dpm_dpm__update_discussion`, `mcp__plugin_dpm_dpm__update_quick`. A requirement's
-   `text` is `mcp__plugin_dpm_dpm__update_requirement` and its criteria `mcp__plugin_dpm_dpm__update_acceptance_criterion`;
-   a story is `mcp__plugin_dpm_dpm__update_story`, its criteria `mcp__plugin_dpm_dpm__update_story_criterion`, and a task
-   `mcp__plugin_dpm_dpm__update_task`.
+   `dpm_update_document_section`, which takes the new `body`. A document's own fields — its
+   `title`, its `slug`, its status — are its kind's tool: `dpm_update_spec`,
+   `dpm_update_epic`, `dpm_update_problem_brief`, `dpm_update_product_brief`,
+   `dpm_update_adr`, `dpm_update_discussion`, `dpm_update_quick`. A requirement's
+   `text` is `dpm_update_requirement` and its criteria `dpm_update_acceptance_criterion`;
+   a story is `dpm_update_story`, its criteria `dpm_update_story_criterion`, and a task
+   `dpm_update_task`.
 4. **A status change carries `status` and nothing else.** The token and the human qualifier are two
    columns: `status` is the value every other skill reads, and `status_note` is the sentence whoever
    set it wrote. Passing `status` alone leaves that note exactly where its author put it. Amend
@@ -93,10 +93,10 @@ for the documents below.
 
 #### Where the cascade reaches
 
-`mcp__plugin_dpm_dpm__read_document_kind` on the amended document's kind. Its `children` names the kinds that
+`dpm_read_document_kind` on the amended document's kind. Its `children` names the kinds that
 may hang off this one; for each, call that kind's list scoped by `parent_id` to the amended
-document — `mcp__plugin_dpm_dpm__list_epic`, `mcp__plugin_dpm_dpm__list_coverage_matrix`, `mcp__plugin_dpm_dpm__list_adr`,
-`mcp__plugin_dpm_dpm__list_retro`, `mcp__plugin_dpm_dpm__list_review`, `mcp__plugin_dpm_dpm__list_product_brief`. Repeat on each
+document — `dpm_list_epic`, `dpm_list_coverage_matrix`, `dpm_list_adr`,
+`dpm_list_retro`, `dpm_list_review`, `dpm_list_product_brief`. Repeat on each
 document found. It terminates on its own: a kind nothing hangs off comes back with `children`
 empty.
 
@@ -107,25 +107,25 @@ the same either way.
 
 Two kinds reach further than their own row:
 
-- **A spec.** `mcp__plugin_dpm_dpm__list_requirement` on it with `include_body`, then `mcp__plugin_dpm_dpm__list_coverage`
+- **A spec.** `dpm_list_requirement` on it with `include_body`, then `dpm_list_coverage`
   scoped by `requirement_id` for each requirement that changed. Every coverage row names a
-  `story_criterion_id`, and `mcp__plugin_dpm_dpm__read_story_criterion` opens it. That is the join from an
+  `story_criterion_id`, and `dpm_read_story_criterion` opens it. That is the join from an
   amended requirement to the criteria written against it — the reach a cascade comparing prose
   never had, and the reason an amendment here can be specific about what it breaks.
-- **An epic.** `mcp__plugin_dpm_dpm__list_story` on it, then `mcp__plugin_dpm_dpm__list_story_criterion` with
+- **An epic.** `dpm_list_story` on it, then `dpm_list_story_criterion` with
   `include_body` per story — each criterion is compared against what Phase 2 changed, which is a
   comparison of texts.
 
 #### Before the walk
 
-When every epic below is complete — counted from `mcp__plugin_dpm_dpm__list_story`'s `status`, not from
+When every epic below is complete — counted from `dpm_list_story`'s `status`, not from
 anything written in a document — the work has already been delivered, so ask what the amendment is
 for before touching it:
 
 - **Amend the record** — walk the cascade as below.
 - **Pivot forward** — leave the completed epics standing as the record of what shipped, and hand
-  off to `/dpm:epics` with the amended spec.
-- **Raise a new spec** — hand off to `/dpm:spec`. Offered only when the amended artefact is a spec.
+  off to `dpm-epics` with the amended spec.
+- **Raise a new spec** — hand off to `dpm-spec`. Offered only when the amended artefact is a spec.
 
 The second and third skip the walk entirely.
 
@@ -148,14 +148,14 @@ A coverage row quotes a **verbatim fragment** of the requirement it binds. Amend
 requirement's text is what turns the quotation into a clause the requirement no longer contains, so
 the bindings a pivot breaks are the pivot's to name.
 
-1. `mcp__plugin_dpm_dpm__list_coverage` scoped by `requirement_id` for each requirement Phase 2
+1. `dpm_list_coverage` scoped by `requirement_id` for each requirement Phase 2
    amended, **with `include_body`** — `spec_fragment` is the withheld column and the comparison is
    over nothing else. Without it every row arrives with the fragment absent, and a comparison against
    an absent value finds every binding broken.
 2. **The comparison is this skill's, and it is a substring test**: is the row's stored
    `spec_fragment` still a verbatim substring of the text Phase 2 wrote? That text is the one just
    written rather than one read back. The server does not make this judgement and does not offer it —
-   `mcp__plugin_dpm_dpm__check_integrity` reports a broken binding afterwards, which is a fault
+   `dpm_check_integrity` reports a broken binding afterwards, which is a fault
    found rather than a decision made.
 3. **A binding already withdrawn is out of the answer**, because a list omits retired rows unless
    `include_retired` is passed and this step never passes it. So a run repeated after a retirement
@@ -164,7 +164,7 @@ the bindings a pivot breaks are the pivot's to name.
 Then offer each named binding **on its own approval** — apply, modify or skip, per *The walk* above,
 one decision per binding and no approval carried forward. Show the fragment beside the clause that
 replaced it, so what is being judged is a text rather than an id. On approval,
-`mcp__plugin_dpm_dpm__retire_coverage` with the reason the withdrawal was made for. A binding
+`dpm_retire_coverage` with the reason the withdrawal was made for. A binding
 nobody approved is left exactly as it stands.
 
 **Naming nothing is an answer.** An amendment every bound fragment survives has broken no binding —
@@ -183,12 +183,12 @@ asserting a verification nobody performed. Both are the false pass this decay ex
 
 ### Phase 4: Tasks affected
 
-For each story whose criteria changed, `mcp__plugin_dpm_dpm__list_task` on it, and report which tasks are now
+For each story whose criteria changed, `dpm_list_task` on it, and report which tasks are now
 in doubt and why. **Change nothing.** What an amendment means for work already under way is the
 user's call; this skill's job is to make sure they are looking at it.
 
 **Report each task under the disposition the amendment gives it**, derived from which criteria moved
-rather than judged task by task. Read the terms from `mcp__plugin_dpm_dpm__list_taxonomy` in the
+rather than judged task by task. Read the terms from `dpm_list_taxonomy` in the
 `disposition` domain and render them in `position` order. A task under a criterion this pivot changed
 is waiting on the reader, and says which criterion moved and what it now asks; a task under an
 amended story whose own criteria did not move was looked at and is untouched; and the amendments
@@ -197,7 +197,7 @@ either a record or a decision — which is exactly why the two must not arrive i
 
 ### Phase 5: Retro
 
-A pivot usually reflects a lesson. Offer `/dpm:retro` on the amended artefact, and take no for an
+A pivot usually reflects a lesson. Offer `dpm-retro` on the amended artefact, and take no for an
 answer — the offer is what stops the loop closing early, not a step to be completed.
 
 ## Output

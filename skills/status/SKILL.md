@@ -1,6 +1,6 @@
 ---
 name: status
-description: Project status reconnaissance. Reports what exists, what is in flight and what needs attention from queries over the planning rows and read-only git history, with an optional spec coverage roll-up and an optional shareable full-picture page. Writes nothing. Triggers on "/dpm:status".
+description: Project status reconnaissance. Reports what exists, what is in flight and what needs attention from queries over the planning rows and read-only git history, with an optional spec coverage roll-up and an optional shareable full-picture page. Writes nothing. Invoke with the skill tool, id "dpm-status".
 ---
 
 # Project Status
@@ -20,7 +20,7 @@ This skill uses **Gate Presentation**, **Conversational Output**, **Written Deli
 
 ## Input
 
-`$ARGUMENTS` is optional focus.
+What the request names is optional focus.
 
 1. A **document id** focuses the report on that document and what hangs off it.
 2. A **spec id** does the same *and* adds the coverage roll-up — Phase 3b. That is the only trigger
@@ -33,7 +33,7 @@ This skill uses **Gate Presentation**, **Conversational Output**, **Written Deli
 page and the project-wide picture answer different questions; offering one is not offering the
 other, and confirming one is never confirmation for the other.
 
-No arguments produces the whole-project report, and offers neither page.
+A request naming no focus produces the whole-project report, and offers neither page.
 
 ## Startup
 
@@ -56,15 +56,15 @@ on request.
 ### Phase 1: The planning rows
 
 Every kind has a list tool, and the inventory is those lists. Call each with a `limit` above what
-the project plausibly holds — `mcp__plugin_dpm_dpm__list_spec`, `mcp__plugin_dpm_dpm__list_epic`,
-`mcp__plugin_dpm_dpm__list_problem_brief`, `mcp__plugin_dpm_dpm__list_product_brief`, `mcp__plugin_dpm_dpm__list_adr`,
-`mcp__plugin_dpm_dpm__list_retro`, `mcp__plugin_dpm_dpm__list_discussion`, `mcp__plugin_dpm_dpm__list_review`,
-`mcp__plugin_dpm_dpm__list_audit`, `mcp__plugin_dpm_dpm__list_quick`, `mcp__plugin_dpm_dpm__list_runbook`,
-`mcp__plugin_dpm_dpm__list_library` — and report counts rather than titles. **A list that comes back with
+the project plausibly holds — `dpm_list_spec`, `dpm_list_epic`,
+`dpm_list_problem_brief`, `dpm_list_product_brief`, `dpm_list_adr`,
+`dpm_list_retro`, `dpm_list_discussion`, `dpm_list_review`,
+`dpm_list_audit`, `dpm_list_quick`, `dpm_list_runbook`,
+`dpm_list_library` — and report counts rather than titles. **A list that comes back with
 `more` set is one whose count is wrong**, and a count reported short reads as a smaller project
 rather than as a truncated read; raise the `limit` and call again rather than reporting the page.
 
-Then the roll-up, per epic: `mcp__plugin_dpm_dpm__list_story` on it, and `mcp__plugin_dpm_dpm__list_task` per story where
+Then the roll-up, per epic: `dpm_list_story` on it, and `dpm_list_task` per story where
 task-level detail is wanted. An epic's completion is its stories' `status`, counted.
 
 **Retired stories leave the count rather than joining either side of it.** An epic with three
@@ -86,11 +86,11 @@ The waiver comes back on the row alongside its `retro_waived_reason`, so the rep
 was waived rather than only that it was.
 
 **Whether a completed epic has a retro is a scoped list, not a comparison.**
-`mcp__plugin_dpm_dpm__list_retro` scoped by `parent_id` to that epic answers it directly. Do not list every
+`dpm_list_retro` scoped by `parent_id` to that epic answers it directly. Do not list every
 retro in the project and match parents in the run — that is a join in the caller, and it goes wrong
 quietly the moment there are more retros than one page.
 
-**Active sessions replace the progress-file scan.** `mcp__plugin_dpm_dpm__list_session` reports which skills
+**Active sessions replace the progress-file scan.** `dpm_list_session` reports which skills
 have runs in flight, with `phase` saying where each reached. `updated_before` narrows to the stale
 ones — a session that has not moved in a long time is the thing worth mentioning, and an age is a
 bound rather than a status.
@@ -120,7 +120,7 @@ named if there is one), and what needs attention. Lead with active work if there
 If no rows exist at all, say so: the project has not started the dpm pipeline yet.
 
 **Recommended next steps** — one to three, in priority order, each with a runnable command. **The
-order of the table is the priority order.** `/dpm:do`, `/dpm:epics` and `/dpm:retro` appear in that
+order of the table is the priority order.** `dpm-do`, `dpm-epics` and `dpm-retro` appear in that
 relative order because it is the candidate ordering in `dpm/shared/status-model.md`: work that can
 start now, then work that needs planning, then the follow-up on work already done.
 
@@ -130,22 +130,22 @@ it names accepts what it was given — see **Naming a Document** in the shared c
 
 | What the rows say | What to recommend |
 |---|---|
-| Nothing at all | `/dpm:discover` or `/dpm:brief` |
-| An epic the `ready` filter returns | `/dpm:do` and the epic's reference |
+| Nothing at all | `dpm-discover` or `dpm-brief` |
+| An epic the `ready` filter returns | `dpm-do` and the epic's reference |
 | An epic held by an incomplete blocker | Nothing to run — name the blocker from the edge that holds it; the action is to unblock |
-| Specs but no epics | `/dpm:epics` and the spec's reference |
-| Briefs but no specs | `/dpm:spec` and the brief's reference |
+| Specs but no epics | `dpm-epics` and the spec's reference |
+| Briefs but no specs | `dpm-spec` and the brief's reference |
 | A retired epic, or one whose only incomplete stories are retired | Nothing — it will not be worked, and no retro is owed on it |
-| A complete epic, no retro, no `retro_waived_at` | `/dpm:retro` and the epic's reference |
+| A complete epic, no retro, no `retro_waived_at` | `dpm-retro` and the epic's reference |
 | A complete epic carrying `retro_waived_at` | Nothing — it is settled |
 | A session in flight | Resume it — name the skill and its `phase` |
 | Uncommitted changes | Commit before starting new work |
 
-**Readiness is asked for, not inferred from the stories.** `mcp__plugin_dpm_dpm__list_epic` with
+**Readiness is asked for, not inferred from the stories.** `dpm_list_epic` with
 `ready` applies dpm's own rule — the epic is `pending`, unarchived, and nothing incomplete blocks
 it over an edge kind whose `gates_work` is set. An epic with incomplete stories is *not* the same
-thing: one waiting on a blocker cannot be picked up, and recommending `/dpm:do` on it sends someone
-at work they cannot start. When an epic is held, `mcp__plugin_dpm_dpm__list_dependency` names what
+thing: one waiting on a blocker cannot be picked up, and recommending `dpm-do` on it sends someone
+at work they cannot start. When an epic is held, `dpm_list_dependency` names what
 holds it, because the edge is a row.
 
 **Two of the four statuses are neither outstanding nor delivered, and the report says so in its own
@@ -169,8 +169,8 @@ make rather than a vocabulary the project lacks.
 Only when the focus resolves to a spec. It answers what the project-wide view cannot: **is this spec
 delivered?**
 
-`mcp__plugin_dpm_dpm__list_requirement` on the spec with `include_body` and a `limit` above its requirement
-count, then `mcp__plugin_dpm_dpm__list_coverage` scoped by `requirement_id` for each. Three states, from the
+`dpm_list_requirement` on the spec with `include_body` and a `limit` above its requirement
+count, then `dpm_list_coverage` scoped by `requirement_id` for each. Three states, from the
 rows:
 
 - **Untraced** — no coverage rows at all. The breakdown missed it. This is a gap in the plan rather
@@ -193,8 +193,8 @@ runs. The untraced count is the part that discriminates, because the requirement
 person and the coverage rows are made later against them.
 
 **And separate the marks a test produced from the ones nothing could.** The spec's own tag for a
-requirement is `mcp__plugin_dpm_dpm__list_criterion_approach`; the tag on the criterion the breakdown actually
-wrote is `mcp__plugin_dpm_dpm__list_story_criterion_approach`, and the two need not agree. `target` and
+requirement is `dpm_list_criterion_approach`; the tag on the criterion the breakdown actually
+wrote is `dpm_list_story_criterion_approach`, and the two need not agree. `target` and
 `manual` are the approaches whose marks rest on something other than a test having run, so where any
 verified row carries either, say how many and which — in the same breath as the counts. Do not
 reweight anything: a mark is a mark, and this is a statement about what the marks rest on. A spec

@@ -67,8 +67,24 @@ const EXECUTABLES = [
 // --- The vendored tree ---------------------------------------------------------------------------
 
 test('the repository holds the v0.7.0 tree it was forked from [integration]', () => {
-  assert.equal(moduleFilesUnder(join(ROOT, 'src')).length, 100,
-    'src/ holds the hundred modules the fork inherited');
+  // **A floor with a named sample, for the reason the `tests/` assertion three paragraphs down
+  // already gives.** This was an equality at a hundred, which was right while `src/` was purely
+  // inherited and stopped being right the moment the port added to it: epic 01-02 puts the plugin
+  // entry under `src/plugin/`, and an equality would have read that as the inherited tree being
+  // wrong. What the criterion says is that the fork brought the whole v0.7.0 tree across, not that
+  // nothing has been built on it since — so the floor carries the claim and the sample says which
+  // tree cleared it. The four named are the load-bearing ones nothing in the port replaces.
+  const modules = moduleFilesUnder(join(ROOT, 'src'));
+
+  assert.ok(modules.length >= 100,
+    `src/ holds ${modules.length} modules, below the hundred the fork inherited`);
+
+  const relative = new Set(modules.map((path) => path.slice(path.indexOf('/src/') + 1)));
+  for (const module of [
+    'src/start.ts', 'src/dump/index.ts', 'src/guard/index.ts', 'src/projection/index.ts',
+  ]) {
+    assert.ok(relative.has(module), `${module} came across`);
+  }
 
   assert.deepEqual(readdirSync(join(ROOT, 'bin')).sort(), EXECUTABLES,
     'bin/ holds the five executables, by name and not merely by count');

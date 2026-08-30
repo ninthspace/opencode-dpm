@@ -1,6 +1,6 @@
 ---
 name: present
-description: Audience-aware transformation of planning rows into communications. Takes one or more documents as sources, gates audience then format then draft, and produces derived content — published as a shareable page whose link back to its sources is a row. Regenerable, because the sources are an edge rather than a line of prose. Triggers on "/dpm:present".
+description: Audience-aware transformation of planning rows into communications. Takes one or more documents as sources, gates audience then format then draft, and produces derived content — published as a shareable page whose link back to its sources is a row. Regenerable, because the sources are an edge rather than a line of prose. Invoke with the skill tool, id "dpm-present".
 ---
 
 # Audience-Aware Transformation
@@ -16,7 +16,7 @@ This skill uses **Conversational Output**, **Gate Presentation**, **Written Deli
 
 ## Input
 
-`$ARGUMENTS` is either a description of what to communicate, which guides source selection below, or
+The request is either a description of what to communicate, which guides source selection below, or
 nothing, in which case the selection starts from the whole corpus.
 
 ## Startup
@@ -50,17 +50,17 @@ skill offers is one to leave.
 ### 1. Select the sources
 
 The corpus is queried, one call per kind the selection could plausibly draw on:
-`mcp__plugin_dpm_dpm__list_spec`, `mcp__plugin_dpm_dpm__list_epic`, `mcp__plugin_dpm_dpm__list_problem_brief`,
-`mcp__plugin_dpm_dpm__list_product_brief`, `mcp__plugin_dpm_dpm__list_adr`, `mcp__plugin_dpm_dpm__list_retro`,
-`mcp__plugin_dpm_dpm__list_review`, `mcp__plugin_dpm_dpm__list_quick` and `mcp__plugin_dpm_dpm__list_audit`. **Pass a `limit` above
+`dpm_list_spec`, `dpm_list_epic`, `dpm_list_problem_brief`,
+`dpm_list_product_brief`, `dpm_list_adr`, `dpm_list_retro`,
+`dpm_list_review`, `dpm_list_quick` and `dpm_list_audit`. **Pass a `limit` above
 what the project plausibly holds** — a source the user would have chosen but never saw offered is
 indistinguishable, from inside the run, from one they declined.
 
 Present them grouped by kind and let the user multi-select. A communication usually draws on more
 than one: a spec for what was decided, its epics for what was built, a retro for what it cost.
 
-Read the chosen ones with `mcp__plugin_dpm_dpm__list_document_section` and
-`mcp__plugin_dpm_dpm__read_document_section`, passing `include_body`. Without it a section returns a heading
+Read the chosen ones with `dpm_list_document_section` and
+`dpm_read_document_section`, passing `include_body`. Without it a section returns a heading
 and no text, and a draft derived from headings alone is a table of contents with confident prose
 around it.
 
@@ -115,10 +115,10 @@ only the decision.
 Follow the shared **Artifact Publishing** procedure: it is separately confirmed, and never assumed
 from the draft having been approved.
 
-Before offering, ask whether one already exists. Call `mcp__plugin_dpm_dpm__list_artifact_document` scoped by
-`document_id` for each source and take the artifacts common to all of them; `mcp__plugin_dpm_dpm__read_artifact`
+Before offering, ask whether one already exists. Call `dpm_list_artifact_document` scoped by
+`document_id` for each source and take the artifacts common to all of them; `dpm_read_artifact`
 gives each one its `title` and `url`. Where one comes back, **offer update-in-place** — republish to
-its recorded URL and `mcp__plugin_dpm_dpm__update_artifact` for the `title`, the `description` and
+its recorded URL and `dpm_update_artifact` for the `title`, the `description` and
 `published_at`. Minting a second artifact from the same sources leaves every link already shared
 pointing at a copy that will not be updated again, and the person holding that link has no way to
 find out.
@@ -128,8 +128,8 @@ earlier communication alongside different company is a different communication, 
 overwrite it is the same mistake as minting a duplicate, made in the other direction and over
 someone else's work.
 
-Where none comes back, `mcp__plugin_dpm_dpm__create_artifact` with the `url`, `title` and `description`, then
-one `mcp__plugin_dpm_dpm__create_artifact_document` per source.
+Where none comes back, `dpm_create_artifact` with the `url`, `title` and `description`, then
+one `dpm_create_artifact_document` per source.
 
 **Write the join, always.** It is what makes this run findable by the next one, and it is why a
 source that has been deleted fails here rather than surviving as a link a reader follows into
@@ -137,8 +137,8 @@ nothing. The index of what has been published and the backlinks inside each sour
 of these rows, so the two cannot disagree.
 
 **Where publishing is declined or refused, the draft is kept as a `communication`.** Call
-`mcp__plugin_dpm_dpm__create_communication` with the title the draft was gated under, then one
-`mcp__plugin_dpm_dpm__create_document_section` per section of it, each with its `heading`, its `body` and its
+`dpm_create_communication` with the title the draft was gated under, then one
+`dpm_create_document_section` per section of it, each with its `heading`, its `body` and its
 `position`. Say that it was stored and not published — a run that ends quietly reads as one that
 did neither. This is the case to expect when a communication presents itself as issued by an
 organisation the user does not represent: keep it local, do not offer publishing, and do not look
@@ -179,6 +179,6 @@ artifact.
 
 ## Next Action
 
-After publishing, offer — do not run — `/dpm:present` again for a second audience over the same
-sources, which is the cheap case this design exists for, or `/dpm:artifact` to review what the
+After publishing, offer — do not run — `dpm-present` again for a second audience over the same
+sources, which is the cheap case this design exists for, or `dpm-artifact` to review what the
 project has published and to whom it points.

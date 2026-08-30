@@ -54,9 +54,9 @@ test('no row of the status table interpolates a document id into a command', () 
 
   // The rows that recommend a command still recommend one. A table emptied of its commands would
   // pass the check above and be a worse table than the one it replaced.
-  const commands = rows.filter((row) => /`\/dpm:/.test(row));
+  const commands = rows.filter((row) => /`dpm-/.test(row));
 
-  assert.ok(commands.length >= 4, `${commands.length} rows still carry a runnable command`);
+  assert.ok(commands.length >= 4, `${commands.length} rows still name a skill to hand off to`);
   assert.ok(commands.filter((row) => /reference/.test(row)).length >= 4,
     'and the ones that take a target say to pass its reference');
 });
@@ -99,6 +99,6 @@ test('the pattern finds all four occurrences in the status table as it stood bef
 
   // And it is not a check for a literal ULID, which this corpus contains none of — a reading built
   // that way matches nothing here and passes over every leak in it.
-  assert.equal(occurrences(`Run /dpm:do ${['01M0Z8', 'C1K74RSJ42VJRFS7BRPJ'].join('')}.`).length, 0,
+  assert.equal(occurrences(`Run dpm-do on ${['01M0Z8', 'C1K74RSJ42VJRFS7BRPJ'].join('')}.`).length, 0,
     'the reading is over the placeholder, which is what a skill file actually carries');
 });

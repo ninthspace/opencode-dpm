@@ -28,7 +28,7 @@ function recommended(source) {
   const found = new Map();
 
   for (const row of rows) {
-    const skill = row.match(/`\/dpm:([a-z]+)`/);
+    const skill = row.match(/`dpm-([a-z]+)`/);
 
     if (skill) found.set(skill[1], row);
   }
@@ -53,7 +53,7 @@ test('a reference the tools printed survives the recommendation and comes back a
   //    recommending a target breaks this rather than passing on a stale expectation.
   const row = recommended(skillSource('status')).get('do');
 
-  assert.ok(row, 'the status table still recommends /dpm:do for a ready epic');
+  assert.ok(row, 'the status table still recommends dpm-do for a ready epic');
   assert.match(row, /reference/,
     'and tells the reader to pass the epic\'s reference rather than anything else');
 
@@ -61,7 +61,7 @@ test('a reference the tools printed survives the recommendation and comes back a
   //    it names the resolver, which is the step between the sentence and the row.
   const input = prose(skillSource('do'), 'Input');
 
-  assert.match(input, /human reference/i, 'dpm:do says it takes a reference');
+  assert.match(input, /human reference/i, 'dpm-do says it takes a reference');
   assert.ok(toolNames(section(skillSource('do'), 'Input')).includes('resolve_reference'),
     'and names the tool that turns one into a document');
 

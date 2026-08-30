@@ -26,7 +26,7 @@ import { openPlanningDatabase, handlers } from './support/planning-database.js';
 import { spineTools } from '../src/tools/index.ts';
 import {
   skillSource, toolNames, reachable, prose, section, recorder, recoveries, bindings,
-  seedStartup, driveStartup,
+  seedStartup, driveStartup, CALLABLE,
 } from './support/skills.js';
 
 const SKILL = 'party';
@@ -215,7 +215,7 @@ test('the roster comes from the `agent` table and the artifact through read tool
   // skill cites names `include_body` for its own reads, so a file-wide grep is satisfied whatever
   // the roster step says.
   assert.match(prose(source, 'Startup'),
-    /`mcp__plugin_dpm_dpm__list_agent` with `include_body` and a `limit`/);
+    new RegExp(`\`${CALLABLE}list_agent\` with \`include_body\` and a \`limit\``));
   assert.match(prose(source, 'Startup'),
     /\*\*One call, and it must carry the body\*\*/);
   assert.match(prose(source, 'Startup'),
@@ -230,7 +230,8 @@ test('the roster comes from the `agent` table and the artifact through read tool
   // And it says how a whole document is put in front of the room, which is the step a run would
   // otherwise satisfy by opening the rendered file.
   assert.match(prose(source, 'Input'),
-    /take the\s*`document_id` the read gave back and call `mcp__plugin_dpm_dpm__list_document_section` with it/);
+    new RegExp('take the\\s*`document_id` the read gave back and call '
+      + `\`${CALLABLE}list_document_section\` with it`));
   assert.match(prose(source, 'Input'),
     /\*\*The artifact under discussion is read\s*through those tools and through nothing else\*\*/);
 

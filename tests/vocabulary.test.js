@@ -182,7 +182,7 @@ test('the readings four skill suites rest on can each fail, and say what failed'
   );
 
   // A section that does everything right, so the reading is shown returning nothing for a reason.
-  const good = 'Read the terms from `mcp__plugin_dpm_dpm__list_taxonomy` in the `disposition` '
+  const good = 'Read the terms from `dpm_list_taxonomy` in the `disposition` '
     + 'domain and render them in `position` order.';
 
   assert.deepEqual(dispositionProblems(good, 'the good section'), []);
@@ -194,7 +194,7 @@ test('the readings four skill suites rest on can each fail, and say what failed'
     ['S reports dispositions without naming the domain they come from'],
   );
   assert.deepEqual(
-    dispositionProblems(good.replace('mcp__plugin_dpm_dpm__list_taxonomy', 'the list above'), 'S'),
+    dispositionProblems(good.replace('dpm_list_taxonomy', 'the list above'), 'S'),
     ['S names the domain but never reads it, so the terms come from elsewhere'],
   );
   assert.deepEqual(

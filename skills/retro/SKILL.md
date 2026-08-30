@@ -1,6 +1,6 @@
 ---
 name: retro
-description: Lightweight retrospective over a finished epic or quick record, and the three passes that keep the corpus honest — promoting a durable lesson into the library, retiring a spent one, and waiving a clean epic that has nothing to reflect on. Observations are rows that keep their origin. Triggers on "/dpm:retro".
+description: Lightweight retrospective over a finished epic or quick record, and the three passes that keep the corpus honest — promoting a durable lesson into the library, retiring a spent one, and waiving a clean epic that has nothing to reflect on. Observations are rows that keep their origin. Invoke with the skill tool, id "dpm-retro".
 ---
 
 # Lightweight Retrospective
@@ -17,7 +17,7 @@ This skill uses **Gate Presentation**, **Conversational Output**, **Written Deli
 
 ## Input
 
-Four modes, and they never run together. `$ARGUMENTS` selects one:
+Four modes, and they never run together. The request selects one:
 
 - **`learn`** — promote a durable lesson into the library and retire it at the source.
 - **`retire`** — retire a spent lesson, which has no library entry to go to.
@@ -31,11 +31,11 @@ was never anything to retire; synthesis creates the grouping the other three act
 
 For synthesis, resolve the subject:
 
-1. If `$ARGUMENTS` names a document — a ULID, or a human reference as another skill printed it —
-   `mcp__plugin_dpm_dpm__read_epic` or `mcp__plugin_dpm_dpm__read_quick` on it. A reference goes
-   through `mcp__plugin_dpm_dpm__resolve_reference` first, which returns the row it names or
+1. If the request names a document — a ULID, or a human reference as another skill printed it —
+   `dpm_read_epic` or `dpm_read_quick` on it. A reference goes
+   through `dpm_resolve_reference` first, which returns the row it names or
    refuses; a ULID is already the id and needs no resolving.
-2. Otherwise `mcp__plugin_dpm_dpm__list_epic` and `mcp__plugin_dpm_dpm__list_quick`, and offer them with `AskUserQuestion`,
+2. Otherwise `dpm_list_epic` and `dpm_list_quick`, and offer them with `AskUserQuestion`,
    showing each title and status. **Ask which one; never take the most recent.**
 3. If there are none, say so and stop.
 
@@ -65,8 +65,8 @@ Synthesis. The three other modes are below.
 
 ### Step 1: Gather the observations
 
-`mcp__plugin_dpm_dpm__list_story` on the epic, then `mcp__plugin_dpm_dpm__list_observation` with each `story_id` and
-`include_body`. On a quick record, `mcp__plugin_dpm_dpm__list_observation` scoped to its `quick_id`, again with
+`dpm_list_story` on the epic, then `dpm_list_observation` with each `story_id` and
+`include_body`. On a quick record, `dpm_list_observation` scoped to its `quick_id`, again with
 `include_body`. Step 2 writes what a group of observations says that no one of them says; over rows
 whose `text` was withheld it is a synthesis of their categories.
 
@@ -79,8 +79,8 @@ The list omits them unless a caller passes `include_retired`, which synthesis ne
 is no marker to look for in the text and no rule here to remember. Pass it only when the question is
 the audit trail rather than the work.
 
-Then each one's categories: `mcp__plugin_dpm_dpm__list_observation_category` per observation, resolved against
-`mcp__plugin_dpm_dpm__list_taxonomy` in the `observation` domain, called with a `limit` above the seeded count
+Then each one's categories: `dpm_list_observation_category` per observation, resolved against
+`dpm_list_taxonomy` in the `observation` domain, called with a `limit` above the seeded count
 so a project that added terms of its own does not lose them to the default page — a category that
 falls off the end reads here as an observation with no category at all. An observation may carry
 more than one, and
@@ -100,16 +100,16 @@ grouping is worth doing rather than listing.
 observation and nothing to draw from it, leave `synthesis` unset rather than restating the text.
 
 Where there are no observations at all, the retro is still worth writing: the story outcomes are the
-content, read from `mcp__plugin_dpm_dpm__list_story` and its `status`. Say what completed, what did not, and
+content, read from `dpm_list_story` and its `status`. Say what completed, what did not, and
 what that implies.
 
 ### Step 3: Write the retro
 
 Gate first: "Record this retro?" with `Approve` / `Request changes` / `Stop`. On approval:
 
-1. `mcp__plugin_dpm_dpm__create_retro` with the epic or quick record as `parent_id`, a short kebab-case `slug`
+1. `dpm_create_retro` with the epic or quick record as `parent_id`, a short kebab-case `slug`
    and a `title`. That call assigns the number, which nothing here works out.
-2. `mcp__plugin_dpm_dpm__update_observation` per observation, setting `retro_id` to the new retro, `position`
+2. `dpm_update_observation` per observation, setting `retro_id` to the new retro, `position`
    for the order it reads in, and `synthesis` where Step 2 wrote one.
 
 **Setting `retro_id` is the gathering, and nothing else changes.** `story_id` and `quick_id` are
@@ -125,7 +125,7 @@ the existing ones at the retro would leave every count the same and every origin
 
 Where an observation bears on a library document already read at startup — a codebase discovery
 against an architecture entry, a criteria gap against a standards one — offer to amend it.
-`mcp__plugin_dpm_dpm__create_document_section` on that library document, with the observation as the body and a
+`dpm_create_document_section` on that library document, with the observation as the body and a
 heading naming the date. Present every proposed amendment before writing any, and write only what
 was approved.
 
@@ -133,9 +133,9 @@ Skip in silence where nothing matches. An amendment nobody needed is a document 
 
 ### Step 5: Handoff
 
-- `/dpm:pivot` where a criteria gap or scope surprise means the spec or epic missed something
-- `/dpm:retro learn` where an observation has proved durable across runs
-- `/dpm:spec` or `/dpm:epics` where the retro is the starting context for the next cycle
+- `dpm-pivot` where a criteria gap or scope surprise means the spec or epic missed something
+- `dpm-retro` with `learn` where an observation has proved durable across runs
+- `dpm-spec` or `dpm-epics` where the retro is the starting context for the next cycle
 
 ## Lesson promotion (`learn`)
 
@@ -144,8 +144,8 @@ rather than in the retro layer where it is re-judged every time.
 
 ### Step L1: Select
 
-`mcp__plugin_dpm_dpm__list_observation` with no scope and `include_body` for the whole corpus, then
-`mcp__plugin_dpm_dpm__list_observation_category` on each. Where `$ARGUMENTS` carried text after `learn`, narrow
+`dpm_list_observation` with no scope and `include_body` for the whole corpus, then
+`dpm_list_observation_category` on each. Where the request carried text after `learn`, narrow
 to it. The candidates are presented for a user to choose a lesson from, and a candidate is its text.
 
 **The candidates are what the list returns, and a promoted lesson is not among them.** Promotion
@@ -165,13 +165,13 @@ is a lesson that has left the retro layer and cannot be found by looking there.
 
 On confirmation, per lesson, in this order:
 
-1. `mcp__plugin_dpm_dpm__create_library` with `slug`, `title` and `doc_type` — the kind of document it is, as
+1. `dpm_create_library` with `slug`, `title` and `doc_type` — the kind of document it is, as
    **Library Check** groups them.
-2. `mcp__plugin_dpm_dpm__create_library_scope` per scope, one row each. A lesson about testing scopes to `do`;
+2. `dpm_create_library_scope` per scope, one row each. A lesson about testing scopes to `do`;
    one about terminology may scope to `all`.
-3. `mcp__plugin_dpm_dpm__create_document_section` for the lesson, written as standalone guidance rather than as
+3. `dpm_create_document_section` for the lesson, written as standalone guidance rather than as
    a quotation of the observation.
-4. `mcp__plugin_dpm_dpm__update_observation` setting `library_doc_id` to the new document, with `retired_at` and
+4. `dpm_update_observation` setting `library_doc_id` to the new document, with `retired_at` and
    `retired_reason` **in the same call**.
 
 **The retirement travels with the link, which is what makes the pair atomic.** A lesson retired but
@@ -188,7 +188,7 @@ copy is one that will disagree.
 Same selection as L1, and the same reason it needs no marker scan.
 
 Ask for a one-line reason each lesson is spent — what changed so that it no longer holds — and
-preview the retirement before writing it. Then `mcp__plugin_dpm_dpm__update_observation` with `retired_at` and
+preview the retirement before writing it. Then `dpm_update_observation` with `retired_at` and
 `retired_reason`, and nothing else.
 
 **Retirement means the lesson is no longer true anywhere.** It is not the answer to "this does not
@@ -207,9 +207,9 @@ to record that so it stops being asked.
 
 ### Step T1: Classify
 
-`mcp__plugin_dpm_dpm__list_epic`, then for each whose `status` is `complete`: `mcp__plugin_dpm_dpm__list_retro` scoped by
-`parent_id` to that epic for the retros already written, and `mcp__plugin_dpm_dpm__list_story` with
-`mcp__plugin_dpm_dpm__list_observation` and `include_body` per story for what it holds — the waivable outcome is
+`dpm_list_epic`, then for each whose `status` is `complete`: `dpm_list_retro` scoped by
+`parent_id` to that epic for the retros already written, and `dpm_list_story` with
+`dpm_list_observation` and `include_body` per story for what it holds — the waivable outcome is
 *no observations worth synthesising*, which is a judgement about what they say. Archived epics do not
 come back and are not classified — an epic that was swept is not one waiting on a decision.
 
@@ -218,13 +218,13 @@ Three outcomes, and only one of them is actionable:
 - **Settled** — it already has a retro, or already carries `retro_waived_at`. Skip in silence.
 - **Waivable** — no retro, and no observations worth synthesising.
 - **Has observations** — no retro, but real ones are sitting there. **Report these; never waive
-  them.** Recommend `/dpm:retro` on the epic instead.
+  them.** Recommend `dpm-retro` on the epic instead.
 
 ### Step T2: Confirm and waive
 
 Present the waivable epics with the one-line reason each reads clean, and support waiving some of
 them rather than all. **Then gate with `AskUserQuestion` — which epics to waive — and write only
-what it returns.** Then `mcp__plugin_dpm_dpm__update_epic` with `retro_waived_at` and
+what it returns.** Then `dpm_update_epic` with `retro_waived_at` and
 `retro_waived_reason` together.
 
 **Both or neither — the database refuses one without the other.** A waiver with a date and no reason
@@ -251,8 +251,8 @@ rather than as one bullet in one file. That judgement no single retro carries �
 only in the sequence. If you cannot write the one-line justification for what the visual carries
 that the prose cannot, it has not earned its place.
 
-Record it only once published, with `mcp__plugin_dpm_dpm__create_artifact` carrying its address, title and
-publication time, then `mcp__plugin_dpm_dpm__create_artifact_document` binding it to this retro.
+Record it only once published, with `dpm_create_artifact` carrying its address, title and
+publication time, then `dpm_create_artifact_document` binding it to this retro.
 
 ## Guidelines
 

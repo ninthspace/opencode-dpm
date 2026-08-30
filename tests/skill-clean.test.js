@@ -35,7 +35,7 @@ import { openPlanningDatabase, handlers } from './support/planning-database.js';
 import { spineTools } from '../src/tools/index.ts';
 import {
   skillSource, toolNames, prose, instructions, recorder, recoveries, sweep, bindings, reachable,
-  SQL, CONSTRUCTIONS, section,
+  SQL, CONSTRUCTIONS, section, CALLABLE,
 } from './support/skills.js';
 import { dispositionProblems } from './support/vocabulary.js';
 
@@ -224,7 +224,8 @@ test('a clean run takes the stale rows by age and leaves the rest standing', (t)
   // The ordering rule against the step, its rationale against the section — the probe above proves
   // the database enforces it, and these prove the file is the reason a run gets it right.
   const removal = instructions(source, 'Step 4: Delete what was confirmed');
-  assert.match(removal, /`mcp__plugin_dpm_dpm__delete_session` once per confirmed row, oldest first/);
+  assert.match(removal,
+    new RegExp(`\`${CALLABLE}delete_session\` once per confirmed row, oldest first`));
   assert.match(removal, /A refusal on one row is not a reason to stop/);
   assert.match(prose(source, 'Step 4: Delete what was confirmed'),
     /deleting the live end of a chain while its predecessor\s+survives is refused/);

@@ -1,6 +1,6 @@
 ---
 name: archive
-description: Sweep settled planning artefacts out of the working set. Finds what is finished by reading columns, walks each chain by parentage, and stamps `archived_at` on what the user selects. Triggers on "/dpm:archive".
+description: Sweep settled planning artefacts out of the working set. Finds what is finished by reading columns, walks each chain by parentage, and stamps `archived_at` on what the user selects. Invoke with the skill tool, id "dpm-archive".
 ---
 
 # Archive Planning Documents
@@ -26,7 +26,7 @@ This skill uses **Session Startup**, **Library Check**, **Retro Awareness**, **G
 
 ## Input
 
-`$ARGUMENTS` is optional.
+What the request names is optional.
 
 1. A **document id** narrows the survey to the chain that document sits in.
 2. A **description** ("the auth work") filters the survey by title and slug.
@@ -51,26 +51,26 @@ chain's reach is decided.
 ### Phase 1: Survey
 
 Call the lists for the kinds a project archives, each with a `limit` above what it plausibly holds:
-`mcp__plugin_dpm_dpm__list_problem_brief`, `mcp__plugin_dpm_dpm__list_product_brief`, `mcp__plugin_dpm_dpm__list_spec`,
-`mcp__plugin_dpm_dpm__list_epic`, `mcp__plugin_dpm_dpm__list_adr`, `mcp__plugin_dpm_dpm__list_retro`, `mcp__plugin_dpm_dpm__list_quick`,
-`mcp__plugin_dpm_dpm__list_discussion`.
+`dpm_list_problem_brief`, `dpm_list_product_brief`, `dpm_list_spec`,
+`dpm_list_epic`, `dpm_list_adr`, `dpm_list_retro`, `dpm_list_quick`,
+`dpm_list_discussion`.
 
 **Leave `include_archived` alone.** It defaults to false, so what comes back is the working set and
 already-archived documents are excluded by a `WHERE` clause rather than by anything this run
 remembers. Pass it only to answer a question about the record — "what was archived last month" — and
 never while building the candidate list, or the run offers to archive what it already did.
 
-**Library documents are not surveyed.** They have their own lifecycle in `/dpm:library`, and a
+**Library documents are not surveyed.** They have their own lifecycle in `dpm-library`, and a
 library document is a reference rather than a record of work.
 
 ### Phase 2: Chains
 
 A chain is a document and what hangs off it, read from parentage.
 
-`mcp__plugin_dpm_dpm__read_document_kind` on a surveyed document's kind returns `children` — the kinds that may
+`dpm_read_document_kind` on a surveyed document's kind returns `children` — the kinds that may
 hang off it. For each, call that kind's list scoped by `parent_id` to that document —
-`mcp__plugin_dpm_dpm__list_epic`, `mcp__plugin_dpm_dpm__list_coverage_matrix`, `mcp__plugin_dpm_dpm__list_adr`,
-`mcp__plugin_dpm_dpm__list_review`, `mcp__plugin_dpm_dpm__list_product_brief`, and `mcp__plugin_dpm_dpm__list_retro` again in its
+`dpm_list_epic`, `dpm_list_coverage_matrix`, `dpm_list_adr`,
+`dpm_list_review`, `dpm_list_product_brief`, and `dpm_list_retro` again in its
 scoped form — and repeat on what comes back. It terminates on its own: a kind nothing hangs off
 returns `children` empty.
 
@@ -94,7 +94,7 @@ the working set on the strength of one finished epic.
 Read the columns; do not infer. Every signal below is a value the project already holds, and a
 document that fires none is still offered — the user may have their own reason.
 
-1. **A finished epic.** `status` is `complete`, and `mcp__plugin_dpm_dpm__list_story` scoped to it returns
+1. **A finished epic.** `status` is `complete`, and `dpm_list_story` scoped to it returns
    stories that are all `complete`.
 2. **A delivered spec.** Every epic under it is *resolved* — `complete`, `superseded` or `withdrawn`.
    All three end the work; only the first delivers it.
@@ -121,8 +121,8 @@ the survey as a document nothing flagged.
 3. **Offer a retired epic under a spec with live siblings separately.** It is **its own unit**, not
    part of any chain, and it takes its coverage matrix and nothing else.
 4. **On approval, stamp every document in the unit**: call the kind's update tool with `archived_at`
-   and **nothing else** — `mcp__plugin_dpm_dpm__update_epic`, `mcp__plugin_dpm_dpm__update_spec`,
-   `mcp__plugin_dpm_dpm__update_coverage_matrix`, `mcp__plugin_dpm_dpm__update_retro`, and so on for whatever the
+   and **nothing else** — `dpm_update_epic`, `dpm_update_spec`,
+   `dpm_update_coverage_matrix`, `dpm_update_retro`, and so on for whatever the
    traversal reached. **Never pass `status` on an archive call**, and never pass `status_note`.
 
 A retired epic's spec is still owed the rest of its epics, so sweeping it out because one branch of
@@ -134,7 +134,7 @@ with no error and nothing to compare against afterwards.
 
 Each call lands as it is made, so a run stopped midway leaves what it already archived archived.
 
-**Report by disposition**: read the terms from `mcp__plugin_dpm_dpm__list_taxonomy` in the
+**Report by disposition**: read the terms from `dpm_list_taxonomy` in the
 `disposition` domain and render them in `position` order. A document this run stamped is archived
 now; one skipped was seen and deliberately left, with the reason it was skipped; and a document the
 run never reached before it stopped is waiting on the reader, naming what is left to sweep. That last

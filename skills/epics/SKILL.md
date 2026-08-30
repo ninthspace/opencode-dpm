@@ -1,6 +1,6 @@
 ---
 name: epics
-description: Break a specification into epics, stories and tasks through facilitated conversation. Reads a spec's requirements and tagged criteria and records the breakdown — epics, their stories, each story's tasks and acceptance criteria, and the coverage rows binding each criterion to the requirement text it delivers — as typed rows. Triggers on "/dpm:epics".
+description: Break a specification into epics, stories and tasks through facilitated conversation. Reads a spec's requirements and tagged criteria and records the breakdown — epics, their stories, each story's tasks and acceptance criteria, and the coverage rows binding each criterion to the requirement text it delivers — as typed rows. Invoke with the skill tool, id "dpm-epics".
 ---
 
 # Work Breakdown into Epics
@@ -19,11 +19,11 @@ This skill uses **Gate Presentation**, **Conversational Output**, **Written Deli
 
 Resolve the source in this order.
 
-1. If `$ARGUMENTS` names a document — a ULID, or a human reference as another skill printed it —
-   read that document. A reference goes through `mcp__plugin_dpm_dpm__resolve_reference` first,
+1. If the request names a document — a ULID, or a human reference as another skill printed it —
+   read that document. A reference goes through `dpm_resolve_reference` first,
    which returns the row it names or refuses; a ULID is already the id and needs no resolving.
-2. If `$ARGUMENTS` is a description, use it as the source.
-3. Otherwise `mcp__plugin_dpm_dpm__list_spec` — offer the results with `AskUserQuestion`, showing each title.
+2. If the request is a description, use it as the source.
+3. Otherwise `dpm_list_spec` — offer the results with `AskUserQuestion`, showing each title.
 4. If there are none, ask the user what work they want broken down.
 
 **A spec is the expected source**, and the only one that makes Steps 3d and 4 possible: a
@@ -46,7 +46,7 @@ Step 2, where coding standards and architecture affect where the boundaries betw
 
 ### Prior decisions
 
-`mcp__plugin_dpm_dpm__list_adr` with the source spec as `parent_id`. Where decisions exist, summarise them and
+`dpm_list_adr` with the source spec as `parent_id`. Where decisions exist, summarise them and
 use them in Step 2 — a decision that separates two concerns often separates two epics — and cite
 the relevant one in a story's description where it constrains the approach.
 
@@ -72,8 +72,8 @@ provisional in the session `state`; it can be revised before execution begins.
 
 ### Step 1: Read the source
 
-Read the spec and its parts: `mcp__plugin_dpm_dpm__read_spec`, `mcp__plugin_dpm_dpm__list_requirement` with `include_body`
-and a `limit` above the spec's requirement count, and `mcp__plugin_dpm_dpm__list_document_section` with `include_body`
+Read the spec and its parts: `dpm_read_spec`, `dpm_list_requirement` with `include_body`
+and a `limit` above the spec's requirement count, and `dpm_list_document_section` with `include_body`
 for the scope boundary and the integration boundaries. Summarise the work areas back to the user.
 
 **The `limit` is the difference between a breakdown and a partial one.** Requirements left on a
@@ -98,14 +98,14 @@ slugs — in the message body, then ask: `Approve` / `Request changes` / `Stop`.
 where the shape of the whole breakdown is decided, and it is far cheaper to reshape here than after
 three epics have their stories. Nothing below this gate runs until it is approved.
 
-On approval, each agreed epic is one `mcp__plugin_dpm_dpm__create_epic` call, with the spec as `parent_id`.
+On approval, each agreed epic is one `dpm_create_epic` call, with the spec as `parent_id`.
 **That call assigns the epic's number, which nothing here works out.** Two or five epics for a small
 feature, five to ten for a larger one; create one only where the work genuinely warrants it.
 
-Then, for each epic, `mcp__plugin_dpm_dpm__create_coverage_matrix` with that epic as `parent_id`. It carries no
+Then, for each epic, `dpm_create_coverage_matrix` with that epic as `parent_id`. It carries no
 rows of its own — Step 3d writes those — and it exists so the matrix has somewhere to render.
 
-Where one epic cannot start until another finishes, record it with `mcp__plugin_dpm_dpm__create_dependency`:
+Where one epic cannot start until another finishes, record it with `dpm_create_dependency`:
 `kind: 'blocks'`, the epic that must finish first as `source_document_id`, the one that waits as
 `target_document_id`. An edge that would close a cycle is refused when it is written, not later.
 
@@ -115,7 +115,7 @@ For each epic, break the work into **stories** — coherent units of value. A st
 we delivering?", not "what file are we editing?". Two to five tasks is typical; a title describing a
 single function is a task, so push it down to Step 3b.
 
-Each agreed story is one `mcp__plugin_dpm_dpm__create_story` call under its epic, taking `number` (ordinal
+Each agreed story is one `dpm_create_story` call under its epic, taking `number` (ordinal
 within the epic, from 1), `title`, and `position`.
 
 **A story that needs designing in full before any of it is built takes `plan: 1`.** It is a workflow
@@ -125,13 +125,13 @@ contract changes, and coordination across systems where the interaction design n
 up front. Stories that follow an existing pattern do not take it. The user may ask for it on any
 story; these are defaults, not restrictions.
 
-Where a story cannot start until another finishes, record it with `mcp__plugin_dpm_dpm__create_dependency`:
+Where a story cannot start until another finishes, record it with `dpm_create_dependency`:
 `kind: 'blocks'`, the blocker as `source_story_id`, the waiting story as `target_story_id`. Both
 ends may be stories in different epics.
 
 #### Acceptance criteria
 
-Each criterion is `mcp__plugin_dpm_dpm__create_story_criterion` under its story, with `text` and `position`.
+Each criterion is `dpm_create_story_criterion` under its story, with `text` and `position`.
 
 **Use the spec's language verbatim where it states a threshold, a value or a behaviour.** "Concurrent
 session limit of 3 per user" stays exactly that. The spec's specificity has to survive into the
@@ -154,7 +154,7 @@ other.
 words "must NOT" at the front of the text.
 
 **Carry every rejection the spec already states.** For each requirement this story delivers, read
-`mcp__plugin_dpm_dpm__list_acceptance_criterion` with `include_body` and give every criterion whose `polarity` is
+`dpm_list_acceptance_criterion` with `include_body` and give every criterion whose `polarity` is
 `must_not` a story criterion of its own with the same polarity and the same text — which is the
 argument for `include_body`, there being nothing to transcribe from a row whose `text` was withheld.
 These are boundaries someone already argued for;
@@ -172,12 +172,12 @@ unit whose rows exist once it passes.
 
 #### Approach tags
 
-Each criterion's approach is `mcp__plugin_dpm_dpm__create_story_criterion_approach`, naming the criterion and
-the `tag`. A criterion verified two ways carries two of them. `mcp__plugin_dpm_dpm__list_test_approach` returns
+Each criterion's approach is `dpm_create_story_criterion_approach`, naming the criterion and
+the `tag`. A criterion verified two ways carries two of them. `dpm_list_test_approach` returns
 the terms this project recognises, each with its meaning; use those and no invented ones.
 
 **Propagate what the spec assigned.** For a criterion derived from a spec requirement, read that
-requirement's criteria and their `mcp__plugin_dpm_dpm__list_criterion_approach` rows, and apply the same tags.
+requirement's criteria and their `dpm_list_criterion_approach` rows, and apply the same tags.
 `tdd` is a workflow mode rather than a level, so it accompanies a level tag rather than replacing
 one.
 
@@ -202,7 +202,7 @@ no automated tag at all — that flag is a record, not a question. Then gate: `A
 ### Step 3b: Tasks within stories
 
 For each story, identify the **tasks** — the concrete steps that deliver it. Each is one
-`mcp__plugin_dpm_dpm__create_task` call under its story, taking `number` (ordinal within the story), `title` in
+`dpm_create_task` call under its story, taking `number` (ordinal within the story), `title` in
 imperative form, `position`, and a `description`.
 
 **A description states scope, not method.** It anchors the task to the criteria it addresses or the
@@ -243,7 +243,7 @@ there is no field on a story restating which requirements it satisfies, because 
 second, weaker copy of these rows.
 
 For each requirement this epic delivers, and each story criterion delivering part of it, one
-`mcp__plugin_dpm_dpm__create_coverage` call taking:
+`dpm_create_coverage` call taking:
 
 - `requirement_id` — one requirement, never a range and never a list. The binding is to a row.
 - `spec_fragment` — **a verbatim fragment of that requirement's own text**, quoted from the
@@ -276,12 +276,12 @@ is worse than the obligation and is still better than a paraphrase, which is not
 
 Where one requirement is delivered by several criteria, write a row per criterion — each is
 independently verifiable. Where a criterion is also delivered by a story other than the one that
-declares it, add `mcp__plugin_dpm_dpm__create_coverage_story` naming that story.
+declares it, add `dpm_create_coverage_story` naming that story.
 
 Present the bindings for the user to judge: the requirement text and the criterion text side by
 side, both verbatim, with the tags. The judgement of fidelity is theirs; extraction and presentation
 are yours. Where they find a criterion weaker than the requirement, fix the criterion with
-`mcp__plugin_dpm_dpm__update_story_criterion` before moving on.
+`dpm_update_story_criterion` before moving on.
 
 **Nothing here writes a table, and nothing here records a verification.** The matrix is a projection
 of these rows. Verification is `coverage.verified_at`, written during execution, and it is cleared
@@ -291,7 +291,7 @@ cannot outlive the text that earned it.
 ### Step 4: Confirm
 
 **The gap check is a query over the spec, not a sum of what was just written.** For each requirement
-from `mcp__plugin_dpm_dpm__list_requirement` with `include_body`, call `mcp__plugin_dpm_dpm__list_coverage` on it. A
+from `dpm_list_requirement` with `include_body`, call `dpm_list_coverage` on it. A
 requirement with no coverage row is a gap when it is either:
 
 - **must have** — the system fails without it; or
@@ -310,12 +310,12 @@ everything downstream verifies criteria as written.
 names an action a user takes is in its `text`, not in its `class` or its band; whether a criterion
 names the affordance or only the response is in the criterion's. So the requirement read above
 carries `include_body`, and each covering criterion is reached with
-`mcp__plugin_dpm_dpm__read_story_criterion` and `include_body` through the `story_criterion_id` its coverage row
+`dpm_read_story_criterion` and `include_body` through the `story_criterion_id` its coverage row
 names. Run over labels and counts, the gate returns a verdict computed against text it never saw —
 and it returns it in the same shape as a real one.
 
 **The criterion side of the same check is `accounted_for`, returned by
-`mcp__plugin_dpm_dpm__list_story_criterion` with `include_body` and not worked out here.** A criterion is
+`dpm_list_story_criterion` with `include_body` and not worked out here.** A criterion is
 accounted for when it has a live binding **or** a warrant — `warrant_adr_id`, the accepted decision
 that constrains the story where no requirement does. A criterion with neither is unbound and belongs
 in the report, named by its `text` since it has no title; one with a warrant is finished work and
@@ -328,8 +328,8 @@ with a stated reason. Should-have requirements with no cover are warnings rather
 Then present the whole tree — epics, their stories, their tasks, the dependencies between them, a
 suggested order, and the gap-check result — and gate it. Approval ends the run.
 
-**Read the tree back rather than repeating what was sent.** `mcp__plugin_dpm_dpm__list_story` per epic,
-`mcp__plugin_dpm_dpm__list_task` and `mcp__plugin_dpm_dpm__list_story_criterion` per story, both with `include_body`. A
+**Read the tree back rather than repeating what was sent.** `dpm_list_story` per epic,
+`dpm_list_task` and `dpm_list_story_criterion` per story, both with `include_body`. A
 value that never reached a row is absent from the rows and present in the summary, and an absence
 read from a summary reads as something that was not needed — and a task's `description` and a
 criterion's `text` are the values most worth reading back, being the ones a read that did not ask
@@ -351,7 +351,7 @@ then accepting it, marks its own work — and a rejection invented in the moment
 as written, leaving a story nobody can close. So: **propagate, never invent**. Every `must_not`
 criterion the spec carries still propagates, because that is transcription. A rejection whose
 subject the spec never raises is not attached, however reasonable it looks; record it instead as a
-`mcp__plugin_dpm_dpm__create_document_section` on the epic, naming the clause and the story it would have gone
+`dpm_create_document_section` on the epic, naming the clause and the story it would have gone
 on. Recorded is not attached — it constrains nothing until someone accepts it.
 
 Record each disposition the same way: one section on the epic naming the gate and what was chosen,
@@ -370,7 +370,7 @@ projections of them, and a pre-commit check keeps the two from diverging.
 this skill does without, and it is wrong the moment the projection moves where a kind renders.
 
 Write the prose an epic carries — its context, the reasoning behind the grouping, anything the run
-recorded rather than attached — with `mcp__plugin_dpm_dpm__create_document_section`, each with its heading and
+recorded rather than attached — with `dpm_create_document_section`, each with its heading and
 position. Everything else is already a row.
 
 An artifact can be published from this output on request — follow the shared **Artifact Publishing**
@@ -378,8 +378,8 @@ procedure. It is separately confirmed and never the default.
 
 ### After the breakdown
 
-- `/dpm:do` to execute the epics (recommended)
-- `/dpm:review` where an epic is large enough to warrant an adversarial read before work starts
+- `dpm-do` to execute the epics (recommended)
+- `dpm-review` where an epic is large enough to warrant an adversarial read before work starts
 
 ## Guidelines
 

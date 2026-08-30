@@ -1,11 +1,11 @@
 ---
 name: ralph
-description: Launch an autonomous loop that wraps /dpm:do across epics, or works a spec from scratch. Probes the stop hook, resolves what the run will work from the rows, assembles the prompt and confirms before arming. Triggers on "/dpm:ralph".
+description: Launch an autonomous loop that wraps dpm-do across epics, or works a spec from scratch. Probes the stop hook, resolves what the run will work from the rows, assembles the prompt and confirms before arming. Invoke with the skill tool, id "dpm-ralph".
 ---
 
 # Autonomous Multi-Epic Execution
 
-Arm a ralph loop that runs `/dpm:do` unattended, across several epics or across a whole spec.
+Arm a ralph loop that runs `dpm-do` unattended, across several epics or across a whole spec.
 
 **The loop's memory is a `session` row.** Its iteration count, what each iteration measured, and where
 it had reached are `state` on that row, and a run resumed under a new session id adopts the old row
@@ -25,7 +25,7 @@ would ask a question about a run that has not started.
 
 ## Input
 
-`$ARGUMENTS` is optional, and **the mode comes from what it names, never from a flag**.
+What the request names is optional, and **the mode comes from what it names, never from a flag**.
 
 1. **One or more epic ids**, or a range of epic numbers — **epic mode**, working those.
 2. **A spec id** — **spec mode**: the loop generates that spec's epics itself, then works them.
@@ -52,17 +52,17 @@ and those rules bind the prompt this skill assembles.
 
 #### 1a. What the run will work
 
-**Epic mode.** `mcp__plugin_dpm_dpm__list_epic` with a `limit` above what the project holds. What comes back is
+**Epic mode.** `dpm_list_epic` with a `limit` above what the project holds. What comes back is
 the working set — archived epics are already excluded — so keep the ones whose `status` is `pending`.
 A `complete` epic has nothing to run, and a `superseded` or `withdrawn` one is work that will not be
 done; neither is a failure to report, and both are simply not in the list.
 
-**Spec mode.** `mcp__plugin_dpm_dpm__list_epic` scoped by `parent_id` to the spec. There is no source field to
+**Spec mode.** `dpm_list_epic` scoped by `parent_id` to the spec. There is no source field to
 read out of a file and nothing to compare it against: an epic's spec is its parent.
 
 **Zero epics means different things in the two modes.** In epic mode it is a stop — say so, and name
-the specs `mcp__plugin_dpm_dpm__list_spec` returns with one line: spec mode runs a spec from scratch. **Do not
-offer spec mode and do not ask which to use**, because the mode comes from the argument and a gate
+the specs `dpm_list_spec` returns with one line: spec mode runs a spec from scratch. **Do not
+offer spec mode and do not ask which to use**, because the mode comes from the request and a gate
 that resolved one would move that decision into a question — and spec mode commits a loop to
 generating and delivering a whole epic set, which is much larger than the run that was asked for. In
 spec mode zero epics is the starting state: report it and carry on, because phase 1 is what writes
@@ -74,8 +74,8 @@ found are a starting position rather than the run's scope.
 #### 1b. Clear the plan gates
 
 A story marked for formal planning opens an interactive approval gate, which stalls an unattended
-run. For each resolved epic, `mcp__plugin_dpm_dpm__list_story` scoped by `epic_id`, and for every story whose
-`plan` is 1, `mcp__plugin_dpm_dpm__update_story` with `plan` set to 0. Report one line per story cleared.
+run. For each resolved epic, `dpm_list_story` scoped by `epic_id`, and for every story whose
+`plan` is 1, `dpm_update_story` with `plan` set to 0. Report one line per story cleared.
 
 **This is a column, so there is nothing to find and nothing to leave behind.** Scan no headings and
 edit no text; a story either carries the flag or does not, and clearing it cannot damage the sentence
@@ -114,13 +114,13 @@ not, and nothing announces that. The failure it guards against is the silent one
 
 #### 1d. Test runner discovery
 
-**In spec mode, ask the spec first.** `mcp__plugin_dpm_dpm__list_requirement` scoped to it with `include_body`,
+**In spec mode, ask the spec first.** `dpm_list_requirement` scoped to it with `include_body`,
 and take the test tooling from the environmental requirements that name it. Report whether the spec
 named a *tool* or a *command* — a tool is what the run must install before it can have a command, so
 saying which was found matters more than finding something.
 
 Then check the project's own config files. In spec mode they confirm or complete what the spec said;
-in epic mode they are the only source. If nothing is found, say so — the prompt will tell `/dpm:do`
+in epic mode they are the only source. If nothing is found, say so — the prompt will tell `dpm-do`
 to discover one at runtime.
 
 **The spec is consulted first only in spec mode**, and the asymmetry is the point: a greenfield
@@ -132,14 +132,14 @@ discovery consulting only those files cannot succeed in the case spec mode exist
 Startup asked what is open. This asks the narrower question — was there a previous run of *this*
 skill, and did it finish?
 
-1. `mcp__plugin_dpm_dpm__list_session` filtered by `skill`. The rows come back oldest first, so the last is the
+1. `dpm_list_session` filtered by `skill`. The rows come back oldest first, so the last is the
    most recent.
-2. On a hit, `mcp__plugin_dpm_dpm__read_session` with `include_body` for what it was carrying — how many
+2. On a hit, `dpm_read_session` with `include_body` for what it was carrying — how many
    iterations ran, what the last few measured, and whether they repeat. **A run that ended on
    repeated measurements stalled rather than finished**, and that is the single most useful thing to
    know before arming another one.
 3. Present it and gate on **Resume** / **Start fresh**.
-4. On **Resume**, `mcp__plugin_dpm_dpm__adopt_session` with this session's id, the previous row's, and
+4. On **Resume**, `dpm_adopt_session` with this session's id, the previous row's, and
    `include_body`. It hands back the state and points the old row at this one, so the chain has one
    live end and nothing has to decide which of two rows is current. `state` is a withheld column, so
    an adopt that does not ask for it resumes onto an empty state and reads as a fresh start.
@@ -185,12 +185,12 @@ work.
 
 There is no script and no exit code. The loop reads the rows:
 
-1. `mcp__plugin_dpm_dpm__list_story` scoped by `epic_id`, then `mcp__plugin_dpm_dpm__list_story_criterion` scoped by
+1. `dpm_list_story` scoped by `epic_id`, then `dpm_list_story_criterion` scoped by
    `story_id` for each, with `include_body` — the unverified ones are named back to the user below,
    and a criterion has no title to name it by.
-2. `mcp__plugin_dpm_dpm__list_coverage` scoped by `story_criterion_id`. A row whose `verified_at` is set is
+2. `dpm_list_coverage` scoped by `story_criterion_id`. A row whose `verified_at` is set is
    verified; one where it is null is not.
-3. For every unverified row, `mcp__plugin_dpm_dpm__list_story_criterion_approach` scoped by
+3. For every unverified row, `dpm_list_story_criterion_approach` scoped by
    `story_criterion_id`. **A row whose only approach is `target` is unverifiable from here** —
    checkable against the real deployment host and nowhere else.
 
@@ -200,14 +200,14 @@ target-only** — name them and keep working; **every remaining row target-only*
 because nothing in this environment can close them.
 
 **In spec mode there is a fourth reading, and it is the one epic scope cannot produce.**
-`mcp__plugin_dpm_dpm__list_requirement` scoped by `spec_id`, then `mcp__plugin_dpm_dpm__list_coverage` scoped by
+`dpm_list_requirement` scoped by `spec_id`, then `dpm_list_coverage` scoped by
 `requirement_id`: a requirement no row claims is **untraced**. Phase 1 is over when nothing is
 untraced. Epic scope has no requirement list to compare against, so an epic-mode run can say "the
 epics I was pointed at have no unverified rows left" and can never say a spec is delivered.
 
 **The loop relays; it does not compute.** It names the rows it read and repeats what they said. It
 never decides for itself that a requirement is traced or a row verified — `verified_at` is the
-database's answer, placed by `/dpm:do` on its own work, which is why the completion line says
+database's answer, placed by `dpm-do` on its own work, which is why the completion line says
 **aggregation, not verification**. A wall of green means every row was marked, not that anything
 works.
 
@@ -217,7 +217,7 @@ rather than the ones that existed at launch, which is what makes a resumed run c
 #### The iteration record, and the stall it makes visible
 
 Before anything else each iteration, the loop appends one entry to its session `state` with
-`mcp__plugin_dpm_dpm__update_session`: the iteration number, the counts it just read verbatim, the short commit
+`dpm_update_session`: the iteration number, the counts it just read verbatim, the short commit
 hash, and a fingerprint of the working tree. Then it reads the last three entries. **If all three
 carry the same counts, the same commit and the same tree, the run has stalled** — report it and stop.
 
@@ -228,7 +228,7 @@ either appended or absent cannot decay that way.
 
 **Three conditions, and the third is the only independent one.** Counts alone false-positive on a
 legitimately long iteration. The commit looks like it disambiguates that and mostly does not — the
-counts move when `/dpm:do` marks rows and the commit moves when it commits, and both happen because a
+counts move when `dpm-do` marks rows and the commit moves when it commits, and both happen because a
 piece of work finished, so two readings of one event are not two conditions. The tree fingerprint is
 the one signal that moves *while* work is in progress rather than when it lands, and the only one
 that moves at all during phase 1, where nothing commits and no row is marked.
@@ -274,14 +274,14 @@ drifts:
   attempt. Tool errors and permission denials are retries, not failures.
 - If criteria are ambiguous and completion cannot be determined, mark the story blocked with the
   reason and continue to the next.
-- At `/dpm:do`'s retro gate, do not block: auto-apply the safe categories and defer the
+- At `dpm-do`'s retro gate, do not block: auto-apply the safe categories and defer the
   judgement-heavy ones, recording each disposition, and list both in the run summary. Never retire an
   observation.
-- At `/dpm:do`'s change-type gate, do not block and do not pick one of its options — take its
-  autonomous branch, and never `/dpm:pivot`.
+- At `dpm-do`'s change-type gate, do not block and do not pick one of its options — take its
+  autonomous branch, and never `dpm-pivot`.
 - Commit after each completed story. Keep all commits local.
 
-**Spec mode swaps two sentences, not the template.** Every rule above is about how `/dpm:do` behaves
+**Spec mode swaps two sentences, not the template.** Every rule above is about how `dpm-do` behaves
 without a human, which the mode does not alter, so spec mode replaces the opening sentence with its
 phase clause and the completion clause with its own, and everything between survives unchanged.
 

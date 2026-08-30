@@ -386,7 +386,7 @@ test('an unreadable status is flagged rather than guessed, and the page is never
   const input = prose(source, 'Input');
   assert.match(input, /two different pages, so ask which/);
   assert.match(input, /offering one is not offering the\s*other/);
-  assert.match(input, /No arguments produces the whole-project report, and offers neither page/);
+  assert.match(input, /naming no focus produces the whole-project report, and offers neither page/);
 
   const full = prose(source, 'Phase 4');
   assert.match(full, /Only when it was asked for/);

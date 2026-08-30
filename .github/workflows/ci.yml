@@ -71,6 +71,16 @@ jobs:
       - name: the module sweep
         run: npm run modules
 
+      # FR3, as a step rather than as an assertion inside the suite. The suite reads both rules
+      # already; what the specification asks for is a check that *fails the build*, and the
+      # difference is not ceremony. This is the rule a contributor is most likely to break while
+      # doing something else entirely — writing a skill body, where nothing about the file says it
+      # is under a prohibition — so the failure output should carry the rule's name rather than a
+      # test's. `ci-skill-body.test.js` runs this script against planted breaches, because a check
+      # for an absence proves nothing about the check.
+      - name: no skill body names a host mechanism or contains SQL
+        run: npm run skills
+
   isolated:
     name: the disposable isolated environment
     runs-on: ubuntu-latest
@@ -107,8 +117,17 @@ jobs:
         run: docker run --rm --network none dpm-bare node .github/network-probe.js expect-offline
 
       # ENVX1, run rather than inspected: a clean install into an environment with no compiler and
-      # no Python, completing without node-gyp. `npm ci --foreground-scripts` so an install script
-      # that shelled out to a compiler would be visible rather than swallowed.
+      # no Python, completing without a native build. `npm ci --foreground-scripts` so an install
+      # script that shelled out to a compiler would be visible rather than swallowed.
+      #
+      # **The detection is the artefact, not the name, and it was the name until epic 01-02.** The
+      # grep used to include a bare `node-gyp`, which fired the moment `@opencode-ai/plugin` joined
+      # `devDependencies`: it brings `effect`, which brings `msgpackr`, whose install script is
+      # called `node-gyp-build-optional-packages` — a script that *selects* a prebuilt binary for
+      # the platform and compiles only when none matches. Matching its name reported the name
+      # rather than the act, and the honest reading is the one below: `gyp info` is what node-gyp
+      # actually says when it runs, and `build/Release` is the directory a compile leaves behind.
+      # There is no compiler in this image to leave one with, which is the whole point of the image.
       - name: the clean-install check, inside it
         run: |
           docker run --rm dpm-bare sh -c '
@@ -118,12 +137,22 @@ jobs:
             # report the exit status of tee and a failed install would read as a clean one.
             npm ci --foreground-scripts > /tmp/install.log 2>&1 || { cat /tmp/install.log >&2; exit 1; }
             cat /tmp/install.log
-            if grep -qi "node-gyp\|gyp info\|prebuild-install" /tmp/install.log; then
+            if grep -qi "gyp info\|node-gyp rebuild\|prebuild-install" /tmp/install.log; then
               echo "the install reached for a native build" >&2
               exit 1
             fi
+            if find node_modules -type d -path "*/build/Release" | grep -q .; then
+              echo "something compiled a native module during install" >&2
+              find node_modules -type d -path "*/build/Release" >&2
+              exit 1
+            fi
+            # The control on that sweep: it can see a build directory when there is one. Without
+            # this, a find that stopped matching would report a clean install every time.
+            mkdir -p /tmp/control/build/Release
+            find /tmp/control -type d -path "*/build/Release" | grep -q . \
+              || { echo "the sweep cannot see a compiled module when one is there" >&2; exit 1; }
             test -d node_modules/typescript || { echo "the install produced nothing" >&2; exit 1; }
-            echo "installed with no compiler, no python and no node-gyp"
+            echo "installed with no compiler, no python and nothing compiled"
           '
 
       # ENVX1's sharper half: the plugin itself declares no runtime dependencies, so the MCP server

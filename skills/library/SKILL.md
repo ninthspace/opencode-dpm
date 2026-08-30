@@ -1,6 +1,6 @@
 ---
 name: library
-description: Curate a project reference library. Takes in an external document, derives what every other skill needs in order to find it, and records its scope as rows the Library Check filters on. Also consolidates accumulated amendments back into a clean document. Triggers on "/dpm:library".
+description: Curate a project reference library. Takes in an external document, derives what every other skill needs in order to find it, and records its scope as rows the Library Check filters on. Also consolidates accumulated amendments back into a clean document. Invoke with the skill tool, id "dpm-library".
 ---
 
 # Project Reference Library
@@ -16,7 +16,7 @@ This skill uses **Conversational Output**, **Gate Presentation**, **Written Deli
 
 ## Input
 
-`$ARGUMENTS` selects the action:
+The request selects the action:
 
 - **A file path or a URL** — intake. Read the source and bring it in.
 - **`consolidate`, then a document** — reconcile the amendments that have accumulated on it.
@@ -70,7 +70,7 @@ Five things, derived from the content and **all five presented together before a
   recorded as read; a file path is the case worth asking about, because a file inside the project
   may equally be one the team wrote and one somebody dropped in last year.
 - **`doc_type`** — `architecture`, `coding-standards`, `domain`, and so on. It is free text, so look
-  at `mcp__plugin_dpm_dpm__list_library` first and reuse a value the project already has rather than minting a
+  at `dpm_list_library` first and reuse a value the project already has rather than minting a
   synonym. Two spellings of one type is the same defect as two words for one scope.
 - **The scope**, one value per skill this document bears on, or `all` alone. Suggest from the
   content:
@@ -95,11 +95,11 @@ Render the five in the message body and gate them: accept, adjust, or stop.
 
 On approval, and in this order:
 
-1. `mcp__plugin_dpm_dpm__create_library` with the `slug`, `title`, `doc_type` and, for an imported document,
+1. `dpm_create_library` with the `slug`, `title`, `doc_type` and, for an imported document,
    `source`. That call allocates the number, which nothing here works out.
-2. `mcp__plugin_dpm_dpm__create_library_scope` per scope value — one call each, because scope is a set of rows
+2. `dpm_create_library_scope` per scope value — one call each, because scope is a set of rows
    and a document scoped to three skills is three rows.
-3. `mcp__plugin_dpm_dpm__create_document_section` with a `Summary` heading at `position` 0, then the source's
+3. `dpm_create_document_section` with a `Summary` heading at `position` 0, then the source's
    own content as the sections that follow it.
 
 **The summary is written for skills, not for a reader browsing.** Every Library Check triages on it,
@@ -119,15 +119,15 @@ the section at `position` 0, and when the document arrived and when it was last 
 
 ## Consolidation
 
-Amendments arrive as sections: `/dpm:retro` appends one to a library document when an observation
+Amendments arrive as sections: `dpm-retro` appends one to a library document when an observation
 bears on it, headed with the date it was written. They accumulate, and eventually the document says
 one thing in its body and something later in an amendment.
 
 ### 1. Read what is there
 
-`mcp__plugin_dpm_dpm__list_library` for the document, `mcp__plugin_dpm_dpm__list_library_scope` for its scope, and
-`mcp__plugin_dpm_dpm__list_document_section` with a `limit` above what the document plausibly holds, each read
-with `mcp__plugin_dpm_dpm__read_document_section` and `include_body`.
+`dpm_list_library` for the document, `dpm_list_library_scope` for its scope, and
+`dpm_list_document_section` with a `limit` above what the document plausibly holds, each read
+with `dpm_read_document_section` and `include_body`.
 
 Amendments are the sections a retro added; the rest is the body. **If there are none, say so and
 stop** — there is nothing to reconcile, and a run that reconciled anyway would rewrite a document
@@ -146,14 +146,14 @@ finds, and resolving it in silence spends it.
 
 Gate the reconciled version first — save, adjust, or cancel — showing what changed. Then:
 
-1. `mcp__plugin_dpm_dpm__update_document_section` setting the new `body` on each body section the
+1. `dpm_update_document_section` setting the new `body` on each body section the
    reconciliation changed, and its `heading` where the reconciliation renamed one.
-2. `mcp__plugin_dpm_dpm__update_document_section` setting `superseded_at` on each amendment that was folded in.
-3. `mcp__plugin_dpm_dpm__update_library` where `doc_type` should change, which also moves the document's
+2. `dpm_update_document_section` setting `superseded_at` on each amendment that was folded in.
+3. `dpm_update_library` where `doc_type` should change, which also moves the document's
    `updated_at` — the answer to "when was this last reviewed".
 
 **A folded amendment is superseded, never removed.** It stays readable — `include_superseded` on
-`mcp__plugin_dpm_dpm__list_document_section` returns it — because it is the record of how the document came to
+`dpm_list_document_section` returns it — because it is the record of how the document came to
 say what it now says, and a reconciliation that erased its own inputs cannot be checked. What
 supersession buys is that the document stops rendering the same material twice: the reconciled body
 and the amendment it absorbed are no longer both part of the document.
@@ -180,6 +180,6 @@ why the scope filter every other skill runs is a `WHERE` clause rather than a pa
 
 ## Next Action
 
-After intake, offer — do not run — `/dpm:consult` to put the new document to an agent whose domain it
+After intake, offer — do not run — `dpm-consult` to put the new document to an agent whose domain it
 covers, or nothing at all: a library document earns its place by being read on every future run,
 which needs no follow-up now.

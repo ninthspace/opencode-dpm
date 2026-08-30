@@ -5,10 +5,10 @@
 This document is the single source of truth for status derivation. Two implementations conform to
 it and must never diverge (AD5):
 
-- `/dpm:status` — the in-project reconnaissance skill (prose synthesis).
+- `dpm-status` — the in-project reconnaissance skill (prose synthesis).
 - `dpm/tools/board` — the cross-project status board & launcher (code).
 
-`/dpm:status` *references* this model in prose; the board *implements* it in code. When a rule
+`dpm-status` *references* this model in prose; the board *implements* it in code. When a rule
 changes, change it here first, then both consumers.
 
 **The reconciliation is automated, in both directions.** `dpm/tools/board/tests/test_contract.py`

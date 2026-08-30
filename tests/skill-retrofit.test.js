@@ -36,7 +36,7 @@ import { openPlanningDatabase, handlers } from './support/planning-database.js';
 import { spineTools } from '../src/tools/index.ts';
 import {
   skillSource, conventions, prose, section, instructions, recorder, bindings,
-  seedStartup, driveStartup,
+  seedStartup, driveStartup, CALLABLE,
 } from './support/skills.js';
 
 /** Above what any of these fixtures holds, which is what each file asks a run to pass. */
@@ -130,7 +130,8 @@ test('a declined publication is stored as a communication and mints no artifact'
   // The file carries both halves in the step that runs them.
   const record = prose(source, '5. Record it');
   assert.match(record, /\*\*Where publishing is declined or refused, the draft is kept as a `communication`\.\*\*/);
-  assert.match(record, /`mcp__plugin_dpm_dpm__create_communication` with the title the draft was gated under/);
+  assert.match(record,
+    new RegExp(`\`${CALLABLE}create_communication\` with the title the draft was gated under`));
   assert.match(prose(source, 'Output'), /\*\*The two are exclusive, and which one exists is the answer to whether this went out\.\*\*/);
 
   assert.deepEqual(bindings(source, tools, { used, passed }), []);
@@ -246,7 +247,8 @@ test('an imported library document carries its provenance and a local one carrie
   assert.match(prose(source, '2. Derive what the library needs'),
     /\*\*Left unset for a document written here\*\*, and that absence is the answer/);
   assert.match(instructions(source, '3. Write it'),
-    /`mcp__plugin_dpm_dpm__create_library` with the `slug`, `title`, `doc_type` and, for an imported document,\s+`source`/);
+    new RegExp(`\`${CALLABLE}create_library\` with the \`slug\`, \`title\`, \`doc_type\` and, `
+      + 'for an imported document,\\s+`source`'));
 
   assert.deepEqual(bindings(source, tools, { used, passed }), []);
 });
@@ -348,7 +350,8 @@ test('a review, a consult and a party each record their participants as rows', (
 
     written.review = review;
     assert.match(instructions(source, 'Step 4: Write the review'),
-      /`mcp__plugin_dpm_dpm__create_document_agent` per panel member, with `document_kind: 'review'`/);
+      new RegExp(`\`${CALLABLE}create_document_agent\` per panel member, `
+        + "with `document_kind: 'review'`"));
     assert.deepEqual(bindings(source, tools, { used, passed }), []);
   }
 
@@ -368,7 +371,8 @@ test('a review, a consult and a party each record their participants as rows', (
     written[skill] = discussion;
 
     assert.match(instructions(source, 'Saving the discussion'),
-      /`mcp__plugin_dpm_dpm__create_document_agent` per agent who (took part|spoke), with `document_kind` set to\s+`discussion`/);
+      new RegExp(`\`${CALLABLE}create_document_agent\` per agent who (took part|spoke), `
+        + 'with `document_kind` set to\\s+`discussion`'));
     assert.deepEqual(bindings(source, tools, { used, passed }), []);
   }
 
@@ -565,7 +569,7 @@ test('the shared Perspectives procedure loads the roster with its body columns',
   const perspectives = section(conventions(), 'Perspectives');
   const steps = perspectives.split('\n').filter((row) => /^\d+\. |^ {3}/.test(row)).join(' ');
 
-  assert.match(steps, /`mcp__plugin_dpm_dpm__list_agent`, passing `include_body`/);
+  assert.match(steps, new RegExp(`\`${CALLABLE}list_agent\`, passing \`include_body\``));
   assert.match(steps, /\*\*the last two are body\s+columns\*\*/);
   assert.match(steps, /the voices below\s+are woven from nothing/);
 
@@ -583,6 +587,7 @@ test('the shared Perspectives procedure loads the roster with its body columns',
   // its panel renders a lens per persona from the same two columns.
   for (const skill of ['discover', 'spec', 'architect', 'brief', 'review']) {
     assert.match(prose(skillSource(skill), 'Roster'),
-      /`mcp__plugin_dpm_dpm__list_agent` with `include_body`/, `${skill} loads the roster without its traits`);
+      new RegExp(`\`${CALLABLE}list_agent\` with \`include_body\``),
+      `${skill} loads the roster without its traits`);
   }
 });

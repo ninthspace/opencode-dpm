@@ -22,7 +22,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openPlanningDatabase } from './support/planning-database.js';
-import { moduleFilesUnder } from './support/sources.js';
+import { moduleFilesUnder, staticImports } from './support/sources.js';
 import { spineTools } from '../src/tools/index.ts';
 import { project, renderDocument } from '../src/projection/index.ts';
 import { COLLECTIONS } from '../src/projection/load.ts';
@@ -459,8 +459,7 @@ test('nothing under src imports a package, so no markdown parser can be in the g
   const offenders = [];
 
   for (const file of moduleFilesUnder(join(ROOT, 'src'))) {
-    for (const [, specifier] of readFileSync(file, 'utf8')
-      .matchAll(/^\s*import\s[^'"]*from\s*['"]([^'"]+)['"]/gm)) {
+    for (const specifier of staticImports(readFileSync(file, 'utf8'))) {
       // A bare specifier is a package, and a package is a dependency — which NFR1 forbids
       // outright and which is the only way a markdown parser could arrive. Asserting the general
       // rule rather than a parser name means a parser nobody thought to list is caught too.
@@ -471,6 +470,16 @@ test('nothing under src imports a package, so no markdown parser can be in the g
   }
 
   assert.deepEqual(offenders, []);
+
+  // The control, and it is two-sided because the reading changed under this test. `staticImports`
+  // replaced an inline regex here when the plugin entry landed: the entry takes
+  // `@opencode-ai/plugin` `import type`, which is erased before evaluation and so can no more put
+  // a markdown parser in the graph than a comment could. What must NOT be lost is the value
+  // import, which is the way a parser would actually arrive.
+  assert.deepEqual(staticImports("import { marked } from 'marked';\n"), ['marked'],
+    'the reading no longer sees a package arriving in the graph');
+  assert.deepEqual(staticImports("import type { Token } from 'marked';\n"), [],
+    'the reading counts a type-only import, which is erased and reaches nothing');
 });
 
 /**
