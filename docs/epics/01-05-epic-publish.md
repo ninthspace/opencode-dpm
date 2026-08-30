@@ -2,7 +2,7 @@
 
 **Number**: 01-05  
 **Source spec**: 01  
-**Status**: pending  
+**Status**: complete  
 
 ## Why this epic no longer publishes to npm
 
@@ -68,6 +68,26 @@ the interface shows `⊙ 1 MCP` where it showed *1 MCP failed*, and the probe re
 **The whole suite was green throughout.** Every existing check ran the executables from the checkout, where the restriction does not apply, so 1085 passing tests said nothing whatever about the only copy a user ever receives — `executables-typescript.test.js` spawns all five binaries and does it from the tree. **Location was an untested variable**, and the artefact differed from the checkout in exactly that one respect.
 
 `tests/installed-runtime.test.js` is the guard, and it is built the way this project keeps having to learn: the control comes first. Test 1 plants the package under a real `node_modules` and shows `node` refusing it, with the checkout copy passing the same handshake as the other half of the control — so the fix is demonstrably needed rather than merely present, and a future revert to `['node', …]` turns the file red instead of green.
+
+## What the epic found, across its three stories
+
+Synthesis is mandatory here on three counts: a criterion resolved at a gate rather than by this run, a story pivoted mid-epic, and a defect found that no story was looking for.
+
+**One theme runs through all three stories: this epic was the first to look at the artefact.** Epics 01-01 through 01-04 built and tested the repository. 01-05 packed it, installed it, and used it — and each of those three acts found something the 1085-test suite could not have found, because every one of those tests read the working tree.
+
+- **Packing it** found `"private": true`, left behind by the vendoring commit as scaffolding rather than as a decision. It would have refused distribution outright, and nothing checked for it because nothing had ever tried to distribute.
+- **Installing it** found the type-stripping restriction. `node bin/dpm-mcp.ts` runs in a checkout and cannot run under `node_modules`, which is the only place a plugin is ever installed. See *The installed package could not run its own MCP server*.
+- **Using it** found nothing further, which is the result worth having: 24 of 24 tools the spec skill names resolved against the installed server, and a `create_spec` call wrote a row into the target project's own database.
+
+**"The suite is green" and "the product works" turned out to be different claims**, and the gap between them was exactly one variable: location. This is the epic's transferable finding. A test that spawns an executable from the repository is evidence about the repository; the artefact differs from it in ways no amount of care inside the repository can anticipate, which is why `installed-runtime.test.js` plants the package under a real `node_modules` rather than reasoning about what one would be like.
+
+**Story 1 was pivoted away from npm mid-epic, and the pivot held.** FR1 names the GitHub specifier first and reserves the npm form for *later*; two tasks and two coverage bindings had been written toward a registry release that the requirement does not yet ask for. Dropping it cost the epic nothing — the tarball still had to be right, because the installer builds one — and the story's tests are about the packed artefact rather than about a registry. The reasoning is in *Why this epic no longer publishes to npm*.
+
+**One open question closed itself as a side effect.** The epic had recorded that a GitHub install brought down 418 files and left open whether the installer honours `files`. After story 1 added the allow-list, the cold re-install came down at **166 files with seven top-level entries** — identical to `npm pack`. It does honour it, and `docs/`, `tests/`, `.dpm/` and `.claude-plugin/plugin.json` no longer reach users.
+
+**The absence checks got harder on purpose.** Story 3's three criteria are all negatives, and the epic's own history — two false passes found in earlier retros — argued against every cheap way of answering them. The static reading (no `node:net` anywhere in `src/`) was kept as a supporting fact and refused as the answer. The runtime instrument records rather than blocks, because a thrown refusal can be swallowed and leave a log that reads like an absence; a second run then blocks outright, because the criterion names two things and "did not try" does not imply "works when it cannot". Notably, the suite's own outbound sweeps rejected the instrument on both counts, and the exceptions were named rather than the rules relaxed.
+
+**What is not discharged.** FR1 stays unclaimed, on one clause: *"and later the npm form"*. Every other fragment of it is bound and verified across seven live bindings, and the npm form is a future obligation the requirement itself defers — but it is an obligation, and claiming FR1 whole would say it had been met. ENVX4, ENVX5 and ENVX6 are claimed whole: each is one obligation plus a *Checkable by* sentence, and in each case the check performed is the check the requirement names.
 
 ## Story 1 — Settle what the package ships at 0.1.0
 
@@ -138,7 +158,7 @@ Covers what the tarball an installer builds contains — plugin entry, twenty-th
 
 ## Story 2 — Verify the install from the GitHub specifier
 
-**Status**: pending  
+**Status**: complete — Verified twice: once against an install patched with the fix, then — after the fix was pushed as 1dd6a9e — discarded and re-run against a wholly cold install. Only the second run is the evidence.  
 **Blocked by**: —  
 
 ### Acceptance Criteria
@@ -155,9 +175,23 @@ From the package the installer builds, never the working tree. Addresses install
 
 ### Task 2 — Run one skill end to end from that install
 
-**Status**: pending  
+**Status**: complete — The spec skill, from the installed package only: body read from the cache path, all 24 tools it names published by the installed server, and `create_spec` writing a row into the target project's own `.dpm/dpm.db`. Re-run against a cold install of 1dd6a9e after the patched run was discarded.  
 
 The last check before the install route stands: a real skill doing real work from what a user would actually get by running the documented command.
+
+### Retro
+
+- The story did the one thing no other story in the port had done — installed the thing and used it — and that alone found a defect that made every install non-functional.
+
+**The defect was invisible from inside the repository, by construction.** Node refuses to strip types from any `.ts` under a `node_modules` directory, and OpenCode installs every plugin into one. So `node bin/dpm-mcp.ts` worked in the checkout and could not work in the artefact, and 1085 passing tests were all evidence about the checkout. `executables-typescript.test.js` spawns all five binaries and spawns them from the tree. **Location was a variable the suite never varied**, and the artefact differed from the checkout in exactly that one respect.
+
+**The failure mode was worse than a crash.** 23 skills registered and 0 tools; every skill's procedure writes exclusively through those tools. The plugin advertised the whole method and could perform none of it, with nothing in the interface saying so. A plugin that failed to load would have been a better outcome — someone would have noticed.
+
+**Two diagnostic habits paid for themselves.** Every escape from the type-stripping restriction was closed off by *test* rather than by reasoning — two Node versions, three flags, and the same tree copied outside `node_modules` — which is what turned "Node seems not to like this" into a fact with a shape. And the fix candidate was checked the same way: `BUN_BE_BUN=1` really does turn `opencode2` into a bun CLI, that bun really does carry `node:sqlite`, and `process.execPath` really is the host binary *inside a loaded plugin*, which is where it mattered and not where it was convenient to check.
+
+**The instrument lied once, and it looked exactly like a second defect.** After the server connected, the probe reported `dpmTools: 0`. It was reading `tool.name`, where the namespace lives on `tool.id` — the tools were all there as `dpm_create_spec`. Ten minutes were nearly spent on a bug in the port that was a bug in the probe. **A filtered sample reporting an absence is not evidence of an absence**, and the fix was to record both fields unfiltered rather than to guess a better filter. Recording the raw shape first would have cost nothing and saved all of it.
+
+**The gate was worth stopping at.** The first end-to-end pass ran against an install carrying the fix as a local patch, which was enough to prove the mechanism and not enough to satisfy a criterion naming the documented command against GitHub. Chris chose push-then-re-verify, the patched cache was deleted outright, and the cold run is the only evidence on the record. It also paid an unplanned dividend: the cold install came down at **166 files**, matching `npm pack` exactly, which answers the question the epic had left open at 418 — the installer does honour the `files` allow-list.
 
 ## Story 3 — Verify the production restrictions
 
