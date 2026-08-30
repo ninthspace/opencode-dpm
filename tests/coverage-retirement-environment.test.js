@@ -25,7 +25,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { REQUIRED_NODE, meetsFloor } from '../src/server/node-floor.ts';
 import { migrate, targetVersion } from '../src/schema/migrate.ts';
@@ -75,8 +75,23 @@ test('a previous-version database is built and migrated in-process, off a scratc
 
   // The path is a scratch one the harness made, not a project path resolved from this file's
   // location. That is the distinction ENVX2 turns on, and it is asserted rather than assumed.
-  assert.equal(file.path.includes(DPM), false,
-    'the fixture database is inside the repository, so this test is not off a scratch tree');
+  //
+  // **Read as a path and not as a substring, which is what it was and what CI caught.** It was
+  // `file.path.includes(DPM)`, and that is a different question: it asks whether the repository's
+  // path appears anywhere in the fixture's, which is true of paths that have nothing to do with
+  // each other. The first Linux run put the checkout at `/dpm` and the fixture at `/tmp/dpm-XXXX`,
+  // and the assertion fired on a scratch file that was exactly where it should have been. A
+  // containment check between two paths is `relative`, whose answer climbs out of the first when
+  // the second is not inside it.
+  const inside = !relative(DPM, file.path).startsWith('..');
+
+  assert.equal(inside, false,
+    `the fixture database ${file.path} is inside ${DPM}, so this test is not off a scratch tree`);
+
+  // The control on that reading, since an assertion about a path being *outside* a directory is
+  // passed by any reading that always says outside.
+  assert.equal(relative(DPM, join(DPM, '.dpm', 'dpm.db')).startsWith('..'), false,
+    'the containment reading cannot recognise a path that is inside the repository');
 
   const db = file.connect();
   const applied = migrate(db, { now: '2026-08-27T00:00:00Z' });

@@ -68,6 +68,12 @@ WORKDIR /dpm
 # container would defeat the clean-install check by having already done the install.
 COPY . .
 
+# ENVR6's hook, relinked into this checkout. `COPY` brings the host's symlink across as a symlink,
+# so `.git/hooks/pre-commit` arrives pointing at a path that exists on the developer's machine and
+# nowhere in here — a dangling link, which reads as "no hook installed". Pointing it at the copy is
+# what a first clone does, and the suite asserts it resolves into the working tree it is run from.
+RUN ln -sfn /dpm/hooks/pre-commit /dpm/.git/hooks/pre-commit
+
 FROM bare AS installed
 
 RUN npm ci

@@ -47,6 +47,14 @@ jobs:
           node --version
           node -e 'if (Number(process.versions.node.split(".")[0]) < 24) { console.error("node is below 24, so the sources do not run"); process.exit(1); }'
 
+      # ENVR6 — "git with hook support, checkable by a hook installed at `.git/hooks/pre-commit`".
+      # A checkout arrives without one, and `reference-environment.test.js` asserts the hook
+      # resolves into this working tree rather than into a release somewhere else. Installed here
+      # rather than asserted away: the symlink is what a contributor makes on their first clone, so
+      # a CI run that skipped it would be running against an environment the spec does not describe.
+      - name: install the guard hook, as a first clone does
+        run: ln -sfn "$PWD/hooks/pre-commit" .git/hooks/pre-commit
+
       - name: install the type checker
         run: npm ci
 
