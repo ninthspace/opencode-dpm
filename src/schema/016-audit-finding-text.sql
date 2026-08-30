@@ -1,0 +1,25 @@
+-- FR10 — an audit finding says what is wrong, not only where.
+--
+-- `audit_finding` arrived carrying the citation (`file`, `line`, `symbol`), the dimension and the
+-- severity, and nothing else. So a row could record that there is architectural decay at
+-- `src/tools/list.js:42 (selectPage)` and could not record what the decay is or what to do about
+-- it — and the projection rendered a findings table of locations with no description column.
+-- `finding`, the review-side sibling this table is otherwise modelled on, has carried `summary
+-- TEXT NOT NULL` from the start; the asymmetry was in the specification's own DDL rather than in
+-- the build, which is why it survived to the skill conversion.
+--
+-- `summary` takes `NOT NULL DEFAULT ''` because `ADD COLUMN` requires a non-null default and there
+-- are existing rows to satisfy. That is weaker than `finding.summary`, which is `NOT NULL` with no
+-- default and therefore unwritable by omission: here a caller can leave it empty. The create tool
+-- requires it instead, and the suite asserts the pair, which is the same arrangement `document`'s
+-- waiver CHECK avoided needing and this one cannot.
+--
+-- `recommendation` is nullable, deliberately. A finding is worth recording before anyone knows what
+-- to do about it, and a required recommendation would be answered with filler — which is exactly
+-- the padding CPM's audit skill has a non-negotiable rule against.
+--
+-- Effort (S/M/L) and the confidence marker CPM carries are **not** here. Spec 47 says CPM's scales
+-- are dpm's to choose, neither has a consumer on this side, and a vocabulary nothing reads is the
+-- column-nobody-queries criticism arriving as a taxonomy domain.
+ALTER TABLE audit_finding ADD COLUMN summary TEXT NOT NULL DEFAULT '';
+ALTER TABLE audit_finding ADD COLUMN recommendation TEXT;

@@ -1,0 +1,15 @@
+-- FR4 — whether a story is planned before it is executed is a column, not a spelling.
+--
+-- CPM writes this as `[plan]` appended to the story's `##` heading and reads it back off that
+-- heading: `epics` decides, `do` parses. Here `epics` writes a column and `do` asks the story,
+-- which is one of the parses FR25 removes rather than a convenience added on top of it.
+--
+-- **A new file rather than an edit to `004-delivery.sql`**, per the forward-only rule migrate.js
+-- states: editing a released file gives a fresh database the new text and an existing one what it
+-- already applied, and nothing inside one process can see the divergence because both sides read
+-- the same working tree.
+--
+-- `ALTER TABLE … ADD COLUMN` takes the `NOT NULL` because a non-null default is supplied. The
+-- default is 0 and not NULL: a three-valued column would make "not planned" and "nobody said"
+-- different states, and no caller has a use for the distinction.
+ALTER TABLE story ADD COLUMN plan INTEGER NOT NULL DEFAULT 0 CHECK (plan IN (0, 1));

@@ -1,0 +1,57 @@
+#!/bin/sh
+# dpm's pre-commit guard (FR7).
+#
+# Both generated artefacts — the markdown projection under docs/, and .dpm/dpm.sql — are
+# regenerated from .dpm/dpm.db and compared byte for byte with what is staged. Divergence in
+# either fails the commit and names what diverged.
+#
+# **This hook fixes nothing, and that is deliberate.** A hook that regenerated and staged the
+# result would silently overwrite a hand-edit — the failure FR7 exists to prevent, arriving
+# through the guard built to prevent it. The edit is left exactly where it is, for its author to
+# move into the database.
+#
+# Install with:
+#   ln -s <plugin path>/dpm/hooks/pre-commit .git/hooks/pre-commit
+#
+# **Check what is at that path first.** This script ends in `exec`, so it replaces an existing
+# pre-commit hook rather than running after it, and git has no notion of a second hook at the same
+# path. `ls -l .git/hooks/pre-commit` and `git config core.hooksPath` tell apart the four cases the
+# README's "When something else owns the hook" covers — a stale link into an older release, a hook
+# manager that has moved the directory out from under this one, the `pre-commit` framework, and a
+# hook someone wrote. Only the first is safe to overwrite, and it is the one that needs `ln -sf`.
+#
+# **The target has to be absolute.** A symlink resolves its target from the directory holding the
+# link — `.git/hooks/` — rather than from wherever `ln` was run, so a path written relative to the
+# repository root lands two levels too deep. git then skips a hook it cannot resolve, silently and
+# without failing the commit, which is indistinguishable from never having installed one.
+#
+# **`<plugin path>` contains a version, so this link is stale after an upgrade** — a new release
+# installs beside the old one and re-points nothing, leaving the previous release's guard wired to
+# a current database. Re-make the link. The guard detects the case and refuses rather than
+# reporting on a schema it half knows, but detecting it is not the same as fixing it.
+
+set -e
+
+# **The symlink has to be resolved before the path beside it means anything.** git invokes the hook
+# by the path it found — `.git/hooks/pre-commit` — so `$0` is the symlink and `dirname "$0"` is
+# `.git/hooks`, which puts `../bin/dpm-guard.ts` at `.git/bin/dpm-guard.ts`. Nothing is there, so
+# the hook exits 1 and every commit is refused with a Node stack trace about a missing module.
+# Every test of the guard invoked the executable directly, so all of them passed against a hook
+# that had never once run from a commit.
+#
+# A `while` rather than a single `readlink`, because an install may go through more than one link —
+# a plugin cache symlinked into place, then symlinked again into `.git/hooks`. `readlink -f` would
+# do this in one call and is not portable: BSD `readlink` on macOS has no `-f`.
+hook=$0
+while [ -L "$hook" ]; do
+  link=$(readlink "$hook")
+  case $link in
+    /*) hook=$link ;;
+    *)  hook=$(dirname "$hook")/$link ;;
+  esac
+done
+
+# **Plain `node`, with the `.ts` entry point and no flag between them.** Node 24 strips types from
+# a `.ts` file unprompted, so nothing here needs a loader — and a `--import` or `--loader` added to
+# this line would put a build step in front of every commit, which ADR 01-03 rules out.
+exec node "$(dirname "$hook")/../bin/dpm-guard.ts" "$(git rev-parse --show-toplevel)"

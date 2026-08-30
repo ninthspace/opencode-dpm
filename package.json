@@ -1,0 +1,21 @@
+{
+  "name": "opencode-dpm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Data-Modelled Planning Method for OpenCode v2 — SQLite-backed persistence for planning artefacts.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "modules": "node scripts/module-sweep.ts",
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,28 @@
+-- FR25 — a consolidated amendment stops being offered without stopping being readable.
+--
+-- `/cpm:library consolidate` reconciles the `## Amendment` blocks a retro appended into the body of
+-- the document and then **deletes** them, because in a file the only way to stop rendering a
+-- paragraph is to remove it. Here the amendments are `document_section` rows, and there is no delete
+-- tool anywhere in the surface — 172 tools, every one of them create, read, update or list. So a
+-- consolidation that reconciled and stopped would leave the document rendering the same material
+-- twice, once in the body it was folded into and once as the amendment it was folded from.
+--
+-- **Marking rather than removing is what the rest of the schema already does.** `observation` is
+-- retired, a `document` is archived, an epic's retro is waived, a vocabulary term is retired — in
+-- every case the row stays readable by key and stops being offered, and `selectPage` renders each as
+-- the same `IS NULL` clause with the same opt-out flag. A delete verb here would be the first
+-- destructive operation in the surface, and it would throw away the record of how a library document
+-- came to say what it says, which is the thing `retro`'s write-back exists to leave behind.
+--
+-- **`superseded_at` and not `retired_at`, for `includeFlag`'s reason.** The word has to be the one a
+-- caller would reach for: a section is not spent and not out of the working set, it has been folded
+-- into something that now says it better. `include_superseded` is what a reader asking for the
+-- document's history passes, and it is derived from this column name rather than declared.
+--
+-- Unpaired, unlike `retro_waived_at`. A waiver without a reason is a decision with no record of who
+-- made it; a superseded section already carries its own — the reconciled body is the reason, and it
+-- is a row rather than a sentence.
+--
+-- **A new file rather than an edit to `001-identity.sql`**, per the forward-only rule `migrate.js`
+-- states and `014-story-plan.sql` follows.
+ALTER TABLE document_section ADD COLUMN superseded_at TEXT;

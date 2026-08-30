@@ -1,0 +1,31 @@
+{
+  "name": "dpm",
+  "description": "Data-Modelled Planning Method — SQLite-backed persistence for planning artefacts. Artefacts are rows, cross-artefact references are foreign keys, and markdown is a generated one-way projection. Skills write through typed MCP tools; nothing parses prose.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Chris Aves"
+  },
+  "license": "MIT",
+  "mcpServers": {
+    "dpm": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/dpm-mcp.ts"]
+    }
+  },
+  "keywords": [
+    "planning",
+    "sqlite",
+    "persistence",
+    "mcp",
+    "artefacts",
+    "specification",
+    "requirements",
+    "epics",
+    "stories",
+    "coverage",
+    "traceability",
+    "projection",
+    "schema",
+    "migrations"
+  ]
+}

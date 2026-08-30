@@ -6,7 +6,7 @@
 
 ## Story 1 — Vendor v0.7.0 and raise the Node floor to 24
 
-**Status**: pending  
+**Status**: complete  
 **Blocked by**: Story 2, Story 3  
 
 ### Acceptance Criteria
@@ -20,31 +20,41 @@
 
 ### Task 1 — Vendor the v0.7.0 tree as the starting commit
 
-**Status**: pending  
+**Status**: complete  
 
 Copy `src/`, `bin/`, `tests/`, `skills/`, `shared/` and `hooks/` verbatim from dpm v0.7.0; drop `.claude-plugin/plugin.json` and `MIGRATION.md`. Addresses the tree only, not any conversion of it.
 
 ### Task 2 — Rename the package and raise the engine floor
 
-**Status**: pending  
+**Status**: complete  
 
 `name` becomes `opencode-dpm` and `engines.node` becomes `>=24.0.0`. Addresses the manifest; the runtime refusal is task 3.
 
 ### Task 3 — Raise the node-floor refusal from 22.5.0 to 24
 
-**Status**: pending  
+**Status**: complete  
 
 Addresses the version the refusal checks and the message it prints, not the detection mechanism, which already exists in `src/server/node-floor`.
 
 ### Task 4 — Write tests for "Vendor v0.7.0 and raise the Node floor to 24"
 
-**Status**: pending  
+**Status**: complete  
 
 Covers the criteria tagged `unit` and `integration`. The host-runtime criterion is tagged `target` and is not automatable here.
 
+### Retro
+
+- `tests/support/skills.js` cannot be imported in this fork at all: its module-level `CALLABLE` constant reads `.claude-plugin/plugin.json`, which the vendoring step deliberately dropped. Every suite importing it therefore dies at load with an ENOENT before running a single assertion, rather than failing an assertion that names the cause. The refactoring pass found this by trying to reuse `skillNames()` and had to revert.
+
+This shapes Story 4. "Restore the inherited test suite green" has two classes of failure in it, not one: assertions that are wrong about the fork, and modules that will not load in the fork. The second class hides the first — a suite that dies at import contributes one opaque failure standing in for however many real assertions it holds, so the 50 remaining failures are a lower bound on the work rather than a count of it. Cutting the load-time couplings first is what makes the rest of the count mean anything.
+
+- Raising the floor to 24 was one constant; getting the machine to 24 was not. `nvm install 24` and `nvm alias default 24` both succeeded and `node --version` went on reporting 22.18.0, because nvm's auto-activation re-selects whatever Node is already on `PATH` rather than the default alias — so every shell descending from an already-pinned session keeps the old version, and the alias is only consulted where nothing was pinned. What actually satisfied the criterion was committing `.nvmrc`, which the contributor's shell already acts on when entering the directory.
+
+Worth carrying forward because the criterion is written as "`node --version` on the contributor's machine reports 24.0.0 or above", and the obvious reading of that — install the version — leaves it false. The repository artefact is the mechanism, not the install.
+
 ## Story 2 — Convert src/ to erasable-syntax TypeScript
 
-**Status**: pending  
+**Status**: complete  
 **Blocked by**: Story 4, Story 6  
 
 ### Acceptance Criteria
@@ -59,31 +69,37 @@ Covers the criteria tagged `unit` and `integration`. The host-runtime criterion 
 
 ### Task 1 — Establish the TypeScript configuration
 
-**Status**: pending  
+**Status**: complete  
 
 `tsconfig.json` with `allowImportingTsExtensions` and no emit, plus TypeScript as a devDependency. Addresses configuration, not module contents.
 
 ### Task 2 — Convert the modules under src/ to .ts, erasable syntax only
 
-**Status**: pending  
+**Status**: complete  
 
 All 100 modules across the 24 subdirectories. Addresses file extension and syntax; import specifiers are task 3.
 
 ### Task 3 — Add explicit .ts extensions to every internal import specifier under src/
 
-**Status**: pending  
+**Status**: complete — Widened during planning beyond `src/`: the 393 specifiers pointing into `src/` from `tests/`, `bin/` and two `.mjs` fixtures were rewritten in the same pass, because Node does not map a `.js` specifier onto a `.ts` file and the story's own tests import `src/`.  
 
 Addresses the specifier text. The sweep that enforces it across modules nothing imports is story 6.
 
 ### Task 4 — Write tests for "Convert src/ to erasable-syntax TypeScript"
 
-**Status**: pending  
+**Status**: complete  
 
 Covers the criteria tagged `unit` and `integration`, including the rejection of non-erasable constructs.
 
+### Retro
+
+- The conversion's hard part was not the syntax but the *type* for an untyped SQLite row, and getting it wrong once cost a full pass over the projection. TypeScript's rule — an index signature does not supply a target type's *required* named properties — was established empirically in a scratch file rather than guessed at, and it invalidated the first approach (small named row shapes like `{id, number}` passed between modules), because `Record<string, any>` is not assignable to them. The settled answer is one honest type, `Record<string, any>`, declared once per layer with a written rationale: `Row` in `projection/naming.ts`, `Args`/`Row` in `tools/convention.ts`, `ViolationRow` in `integrity/register.ts`. The alternative, `unknown`, was rejected in writing because it puts several hundred identical casts at call sites, none of which check anything. Two consequences worth carrying forward: object spread **drops** an index signature, so `.map((r): Row => ({...r, x}))` needs the return annotation or the nested shape silently loses every column it came in with; and shared types were pushed *downwards* into the module with no imports and re-exported, rather than sideways, so no type-only import points back up a dependency edge.
+
+- A type-only import is invisible at runtime and highly visible to a textual sweep, and that mismatch broke a real invariant test two suites deep. `server.test.js` and `publish-cli.test.js` each walk the static import graph to prove no executable reaches `node:sqlite` before the Node-floor check runs — a genuine NFR2 guarantee, since ES imports evaluate before any statement in the file. Adding `import type { DatabaseSync } from 'node:sqlite'` to `src/db/capability.ts` is erased by both Node's type-stripper and `tsc` under `verbatimModuleSyntax`, so the guarantee held; the regex did not know that, and reported a crash that cannot happen. The right fix was the sweep, not the source. Two things made it safe: the exclusion lookahead is narrow in both directions (`import { type Row, insert }` still loads the module for `insert`; `import type from './x'` is a value default import bound to the name `type`), and each suite now asserts the exclusion directly against three literal strings rather than trusting the walk's silence. The generalisable lesson: after a TypeScript port, every textual sweep over import statements is asserting something subtly different from what it was written to assert.
+
 ## Story 3 — Convert the five executables to TypeScript
 
-**Status**: pending  
+**Status**: complete  
 **Blocked by**: Story 4, Story 6  
 
 ### Acceptance Criteria
@@ -95,21 +111,25 @@ Covers the criteria tagged `unit` and `integration`, including the rejection of 
 
 ### Task 1 — Convert the five executables to .ts
 
-**Status**: pending  
+**Status**: complete  
 
 `dpm-mcp`, `dpm-guard`, `dpm-publish`, `dpm-import` and `dpm-merge`. Addresses the executables' own sources and their import specifiers.
 
 ### Task 2 — Update every documented invocation to plain node
 
-**Status**: pending  
+**Status**: complete — `hooks/pre-commit` now execs `node .../bin/dpm-guard.ts` with no flag; `package.json`'s only invocation is `"test": "node --test"`, which already passed none. The README is the third documented surface and this fork vendors none — `first-run.test.js` asserts it when it lands, and its `dpm-publish` reference was moved to `.ts` here so it is correct on arrival.  
 
 Addresses `package.json` scripts and the pre-commit hook. The README rewrite belongs to the guard-and-docs epic.
 
 ### Task 3 — Write tests for "Convert the five executables to TypeScript"
 
-**Status**: pending  
+**Status**: complete  
 
 Covers the criteria tagged `unit` and `integration`, including the rejection of a build-artefact prerequisite.
+
+### Retro
+
+- A rename's blast radius is not the string that names the file — it is every predicate that *filters* by extension, and only one of those is caught by rewriting the string. The narrow rewrite moved 54 occurrences of `dpm-X.js` across 26 files cleanly, and the suite then went from 50 to 55 failures. Four were escaped regexes (`/dpm-import\.js$/`) the pattern could not see, and the fifth was the dangerous one: `readdirSync(bin).filter((name) => name.endsWith('.js'))` in two suites, which silently became an empty enumeration. Both were saved by an assertion their authors had written for exactly this — `deepEqual(binaries, [the five])` with the message "the set of binaries moved — the sweep below is enumerating something else now". Without that line the two suites would have swept nothing and reported clean, which is the false pass this project keeps rediscovering. The generalisable rule: when renaming by extension, grep for `endsWith`, `filter` and escaped `\.js` separately from the literal name, and treat any sweep whose corpus is derived from an extension as part of the rename.
 
 ## Story 4 — Restore the inherited test suite green under Node 24
 
@@ -126,19 +146,19 @@ Covers the criteria tagged `unit` and `integration`, including the rejection of 
 
 ### Task 1 — Run the inherited suite under Node 24 and fix what the conversion broke
 
-**Status**: pending  
+**Status**: complete  
 
 Addresses failures the port introduced, not pre-existing behaviour. A failure that reveals a real defect in v0.7.0 is recorded, not silently repaired here.
 
 ### Task 2 — Confirm the suite's independence from loaders, network and Claude Code
 
-**Status**: pending  
+**Status**: complete  
 
 Addresses the environment the suite runs in, not the assertions it makes.
 
 ### Task 3 — Write tests for "Restore the inherited test suite green under Node 24"
 
-**Status**: pending  
+**Status**: complete  
 
 Covers the shape criteria: the test script, the absence of a third-party runner, and the file count holding at 133 with nothing skipped or quarantined.
 
@@ -178,32 +198,36 @@ Covers whatever tasks 1 and 2 found uncovered, including the rejection of time-,
 
 ## Story 6 — Enforce import-extension discipline with a module sweep
 
-**Status**: pending  
+**Status**: complete  
 **Blocked by**: Story 7  
 
 ### Acceptance Criteria
 
-- The module sweep imports every file under `src/` and `bin/` with plain `node`, and every import resolves. `[integration]`
+- The module sweep reaches every file under `src/` and `bin/` with plain `node` — importing those under `src/` and resolving every specifier named in both — and every import resolves. `[integration]`
 - The sweep runs as a step separate from the test suite. `[integration]`
 - control — Introducing a deliberately extension-less internal import makes the module sweep fail. `[integration]`
 
 ### Task 1 — Write the module sweep
 
-**Status**: pending  
+**Status**: complete  
 
 Imports every file under `src/` and `bin/` with plain `node` and reports any specifier that does not resolve.
 
 ### Task 2 — Wire the sweep as a step separate from the test suite
 
-**Status**: pending  
+**Status**: complete  
 
 Addresses the separation NFR5 requires, and is the reason a bad specifier in a module nothing imports is still caught.
 
 ### Task 3 — Write tests for "Enforce import-extension discipline with a module sweep"
 
-**Status**: pending  
+**Status**: complete  
 
 Includes the control check: a deliberately extension-less internal import must make the sweep fail.
+
+### Retro
+
+- The criterion said the sweep "imports every file under `src/` and `bin/`", and `bin/` cannot be imported: `dpm-guard.ts` ends in `process.exit(run(...))` and `dpm-mcp.ts` in `await main()`, both at module top level, so importing them runs the guard against the repository and starts a server waiting on stdin. The criterion was amended to say what is actually checkable and equally strong — resolve every specifier in both roots, import the modules under `src/` — rather than the sweep being written to match wording it could not satisfy. The distinction matters because resolution is what a wrong extension breaks, so nothing was given up: the planted controls catch an extension-less import, a stale `.js` pointing at a `.ts`, and a bare specifier, all three in `bin/` as readily as in `src/`.
 
 ## Story 7 — Stand up CI on Node 24
 
