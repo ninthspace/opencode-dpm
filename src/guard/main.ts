@@ -13,11 +13,17 @@
  * server, not to have the hook do it.
  *
  * **And it refuses a database from a newer release**, for the reason `migrate` leaves one alone.
- * The hook is installed as a symlink into a version-pinned plugin directory, the cache keeps old
- * versions beside new ones, and nothing re-points the link on upgrade — so the ordinary state
- * after one is a current database checked by the previous release's guard. That guard compares
- * the projection against a schema missing whatever the release added: a pass from it means
- * nothing, and it is the one outcome nobody investigates.
+ * The hook is installed as a symlink into a package directory the user does not maintain, and
+ * nothing re-points that link — so a current database checked by an older release's guard is a
+ * reachable state. That guard compares the projection against a schema missing whatever the
+ * release added: a pass from it means nothing, and it is the one outcome nobody investigates.
+ *
+ * **What makes it reachable changed with the host, and the message says the new one** (epic 01-04
+ * story 2). Claude Code installed each release in its own version-named directory, so *every*
+ * upgrade left the previous one in place and the stale link was the ordinary state after one.
+ * OpenCode names a package directory for a digest of the specifier, so re-resolving the same
+ * specifier writes into the same directory and the link survives; what still produces two installs
+ * of different ages is two specifiers for one repository — a tag and a branch, say.
  */
 
 import type { DatabaseSync } from 'node:sqlite';
@@ -96,10 +102,11 @@ export function run({ root = '.', location = DATABASE, streams }: {
     if (schema > known) {
       err(`dpm: this guard is from an older release than ${database} — the database is at schema `
         + `version ${schema} and this one knows ${known}. The guard that ran is the one at `
-        + `${resolve(import.meta.dirname, '..', '..')}. An upgrade installs beside the previous `
-        + 'release rather than over it and re-points nothing, so a .git/hooks/pre-commit '
-        + 'symlinked against that path keeps running it. Re-create the symlink against the '
-        + 'current plugin path. Nothing was checked.\n');
+        + `${resolve(import.meta.dirname, '..', '..')}. A package directory is named for the `
+        + 'specifier it was installed from, so two specifiers for one repository are two installs '
+        + 'of different ages, and a .git/hooks/pre-commit symlinked into the older one keeps '
+        + 'running it. Re-create the symlink against the current package path. Nothing was '
+        + 'checked.\n');
 
       // Exit 2 for the reason the missing database is: this is "the guard could not run". A 1
       // would send a user to regenerate a current projection against an older understanding of it.

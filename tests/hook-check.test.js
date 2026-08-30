@@ -19,6 +19,7 @@ import { join } from 'node:path';
 import { UNGUARDED, unguardedMessage } from '../src/server/hook-check.ts';
 import { open } from '../src/server/index.ts';
 import { ownedDirectory as scratch } from './support/scratch.js';
+import { stderrDuring } from './support/stderr.js';
 
 const ownedDirectory = (t) => scratch(t, 'dpm-hook-');
 
@@ -147,24 +148,7 @@ test('a relative database directory is answered, because the default one is rela
 
 test('the open puts what the check says on stderr, and puts nothing there when it says nothing', (t) => {
   /** Everything `open` writes to stderr, since that is where the report has to land (49-01 NFR1). */
-  function opening(location, checkHook) {
-    const written = [];
-    const real = process.stderr.write.bind(process.stderr);
-
-    process.stderr.write = (chunk, ...rest) => {
-      written.push(String(chunk));
-
-      return real(chunk, ...rest);
-    };
-
-    try {
-      open(location, { checkHook });
-    } finally {
-      process.stderr.write = real;
-    }
-
-    return written.join('');
-  }
+  const opening = (location, checkHook) => stderrDuring(() => open(location, { checkHook }));
 
   const consulted = [];
   const directory = ownedDirectory(t);

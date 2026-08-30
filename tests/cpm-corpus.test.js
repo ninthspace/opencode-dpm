@@ -1,26 +1,33 @@
 /**
- * What adopting dpm costs a repository that used CPM, and whether the command the two documents
- * tell a reader to run still covers it.
+ * What adopting dpm costs a repository that used CPM, and whether the command the README tells a
+ * reader to run still covers it.
  *
- * - "The `git mv` in `README.md` and in `MIGRATION.md` leaves a CPM corpus with nothing the
- *   projection would reclaim" [unit]
- * - "Both send it somewhere the walk cannot reach, and to the same place" [unit]
+ * - "The `git mv` in `README.md` leaves a CPM corpus with nothing the projection would reclaim"
+ *   [unit]
+ * - "It sends the corpus somewhere the walk cannot reach" [unit]
  * - "A directory with no kind mapped to it is never walked, and a name carrying no kind token is
  *   never a candidate" [unit]
  * - "must NOT — the run passes on a corpus with nothing at risk, so a fixture that parses to
  *   nothing reads as a command that covers everything" [unit]
  *
+ * **This was two documents and is now one** (epic 01-04 story 4). `MIGRATION.md` carried the same
+ * `git mv`, and the audit held the pair to agreeing with each other as well as to the walk. The
+ * file does not port: the CPM migration happens while CPM is installed, under Claude Code, so the
+ * guide is maintained with that release and this package does not carry a copy. The agreement
+ * check went with it — a second document is what made agreement a question — but `audit` still
+ * takes the documents as a map and reports each by name, because the shape it is checking is "the
+ * instructions a reader is given", and that is a set whether it currently holds one or two.
+ *
  * **The move is executed, not read.** `orphans()` matches a *kind token* — `-spec-`, `-epic-` —
  * against dpm's own kind names, and CPM's word for a document is dpm's kind name for some of the
  * twelve projected directories and something else for the rest. Which is which is a coincidence of
- * vocabulary that a renamed kind silently changes, so both documents tell the reader to move all
- * twelve and neither enumerates the ones at risk. The check that matches that instruction is to
+ * vocabulary that a renamed kind silently changes, so the README tells the reader to move all
+ * twelve and does not enumerate the ones at risk. The check that matches that instruction is to
  * run the command on a corpus and see what is left, rather than to reconcile a list against a set.
  *
- * **What this does not check.** Only the `git mv` block of each document is parsed; the prose
- * around it, including `MIGRATION.md`'s own list of the twelve directories, is not. And the corpus
- * is one file per shape CPM writes, so a shape nobody thought of is not covered by the fact that
- * this passes.
+ * **What this does not check.** Only the `git mv` block is parsed; the prose around it is not. And
+ * the corpus is one file per shape CPM writes, so a shape nobody thought of is not covered by the
+ * fact that this passes.
  */
 
 import { test } from 'node:test';
@@ -107,25 +114,28 @@ function apply(root, plan) {
 }
 
 /**
- * Both documents held to the outcome they promise, rather than to a list they recite.
+ * Every document that gives the instruction, held to the outcome it promises rather than to a list
+ * it recites.
  *
  * A complaint list rather than a run of assertions, so the controls below can drive it on inputs
  * they invent instead of restating its rules in a second place.
  *
- * @param {{projected: Set<string>, readme: string, migration: string, atRisk: string[],
+ * @param {{projected: Set<string>, documents: Record<string, string>, atRisk: string[],
  *          survives: (plan: {moves: string[], destination: string}) => string[]}} inputs
  * @returns {string[]}
  */
-function audit({ projected, readme, migration, atRisk, survives }) {
+function audit({ projected, documents, atRisk, survives }) {
   const complaints = [];
 
   // The floor. `survives` returning nothing is the pass condition below, so a corpus that was
   // never at risk — or a reclaim that stopped working — reads exactly like a command that covers
-  // everything.
+  // everything. And a document set that is empty would pass every check under it.
   if (!atRisk.length) complaints.push('nothing in the corpus was at risk, so the move proved nothing');
   if (!projected.size) complaints.push('no projected directories, so no coverage was checked');
+  if (!Object.keys(documents).length) complaints.push('no documents were audited');
 
-  const plans = { README: move(readme), MIGRATION: move(migration) };
+  const plans = Object.fromEntries(Object.entries(documents)
+    .map(([which, source]) => [which, move(source)]));
 
   for (const [which, plan] of Object.entries(plans)) {
     if (!plan) {
@@ -148,15 +158,22 @@ function audit({ projected, readme, migration, atRisk, survives }) {
     }
   }
 
-  if (plans.README && plans.MIGRATION && plans.README.destination !== plans.MIGRATION.destination) {
-    complaints.push('the two documents disagree on where the corpus goes: '
-      + `${plans.README.destination} and ${plans.MIGRATION.destination}`);
+  // **Kept for a set of one, and it costs nothing.** Two documents is what made agreement a
+  // question, and there is one now; written over the map rather than over two named fields, the
+  // check is simply satisfied while the set is a singleton and starts constraining again the day
+  // a second document gives the same instruction. The controls below drive it on an invented pair,
+  // so it is exercised rather than merely present.
+  const destinations = [...new Set(Object.values(plans)
+    .filter((plan) => plan !== null).map((plan) => plan.destination))];
+
+  if (destinations.length > 1) {
+    complaints.push(`the documents disagree on where the corpus goes: ${destinations.join(' and ')}`);
   }
 
   return complaints;
 }
 
-/** The live inputs: the two documents as shipped, and a reclaim driven on a real tree. */
+/** The live inputs: the documents as shipped, and a reclaim driven on a real tree. */
 function inputs(t) {
   const db = openPlanningDatabase(t);
   const reclaimed = (root) => orphans(db, root, new Set()).map(({ path }) => path);
@@ -164,8 +181,7 @@ function inputs(t) {
   return {
     projected: new Set(db.prepare('SELECT DISTINCT dir FROM document_kind WHERE dir IS NOT NULL')
       .all().map(({ dir }) => dir)),
-    readme: readFileSync(join(ROOT, 'README.md'), 'utf8'),
-    migration: readFileSync(join(ROOT, 'MIGRATION.md'), 'utf8'),
+    documents: { README: readFileSync(join(ROOT, 'README.md'), 'utf8') },
     atRisk: reclaimed(cpmTree(t)),
 
     // A fresh tree per plan, because applying one renames the directories the next would move.
@@ -213,16 +229,24 @@ test('the directories the walk never reaches, and the names it cannot mistake [u
 const INVENTED = {
   projected: new Set(['alpha', 'beta', 'gamma']),
   atRisk: ['docs/alpha/01-thing.md'],
-  readme: '```sh\ngit mv docs/alpha docs/beta docs/gamma docs/parked/   # drop any you lack\n```\n',
-  migration: '```sh\ngit mv docs/alpha docs/beta \\\n       docs/gamma docs/parked/\n```\n',
+  documents: {
+    README: '```sh\ngit mv docs/alpha docs/beta docs/gamma docs/parked/   # drop any you lack\n```\n',
+    MIGRATION: '```sh\ngit mv docs/alpha docs/beta \\\n       docs/gamma docs/parked/\n```\n',
+  },
   survives: (plan) => (plan.moves.map(named).includes('alpha') ? [] : ['docs/alpha/01-thing.md']),
 };
+
+/** `INVENTED` with one document rewritten, since the map has to be replaced rather than merged. */
+const rewriting = (which, edit) => ({
+  ...INVENTED,
+  documents: { ...INVENTED.documents, [which]: edit(INVENTED.documents[which]) },
+});
 
 test('a command that no longer covers the corpus is named, and so is a bad destination [unit]', () => {
   assert.deepEqual(audit(INVENTED), [], 'the invented pair does not agree with itself');
 
   assert.deepEqual(
-    audit({ ...INVENTED, migration: INVENTED.migration.replace(' docs/beta', '') }),
+    audit(rewriting('MIGRATION', (text) => text.replace(' docs/beta', ''))),
     ["MIGRATION's git mv leaves docs/beta/ behind, and it is walked"],
   );
 
@@ -230,7 +254,7 @@ test('a command that no longer covers the corpus is named, and so is a bad desti
   // and the executed move leaves something behind. Both, because a plan can cover every directory
   // and still be run against a tree that has more in it.
   assert.deepEqual(
-    audit({ ...INVENTED, readme: INVENTED.readme.replace('docs/alpha ', '') }),
+    audit(rewriting('README', (text) => text.replace('docs/alpha ', ''))),
     [
       "README's git mv leaves docs/alpha/ behind, and it is walked",
       "README's git mv leaves docs/alpha/01-thing.md for the first publish to reclaim",
@@ -240,16 +264,19 @@ test('a command that no longer covers the corpus is named, and so is a bad desti
   // The destination is checked against the walk rather than against a literal, so a guide that
   // renames the parking spot stays correct and one that picks a walked directory does not.
   assert.deepEqual(
-    audit({ ...INVENTED, migration: INVENTED.migration.replace('docs/parked/', 'docs/gamma/') }),
+    audit(rewriting('MIGRATION', (text) => text.replace('docs/parked/', 'docs/gamma/'))),
     [
       'MIGRATION sends the corpus to docs/gamma/, which is walked',
-      'the two documents disagree on where the corpus goes: docs/parked/ and docs/gamma/',
+      'the documents disagree on where the corpus goes: docs/parked/ and docs/gamma/',
     ],
   );
 
-  assert.deepEqual(audit({ ...INVENTED, readme: 'no command here' }), [
+  assert.deepEqual(audit(rewriting('README', () => 'no command here')), [
     'README gives no git mv, so a reader is told to move a corpus by hand',
   ]);
+
+  // And the floor the live call now leans on: one document is a set, no documents is not.
+  assert.deepEqual(audit({ ...INVENTED, documents: {} }), ['no documents were audited']);
 });
 
 test('must NOT — a corpus with nothing at risk reads as a command that covers everything [unit]', () => {

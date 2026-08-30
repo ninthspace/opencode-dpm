@@ -88,6 +88,23 @@ export const sweepSourcesUnder = (directory) => {
 };
 
 /**
+ * Every module the plugin itself runs — `src/` and `bin/`, and deliberately not `scripts/`.
+ *
+ * **The exclusion is the reason this is worth sharing.** `scripts/` is real code a developer runs,
+ * so a third-party runner or a socket appearing in it is a finding; it is not part of what installs
+ * as a plugin, so claims about what *the plugin* reads from the environment are not made against
+ * it. `suite-integrity.test.js` drew that line and had the only copy of it; the second suite to
+ * need it — `session-scratch.test.js`, asking which environment variables the plugin reads — would
+ * otherwise have drawn it again, and the two would agree until one directory moved.
+ *
+ * @returns {Array<{name: string, text: string}>}
+ */
+export const pluginSources = () => [
+  ...sweepSourcesUnder(join(import.meta.dirname, '..', '..', 'src')),
+  ...sweepSourcesUnder(join(import.meta.dirname, '..', '..', 'bin')),
+];
+
+/**
  * dpm's own `package.json`, parsed.
  *
  * Five suites assert over this file — that nothing is declared to install, that the engine floor

@@ -37,6 +37,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { dump } from '../dump/index.ts';
+import { ID_PREFIX } from '../plugin/skills.ts';
 import { project } from '../projection/index.ts';
 import { hashDump, readMarker, writeMarker } from '../sync/marker.ts';
 import { VERDICT, verdict } from '../sync/verdict.ts';
@@ -85,6 +86,47 @@ export const IMPORT_COMMAND = fileURLToPath(new URL(`../../${COMMANDS.import}`, 
 
 /** The command that reconciles two artefacts that both moved — the both-moved fix (AD13). */
 export const MERGE_COMMAND = fileURLToPath(new URL(`../../${COMMANDS.merge}`, import.meta.url));
+
+/**
+ * How a reader already inside a session reaches the same fix — the skill's registered id (FR6).
+ *
+ * **This line was `/dpm:publish` and there is no such thing in v2.** Claude Code minted a
+ * `/dpm:<skill>` command per skill; OpenCode registers skills into a flat catalogue and the host's
+ * built-in `skill` tool takes the id alone, so the old sentence names a trigger that does not
+ * exist. A refused commit is exactly the moment a reader follows the instruction literally, which
+ * makes it the worst place in the port for one that goes nowhere.
+ *
+ * **The prefix is imported and the name is written**, which is the split the two halves deserve.
+ * `ID_PREFIX` is a registration decision that lives in `src/plugin/skills.ts`, and a second copy of
+ * it here would be the shape that goes stale in silence; the skill *name* is a directory under
+ * `skills/`, and there is nothing to derive it from that is not itself a guess — deriving it from
+ * `COMMANDS.publish` would tie a skill id to a binary filename, so renaming the binary would
+ * quietly point this at a skill nobody registered.
+ *
+ * What keeps the written half honest is the same thing that keeps {@link PUBLISH_COMMAND} honest:
+ * `guard-fix.test.js` asks the filesystem whether the skill this names is on disk, rather than
+ * matching the string it came from.
+ *
+ * The import points at `src/plugin/` — the one place in `src/` that does, and deliberately so.
+ * `skills.ts` has no module-level effects and reaches no further than `node:path`, so a pre-commit
+ * hook pays nothing for the edge.
+ */
+export const PUBLISH_SKILL = `${ID_PREFIX}publish`;
+
+/**
+ * The phrase that names the skill, and **the only safe thing to match the message against**.
+ *
+ * `dpm-publish` is a substring of `bin/dpm-publish.ts`, so `message.includes(PUBLISH_SKILL)` is
+ * true of every refusal that names the *binary* — including the dump-moved one, which must not
+ * offer publish in either form. Three assertions were written that way and one of them passed for
+ * that reason; retro 02 records the same shape from the other side, where a search for a replaced
+ * string matched inside the absolute path that replaced it.
+ *
+ * So the sentence fragment is the export and the id is composed into it. A caller asking "does this
+ * message offer the publish skill" has one thing to ask, and it cannot accidentally be answered by
+ * a path.
+ */
+export const PUBLISH_INVOCATION = `the skill tool with id "${PUBLISH_SKILL}"`;
 
 /** One path the guard is reporting, and the sentence saying why. */
 type Divergence = { path: string; reason: string };
@@ -322,7 +364,7 @@ function fix(state: string): string[] {
     // first with nothing they can type.
     'Regenerate both artefacts:',
     `  node ${PUBLISH_COMMAND}`,
-    'or run /dpm:publish if you are already in a session.',
+    `or invoke ${PUBLISH_INVOCATION} if you are already in a session.`,
   ];
 }
 

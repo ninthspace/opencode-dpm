@@ -23,6 +23,7 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   describe, guard, DUMP_PATH, IMPORT_COMMAND, MERGE_COMMAND, MOVED, PUBLISH_COMMAND,
+  PUBLISH_INVOCATION,
 } from '../src/guard/index.ts';
 import { MARKER_PATH, readMarker } from '../src/sync/marker.ts';
 import { VERDICT } from '../src/sync/verdict.ts';
@@ -154,7 +155,9 @@ test('must NOT — publish is named when the dump is what moved [integration]', 
   // tool built to prevent it.
   assert.ok(!message.includes(PUBLISH_COMMAND),
     `the dump moved and the guard named the command that would discard it:\n${message}`);
-  assert.doesNotMatch(message, /\/dpm:publish/,
+  // The phrase and not the id: `dpm-publish` is a substring of `bin/dpm-publish.ts`, so matching the
+  // id would make this assertion a second reading of the line above rather than its own.
+  assert.ok(!message.includes(PUBLISH_INVOCATION),
     `the dump moved and the guard named the publish skill:\n${message}`);
   assert.ok(message.includes(IMPORT_COMMAND), `no fix was named at all:\n${message}`);
 
@@ -169,7 +172,7 @@ test('must NOT — publish is named when the dump is what moved [integration]', 
 
   assert.ok(named.includes(PUBLISH_COMMAND),
     `the database moved and publish was not named:\n${named}`);
-  assert.match(named, /\/dpm:publish/, 'the skill went with it');
+  assert.ok(named.includes(PUBLISH_INVOCATION), 'the skill went with it');
   assert.ok(!named.includes(IMPORT_COMMAND),
     `the database moved and the import was named as well:\n${named}`);
 });

@@ -211,15 +211,27 @@ test('a file with a shebang is executable in the index, and nothing else is', ()
     `the index holds ${files.length} files and none under bin/, so the executables are untracked `
     + 'and the mode that ships is not recorded yet — commit the tree and this reads it');
 
+  // **A third failure, and it wants its own sentence too.** The index and the working tree are
+  // different things: a file deleted but not yet staged is still tracked, and reading it threw
+  // `ENOENT: no such file or directory` — an error naming a path and nothing about why it was
+  // being read. The mode question is moot for a file that is going away, so it is named here and
+  // excluded below rather than crashed on.
+  const missing = files.filter(({ path }) => !existsSync(join(DPM, path))).map(({ path }) => path);
+
+  assert.deepEqual(missing, [],
+    'the index tracks a file the working tree no longer has — stage the deletion and this reads '
+    + 'the rest');
+
   // **Derived from the shebang rather than from a list of paths**, so a fifth binary added
   // without its mode fails here instead of being absent from a list nobody updated. `dpm-merge.ts`
   // shipped mode 644 for two epics precisely because nothing was watching, and every caller
   // reaches these files as an argument to `node`, which is why nothing ever failed.
-  const shebanged = files
+  const present = files.filter(({ path }) => existsSync(join(DPM, path)));
+  const shebanged = present
     .filter(({ path }) => readFileSync(join(DPM, path), 'utf8').startsWith('#!'))
     .map(({ path }) => path)
     .sort();
-  const executable = files
+  const executable = present
     .filter(({ mode }) => mode === '100755')
     .map(({ path }) => path)
     .sort();

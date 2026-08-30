@@ -19,7 +19,10 @@ import { join } from 'node:path';
 import { committer } from './support/commit.js';
 import { publishedRepository } from './support/published.js';
 import { publish } from '../src/publish/index.ts';
-import { describe, guard, DIVERGENCE, DUMP_PATH, PUBLISH_COMMAND } from '../src/guard/index.ts';
+import {
+  describe, guard, DIVERGENCE, DUMP_PATH, PUBLISH_COMMAND, PUBLISH_INVOCATION, PUBLISH_SKILL,
+} from '../src/guard/index.ts';
+import { ID_PREFIX, SKILL_FILE } from '../src/plugin/skills.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 
@@ -66,8 +69,15 @@ test('the divergence message names the command that resolves it', (t) => {
   assert.match(message, /do(es)? not match the database/, 'the message stopped reporting divergence');
   assert.ok(message.includes(PUBLISH_COMMAND),
     `the message does not name the command:\n${message}`);
-  assert.match(message, /\/dpm:publish/,
+  // **The phrase rather than the id**, because `dpm-publish` is a substring of `bin/dpm-publish.ts`
+  // and matching the id would be satisfied by the line above naming the binary.
+  assert.ok(message.includes(PUBLISH_INVOCATION),
     'the message names the binary and not the skill, so a run already in a session is sent out of it');
+
+  // **And it names the v2 invocation rather than the one Claude Code minted.** `/dpm:publish` was a
+  // slash command per skill; v2 has no such trigger, so a reader who followed it literally would be
+  // told to type something the host does not answer to — at the moment their commit was refused.
+  assert.doesNotMatch(message, /\/dpm:/, `the guard still names a slash command:\n${message}`);
 
   // And it is still a diagnostic rather than an instruction to run something blindly: the reason
   // the edit was left in place has to survive the addition.
@@ -87,9 +97,20 @@ test('must NOT — the message names a command and nothing asserts the command e
   // it. Asserted by shape, because the absolute prefix differs per machine.
   assert.match(PUBLISH_COMMAND, /[/\\]bin[/\\]dpm-publish\.ts$/);
 
-  // The control: the same reading over a path that does not exist is false, so the assertion above
-  // is a fact about the filesystem and not about `existsSync` always agreeing.
+  // **The same reading for the other half of the sentence.** The skill id is composed rather than
+  // resolved — there is no filesystem operation that turns `dpm-publish` into a directory without
+  // knowing the prefix — so the check runs the composition backwards and asks whether the body is
+  // there. A skill renamed or removed fails here, in the suite, rather than in the terminal of
+  // someone whose commit has just been refused.
+  assert.equal(PUBLISH_SKILL.startsWith(ID_PREFIX), true,
+    `${PUBLISH_SKILL} is not a registered id — the plugin prefixes every skill with ${ID_PREFIX}`);
+  assert.equal(existsSync(join(ROOT, 'skills', PUBLISH_SKILL.slice(ID_PREFIX.length), SKILL_FILE)),
+    true, `the guard names the skill ${PUBLISH_SKILL} and there is no such skill`);
+
+  // The control: the same reading over a path that does not exist is false, so the assertions above
+  // are facts about the filesystem and not about `existsSync` always agreeing.
   assert.equal(existsSync(join(ROOT, 'bin', 'dpm-publish-that-is-not-there.js')), false);
+  assert.equal(existsSync(join(ROOT, 'skills', 'publish-that-is-not-there', SKILL_FILE)), false);
 });
 
 // --- Criterion 2: publishing resolves it, and not publishing leaves both artefacts named --------

@@ -30,7 +30,7 @@ import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  SANCTIONED_DEV_DEPENDENCIES, packageManifest, staticImports, sweepSourcesUnder,
+  SANCTIONED_DEV_DEPENDENCIES, packageManifest, pluginSources, staticImports, sweepSourcesUnder,
   unsanctionedDependencies, withoutComments,
 } from './support/sources.js';
 import { runNode } from './support/run-node.js';
@@ -38,12 +38,13 @@ import { runNode } from './support/run-node.js';
 const ROOT = join(import.meta.dirname, '..');
 const TESTS = join(ROOT, 'tests');
 
-/** The suite's files as the sweeps take them, and the plugin's own, for the claims that differ. */
+/**
+ * The suite's files as the sweeps take them. The plugin's own come from `sources.js`, which is
+ * where they moved once a second suite needed the same `src/` + `bin/` reading and the same
+ * exclusion of `scripts/`.
+ */
 const suiteSources = () => sweepSourcesUnder(TESTS);
-const pluginSources = () => [
-  ...sweepSourcesUnder(join(ROOT, 'src')),
-  ...sweepSourcesUnder(join(ROOT, 'bin')),
-];
+
 /**
  * Everything in this repository that Node runs, which is the plugin, the suite, and `scripts/`.
  *
@@ -155,10 +156,15 @@ const ADDED = [
   'ci.test.js', //                     story 7 — the workflow, and the environment two absences need
   'dependency-isolation.test.js', //   01-02 story 4 — the empty production tree, read off the lockfile
   'executables-typescript.test.js', // story 3 — the five binaries under plain node
+  'guard-hook-path.test.js', //        01-04 story 1 — the hook fires, and no refusal names a host mechanism
   'module-sweep.test.js', //           story 6 — every specifier resolves, and the sweep can fail
+  'package-cache.test.js', //          01-04 story 2 — the README's link instruction, run against a built cache
   'parity-v070.test.js', //            story 5 — the port against v0.7.0's own dump and allocator
+  'permission-entries.test.js', //     01-04 story 5 — the README's rules name skills and tools that exist
   'plugin-entry.test.js', //           01-02 story 1 — registration, the profile seam, the root
   'plugin-reload.test.js', //          01-02 story 5 — a reload leaves one of everything
+  'readme-v2.test.js', //              01-04 story 4 — every documented block, classified and run
+  'session-scratch.test.js', //        01-04 story 3 — the environment audit, and nothing loose in the tree
   'skill-invocation.test.js', //       01-03 story 3 — the descriptions, and $ARGUMENTS retired
   'skill-pilot.test.js', //            01-03 story 1 — one body ported, and the transition's tripwire
   'skill-port.test.js', //             01-03 story 2 — no Claude Code mechanism, and ralph's recorded gap
