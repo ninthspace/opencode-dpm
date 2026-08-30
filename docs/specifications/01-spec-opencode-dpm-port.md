@@ -29,9 +29,11 @@ Five milestones, in order.
 
 **4. Guard and docs.** Hook path, README, permission guidance. OpenCode's package cache location for a git-installed plugin is confirmed here rather than left to the first user to discover, since it decides whether the README's symlink instruction is correct.
 
-**5. Publish.** npm at 0.1.0, with install tested from the published artefact rather than the working tree: a clean environment, install by version, register, and run one skill end to end.
+**5. Release.** Tag 0.1.0, with install tested from the artefact the installer builds rather than from the working tree: a clean environment, install by the documented command, register, and run one skill end to end. **Distribution is the GitHub specifier, not a registry** — see *Why the release is a tag rather than an npm package*.
 
 **What the inherited suite evidences, and what it does not.** The 133 test files carry over from a codebase that already passed them, so a green suite in milestone 1 establishes that the TypeScript conversion broke nothing beneath the host boundary. It is a regression net over the part that is not changing. Everything genuinely new in this port — registration, skill advertisement, invocation, the guard's new hook path — is verified in milestones 2 through 5 by checks nobody has written yet, and a green milestone 1 should not be read as coverage of any of it.
+
+**And a boundary the suite cannot reach at all, learned in milestone 5.** Every one of those 133 files runs the executables from the working tree, and the artefact differs from the working tree in one respect no test inside the repository had varied: it lives under `node_modules`. Node refuses to type-strip `.ts` there, so the shipped MCP server could not start while the whole suite stayed green. Milestone 5's install-from-the-artefact is not a formality on top of the earlier milestones — it is the only check that reads the thing users receive.
 
 ## Scope: Deferred
 
@@ -68,11 +70,27 @@ Six seams, derived from the architecture decisions, and the places integration c
 
 **6. Package to filesystem.** Skill `location`, supporting-file resolution, and the guard symlink target inside OpenCode's package cache. Two open questions live on this seam — whether registered skills resolve their supporting files, and where a git-installed plugin actually lands — and the first is the milestone-2 go/no-go.
 
+## Why the release is a tag rather than an npm package
+
+**Amendment.** FR1 read *"`opencode2 plugin add github:ninthspace/opencode-dpm` — and later the npm form — yields a working DPM"*. The npm clause is retired and replaced by the ref form: *"optionally with `#<ref>` to pin a release"*. Milestone 5 changes from *Publish: npm at 0.1.0* to *Release: tag 0.1.0*. Nothing else about FR1's obligations moves — the install must still leave the server connected, the skills advertised, and nothing for the user to copy.
+
+**Citation, and it is the whole argument.** The GitHub specifier accepts a git ref, and the ref genuinely pins:
+
+    opencode2 plugin add github:ninthspace/opencode-dpm#d28c37b
+
+installed the pre-fix tree — 424 files, `docs/` present, zero occurrences of `BUN_BE_BUN` in `src/plugin/server.ts` — against the 166-file post-fix package that the unpinned form brings down. Two different specifier strings, two different cache digests, two different trees. Version pinning was the one capability npm offered that the documented command was assumed not to have, and the assumption was wrong.
+
+**What npm would have cost.** A second install path to keep verified, a registry name to hold, a release step between a commit and a usable version, and a real hazard rather than a theoretical one: OpenCode keys its package cache on the literal specifier string, so a user who installed both forms would hold two copies of dpm, and **`Duplicate plugin ID: dpm` fails the entire plugin load rather than skipping the duplicate**. A second distribution channel for a plugin whose id is a bare `dpm` is a way to break installs that were working.
+
+**What it would have bought.** Discoverability, which is not a problem this project has, and semver resolution (`opencode-dpm@^0.1`), which is a real difference — a ref pins exactly and does not float within a minor. That is a smaller loss than it sounds for a tool distributed by a documented one-line command to people who are told which line to run, and it can be revisited without unpicking anything: adding npm later is additive, and this amendment retires a clause rather than closing a door.
+
+**Recorded because it is the second time the clause generated work by being read rather than questioned.** Epic 01-05 opened with four planned tasks and two coverage bindings aimed at a registry release, and was pivoted mid-epic when the question was finally asked; the clause then survived that pivot as deferred scope and reappeared as outstanding work at the epic's close. A requirement fragment carrying "and later" is an obligation nobody has yet examined, and it will keep producing plans until somebody either does the work or writes down why not. This is the writing down.
+
 ## Functional Requirements
 
 ### FR1 (must)
 
-Single-command install. `opencode2 plugin add github:ninthspace/opencode-dpm` — and later the npm form — yields a working DPM: the MCP server registered and connected, all skills advertised, and nothing further for the user to copy into the project.
+Single-command install. `opencode2 plugin add github:ninthspace/opencode-dpm` — optionally with `#<ref>` to pin a release — yields a working DPM: the MCP server registered and connected, all skills advertised, and nothing further for the user to copy into the project.
 
 - Installing into a fresh project by the documented command leaves the MCP server connected and all twenty-three skills advertised, with no further user action. `[manual]`
 - The published package's manifest declares the plugin entry, and the server command path resolves to an existing file inside the installed package tree. `[integration]`

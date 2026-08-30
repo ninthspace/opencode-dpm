@@ -63,6 +63,12 @@ installs of the same repository, cached separately and upgraded separately. That
 for exactly one thing — which of them your pre-commit hook is symlinked into — and *First
 run* covers it.
 
+The same mechanic is how you pin. Append `#` and any git ref — a tag, a branch, a commit —
+and you get that tree rather than whatever `main` currently holds:
+`github:ninthspace/opencode-dpm#v0.1.0`. Without a ref you track `main`, which is the right
+default for a beta and the wrong one if you want a version you can go back to. There is no
+npm package; a tag is the release.
+
 To work on DPM itself, point the config at your clone instead of a specifier, so the
 plugin loads from your working tree:
 

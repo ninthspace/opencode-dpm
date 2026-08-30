@@ -256,13 +256,13 @@ Covers the computed registration list, the package `location`, and both rejectio
 
 ### Retro
 
-- The rewrite was mechanical in twenty-two bodies and not a rewrite at all in the twenty-third. `ralph` does not name a Claude Code path that needed substituting — it is built end to end on a stop-hook contract it describes fourteen times, and that hook was never shipped even by released v0.7.0, whose `hooks/` holds a `pre-commit` and nothing else. So the port met a missing capability wearing the costume of a find-and-replace. The story's own planning had flagged it (story 1 task 3 wrote it into the epic section precisely so story 2 would meet it as a decision), and that flag is the only reason it cost a question rather than a silent path substitution that would have left a skill reading as ported and unable to work.
-
-Resolved by keeping ralph registered and recording the must-NOT unmet for it alone — the smallest amendment surface, since excluding it would have forced amending three criteria that say "twenty-three". The v2 loop mechanism is unbuilt and unowned.
-
 - A 549-edit mechanical rewrite across twenty-three files was made auditable by inverting it: reverse-substituting `dpm_` back to `mcp__plugin_dpm_dpm__` and diffing each body against the released v0.7.0 copy gave 0 differing lines for all twenty-two batch bodies and for `shared/skill-conventions.md`, and 6 for the pilot — the three intentional line pairs. That is a far stronger claim than "the tests still pass", because it says what was *not* touched: no procedure prose, no gate wording, no table. The technique needs a byte-identical oracle to invert against, which this port has and which most refactors do not.
 
 Stays a manual check: `vendoring.test.js` forbids any source from naming the marketplace checkout, so it cannot become a test without a test that silently passes when the released copy is absent.
+
+- The rewrite was mechanical in twenty-two bodies and not a rewrite at all in the twenty-third. `ralph` does not name a Claude Code path that needed substituting — it is built end to end on a stop-hook contract it describes fourteen times, and that hook was never shipped even by released v0.7.0, whose `hooks/` holds a `pre-commit` and nothing else. So the port met a missing capability wearing the costume of a find-and-replace. The story's own planning had flagged it (story 1 task 3 wrote it into the epic section precisely so story 2 would meet it as a decision), and that flag is the only reason it cost a question rather than a silent path substitution that would have left a skill reading as ported and unable to work.
+
+Resolved by keeping ralph registered and recording the must-NOT unmet for it alone — the smallest amendment surface, since excluding it would have forced amending three criteria that say "twenty-three". The v2 loop mechanism is unbuilt and unowned.
 
 ## Story 3 — Invocation without slash commands
 
