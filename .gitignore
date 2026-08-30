@@ -1,0 +1,33 @@
+# Node
+node_modules/
+*.tsbuildinfo
+.npm/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# DPM
+#
+# The planning database itself is NOT ignored here — .dpm/.gitignore holds
+# `dpm.db*`, written by DPM before the database was created so there is no
+# window in which an unignored dpm.db can be staged. Do not duplicate it here,
+# and do not add `.dpm/` or `*.sql`:
+#
+#   .dpm/dpm.sql  is the database's committed text form and MUST be committed —
+#                 it is what a fresh clone restores from.
+#   docs/         is generated from the database and MUST be committed — the
+#                 pre-commit guard regenerates it and refuses if it differs.
+#
+# Ignoring either would defeat the guard and lose the corpus.
