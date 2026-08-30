@@ -1,0 +1,146 @@
+# Epic 01-01 Story 7 — CI on Node 24.
+#
+# Two jobs, because the spec asks two different questions and one machine cannot answer both.
+#
+# `checks` is the ordinary one: on every push, on a runner with Node 24, run the suite, the type
+# check and the module sweep (ENVR7). All three are the commands `package.json` already declares, so
+# what CI runs and what a contributor runs are the same three strings — a workflow that inlined
+# `node --test` here would drift from `npm test` silently.
+#
+# `isolated` is ENVR12's, and its subject is the *environment* rather than the code. Two of this
+# specification's restrictions are about what is **absent** — ENVX1 says native compilation must not
+# be required, ENVX4 says network access must not be required — and neither can be shown on a
+# machine that has a compiler and a network. They are shown by starting a container that has
+# neither and running the project inside it. Every absence here therefore carries a control that
+# would catch its presence: the build refuses a base image that already has Node, and the offline
+# steps are paired with the same probe run *with* networking, so a `--network none` that was quietly
+# ignored is reported rather than passed.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: suite, type check and module sweep on Node 24
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # ENVR1/ENVR8's floor, read back rather than assumed. `setup-node` resolving `.nvmrc` to
+      # something below 24 would otherwise surface as a type-stripping syntax error fifty lines
+      # into the suite, which names the wrong problem.
+      - name: node 24 is the runtime
+        run: |
+          node --version
+          node -e 'if (Number(process.versions.node.split(".")[0]) < 24) { console.error("node is below 24, so the sources do not run"); process.exit(1); }'
+
+      - name: install the type checker
+        run: npm ci
+
+      # ENVX2 arriving as a command rather than as an assertion: no `--loader`, no `--import`, no
+      # transpiler flag. `npm test` is `node --test` and nothing here adds to it.
+      - name: the suite, under plain node
+        run: npm test
+
+      - name: the type check
+        run: npm run typecheck
+
+      # NFR5. Separate from the suite on purpose — a suite reaches a module by importing it, so it
+      # says nothing about a module nothing imports, and the sweep walks the tree instead.
+      - name: the module sweep
+        run: npm run modules
+
+  isolated:
+    name: the disposable isolated environment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The control on the base image, before anything is built on it: `debian:bookworm-slim` has no
+      # Node, no npm, no Python and no C compiler. Run here as well as inside the build so a failure
+      # says *which* of the two moved — a base image that grew a toolchain, or a Dockerfile that
+      # stopped checking.
+      - name: the environment starts with no language toolchain
+        run: |
+          docker run --rm debian:bookworm-slim sh -c '
+            for tool in node npm npx python python3 cc gcc g++ make node-gyp; do
+              if command -v "$tool" >/dev/null 2>&1; then
+                echo "$tool is already present, so nothing here shows it is not needed" >&2
+                exit 1
+              fi
+            done
+            echo "no language toolchain, no compiler and no python"
+          '
+
+      - name: build the disposable environment
+        run: |
+          docker build --target bare      -f .github/isolated.Dockerfile -t dpm-bare .
+          docker build --target installed -f .github/isolated.Dockerfile -t dpm-installed .
+
+      # The positive half of the networking control. Without it, every "networking is off" below is
+      # satisfied by a probe that never worked in the first place.
+      - name: the network probe reaches the network when networking is on
+        run: docker run --rm dpm-bare node .github/network-probe.js expect-online
+
+      - name: the network probe finds nothing when networking is off
+        run: docker run --rm --network none dpm-bare node .github/network-probe.js expect-offline
+
+      # ENVX1, run rather than inspected: a clean install into an environment with no compiler and
+      # no Python, completing without node-gyp. `npm ci --foreground-scripts` so an install script
+      # that shelled out to a compiler would be visible rather than swallowed.
+      - name: the clean-install check, inside it
+        run: |
+          docker run --rm dpm-bare sh -c '
+            set -e
+            test ! -e node_modules || { echo "the image was built with an install already in it" >&2; exit 1; }
+            # Redirected rather than piped through tee: sh has no pipefail, so a pipeline would
+            # report the exit status of tee and a failed install would read as a clean one.
+            npm ci --foreground-scripts > /tmp/install.log 2>&1 || { cat /tmp/install.log >&2; exit 1; }
+            cat /tmp/install.log
+            if grep -qi "node-gyp\|gyp info\|prebuild-install" /tmp/install.log; then
+              echo "the install reached for a native build" >&2
+              exit 1
+            fi
+            test -d node_modules/typescript || { echo "the install produced nothing" >&2; exit 1; }
+            echo "installed with no compiler, no python and no node-gyp"
+          '
+
+      # ENVX1's sharper half: the plugin itself declares no runtime dependencies, so the MCP server
+      # answers with no install at all — and it does so with networking off, which is ENVX4 for the
+      # server's own start-up path.
+      - name: the server answers with nothing installed and no network
+        run: |
+          docker run --rm --network none dpm-bare sh -c '
+            set -e
+            test ! -e node_modules || { echo "something is installed, so this proves nothing" >&2; exit 1; }
+            printf "%s\n" \
+              "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"ci\",\"version\":\"1\"}}}" \
+              "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"list_spec\",\"arguments\":{}}}" \
+              | node bin/dpm-mcp.ts > /tmp/replies.jsonl
+            grep -q "\"id\":2" /tmp/replies.jsonl || { echo "the server did not answer the call" >&2; cat /tmp/replies.jsonl >&2; exit 1; }
+            grep -q "\"error\"" /tmp/replies.jsonl && { echo "the server refused" >&2; cat /tmp/replies.jsonl >&2; exit 1; }
+            echo "the server served a tool call with no install and no network"
+          '
+
+      # ENVX4. The suite carries the plan-and-publish cycle — `tests/journeys.test.js` writes through
+      # the server, runs `dpm-publish` as a process, and commits through the guard — so running it
+      # with no network at all is that cycle completing with networking disabled, rather than a
+      # reading of the code that says it would.
+      - name: the full cycle, with networking disabled
+        run: |
+          docker run --rm --network none dpm-installed sh -c '
+            npm test && npm run typecheck && npm run modules
+          '

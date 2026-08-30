@@ -123,13 +123,22 @@ test('no documented invocation passes a loader or transpiler flag [unit]', () =>
   const hook = readFileSync(join(ROOT, 'hooks', 'pre-commit'), 'utf8');
 
   // **The hook is read whole rather than grepped for its `exec` line**, because a flag could just
-  // as well arrive in a variable two lines above it. The README is the third documented surface and
-  // this fork does not vendor one yet; `first-run.test.js` is where it is asserted when it lands.
+  // as well arrive in a variable two lines above it. The README is the fourth documented surface
+  // and this fork does not vendor one yet; `first-run.test.js` is where it is asserted when it
+  // lands.
+  //
+  // **CI is the third, added by story 7.** A workflow is a documented invocation in exactly the
+  // sense this sweep means: it is the one every contributor's change is run through, and a
+  // `--loader` reaching `node` there would make the green run a green run of something else. It
+  // arrives with the same comment-stripping as the hook, and for the same reason — the workflow's
+  // own header explains that no loader is passed.
+  const workflow = readFileSync(join(ROOT, '.github', 'workflows', 'ci.yml'), 'utf8');
   const documented = [
     ...Object.entries(scripts).map(([name, command]) => [`package.json scripts.${name}`, command]),
     // The comment prose is stripped, because the line explaining that no loader is needed says the
     // word `--loader` and would otherwise read to this sweep as a use of one.
     ['hooks/pre-commit', hook.replaceAll(/^#.*$/gm, '')],
+    ['.github/workflows/ci.yml', workflow.replaceAll(/^\s*#.*$/gm, '')],
   ];
 
   assert.ok(documented.length > 1, 'there are invocations to check');

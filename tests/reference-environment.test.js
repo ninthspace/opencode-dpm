@@ -213,11 +213,47 @@ test('nothing is declared to install, and there is nothing installed', () => {
   );
 });
 
-// --- ENVX2: no CI ------------------------------------------------------------------------------
+// --- ENVR7: CI, and what it may not become -------------------------------------------------------
 
-test('every criterion is checkable from a local run, and there is no CI to check it', () => {
-  assert.equal(existsSync(join(REPOSITORY, '.github', 'workflows')), false,
-    'this repository has no workflows, so no criterion may depend on one');
+/**
+ * **This assertion used to say the opposite, and it was superseded rather than wrong.**
+ *
+ * It read `assert.equal(existsSync(join(REPOSITORY, '.github', 'workflows')), false)` under the
+ * heading "ENVX2: no CI" — the *v0.7.0* ENVX2, whose content was that the marketplace repository
+ * had no CI and so no criterion there could depend on one. The specification this fork works from
+ * replaces both halves. Its ENVX2 is a different restriction entirely (`01M191PJJS5APQC7DK4P73CR1G`
+ * — "a loader or transpiler must not be required"), and CI is now **required**: ENVR7
+ * (`01M191PB5ZT101VW751N9HTCER`) asks for "a CI job running the full `node --test` suite on Node 24
+ * under plain `node`, plus the type check and the module sweep, on every push", which Epic 01-01
+ * Story 7's criterion `01M193GQM0AB6H2KSCW4MRT30V` builds.
+ *
+ * So the restriction narrows to the part of it that survives: a criterion may not become
+ * *unreachable from a local run*. CI runs the same commands a contributor runs, and that is what is
+ * asserted here — `tests/ci.test.js` holds the rest of the workflow's reading.
+ */
+test('CI runs the commands a contributor runs, so nothing is checkable only there', () => {
+  const workflow = join(REPOSITORY, '.github', 'workflows', 'ci.yml');
+
+  assert.ok(existsSync(workflow), 'ENVR7 asks for CI on every push, and there is no workflow');
+
+  const { scripts } = packageManifest();
+  const text = readFileSync(workflow, 'utf8');
+
+  // Each of the three is `npm run <name>`, so what CI runs and what `package.json` declares are the
+  // same string. A workflow that inlined `node --test` would drift from `npm test` silently, and
+  // the drift would read as CI checking something the contributor cannot.
+  for (const command of ['npm test', 'npm run typecheck', 'npm run modules']) {
+    assert.ok(text.includes(command), `the workflow does not run ${command}`);
+  }
+
+  for (const name of ['test', 'typecheck', 'modules']) {
+    assert.ok(scripts[name], `${name} is run in CI and is not a command anyone can run locally`);
+  }
+
+  // The control: the reading above is a substring search, and one that matched anything would pass
+  // three times over. A command that is not there is not found.
+  assert.equal(text.includes('npm run coverage'), false,
+    'the workflow text search matches commands that are not in it');
 });
 
 // --- ENVX4, ENVX5: no migration, and no published tree required ---------------------------------

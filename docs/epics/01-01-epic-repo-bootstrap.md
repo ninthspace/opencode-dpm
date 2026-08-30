@@ -133,7 +133,7 @@ Covers the criteria tagged `unit` and `integration`, including the rejection of 
 
 ## Story 4 — Restore the inherited test suite green under Node 24
 
-**Status**: pending  
+**Status**: complete  
 **Blocked by**: Story 5, Story 7  
 
 ### Acceptance Criteria
@@ -162,9 +162,13 @@ Addresses the environment the suite runs in, not the assertions it makes.
 
 Covers the shape criteria: the test script, the absence of a third-party runner, and the file count holding at 133 with nothing skipped or quarantined.
 
+### Retro
+
+- Every one of the 50 inherited failures traced to a path that resolved out of the checkout. At v0.7.0 the plugin sat inside the marketplace repository, so `join(dirname, '..', '..')` reached a sibling; in a standalone fork it reaches the developer's home directory. The damaging cases were not the ones that crashed but the ones that passed: `reference-environment.test.js` checked that CI did not exist in a directory that was never this project's, and `corpus.test.js` compared dpm's skills against an unrelated `~/Work/git/cpm` and reported a missing conversion. The fix in each case was to anchor on evidence rather than on a path — a plugin manifest naming itself and its version, a recorded list of what the source release shipped — and to report an absent neighbour by diagnostic rather than skipping. Twice during this story a control I wrote fired and was right: the CPM drift detector found that the sibling was a genuine but abandoned 1.0.0, and the `CLAUDE_` scrub control fired in exactly the environment its criterion describes, where there is nothing to scrub. The second was a bug in the control, not the code — a control that demands the hazard be present fails on the machine where the hazard is absent.
+
 ## Story 5 — Verify persistence parity and determinism
 
-**Status**: pending  
+**Status**: complete  
 **Blocked by**: —  
 
 ### Acceptance Criteria
@@ -180,21 +184,25 @@ Covers the shape criteria: the test script, the absence of a third-party runner,
 
 ### Task 1 — Confirm the inherited persistence tests still cover restore asymmetry, read-only mode and row preservation
 
-**Status**: pending  
+**Status**: complete — The inherited suite reaches criteria 2, 3, 4 and 5 in full: restore.test.js and restore-on-create.test.js cover the empty/populated asymmetry and first-open behaviour; read-only.test.js asserts every tool declaring `mutates` refuses and that no read is refused, with a remove-the-condition control and a refusal at the connection rather than in a handler; round-trip.test.js covers "loses no row, no index and no trigger" and dump-twice byte-identity; projection.test.js:161 and projection-integration.test.js:109 cover projection byte-identity. Not reached, and left to tasks 2 and 3: parity against v0.7.0 itself (criteria 1 and 7 — nothing compared the ported output to a v0.7.0-produced artefact), evidence that the corpus-snapshot fixtures were not regenerated (criterion 6), and the must-NOT on wall-clock, filesystem and iteration order (criterion 8).  
 
 Addresses sufficiency of existing coverage, not new behaviour. Names any criterion the inherited suite does not reach.
 
 ### Task 2 — Add byte-stability checks for dump, projection and number allocation
 
-**Status**: pending  
+**Status**: complete  
 
 Addresses determinism against v0.7.0 output, which the guard's regenerate-and-compare depends on.
 
 ### Task 3 — Write tests for "Verify persistence parity and determinism"
 
-**Status**: pending  
+**Status**: complete  
 
 Covers whatever tasks 1 and 2 found uncovered, including the rejection of time-, filesystem- or iteration-order-dependent output.
+
+### Retro
+
+- The inherited suite already covered four of this story's eight criteria properly, and every one of those tests compares the port against itself — they would all keep passing if the conversion had changed the dump format, the sort order or the allocator, provided it changed them consistently, which is the shape a 100-module rename actually takes. What was missing was an oracle written by v0.7.0, and the repository turned out to hold one: `.dpm/dpm.sql` at commit 1123bc7 was produced by v0.7.0's dumper and allocator before a line of the port existed. Frozen as `tests/fixtures/v070-dump.sql`, it gave the strongest result of the epic — the ported restorer reads 296,061 bytes of v0.7.0 output and the ported dumper writes them back unchanged, and replaying v0.7.0's 21 creates in v0.7.0's order allocates v0.7.0's numbers. The lesson worth carrying: when porting, look for an artefact the old code left behind before writing a test that can only compare the new code to itself. Also worth noting for the next story that touches this area: `start()` does not restore — the restore is a step in the server's bring-up — and a test that calls `start()` on a clone gets a seeded database whose empty content tables look exactly like a broken restore.
 
 ## Story 6 — Enforce import-extension discipline with a module sweep
 
@@ -241,19 +249,19 @@ Includes the control check: a deliberately extension-less internal import must m
 
 ### Task 1 — Add the CI workflow running suite, type check and sweep on Node 24
 
-**Status**: pending  
+**Status**: complete  
 
 On every push, under plain `node`, with the run observable in the repository's CI history.
 
 ### Task 2 — Provide the disposable isolated environment job
 
-**Status**: pending  
+**Status**: complete  
 
 No language toolchain present, networking controllable. Consumed by the clean-install check in the plugin-entry epic and the offline cycle in the publish epic.
 
 ### Task 3 — Write tests for "Stand up CI on Node 24"
 
-**Status**: pending  
+**Status**: complete  
 
 Covers the criteria tagged `integration`: the workflow declares Node 24, runs all three checks, and the isolated environment job exists.
 

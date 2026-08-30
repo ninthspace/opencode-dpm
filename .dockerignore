@@ -1,0 +1,11 @@
+# What must not reach the disposable isolated environment (ENVR12).
+#
+# `node_modules` above all: the environment's whole point is that it starts with no install, and a
+# host `node_modules` copied in would make the clean-install check pass by having already been done —
+# with macOS binaries, inside a Linux container. `.git` is deliberately *not* excluded: the suite
+# reads `git ls-files` and the guard commits, so the checkout's history has to come along.
+node_modules
+.dpm/dpm.db
+.dpm/*.db-journal
+.dpm/*.db-wal
+.dpm/*.db-shm

@@ -149,10 +149,12 @@ const INHERITED = [
   'vocabulary.test.js',
 ];
 
-/** What this epic added, one line per story, so a sixth file is a decision somebody writes here. */
+/** What this epic added, one line per story, so a seventh file is a decision somebody writes here. */
 const ADDED = [
+  'ci.test.js', //                     story 7 — the workflow, and the environment two absences need
   'executables-typescript.test.js', // story 3 — the five binaries under plain node
   'module-sweep.test.js', //           story 6 — every specifier resolves, and the sweep can fail
+  'parity-v070.test.js', //            story 5 — the port against v0.7.0's own dump and allocator
   'suite-integrity.test.js', //        story 4 — this file
   'typescript-conversion.test.js', //  story 2 — erasable syntax, and node's refusal of the rest
   'vendoring.test.js', //              story 1 — the v0.7.0 tree arrived whole
@@ -325,7 +327,7 @@ test('must NOT — a test requires a network connection in order to pass', () =>
 
 // --- Criterion 4: no Claude Code, and no CLAUDE_ variable ----------------------------------------
 
-test('the plugin reads nothing from a CLAUDE_ variable, and a scrubbed run agrees [integration]', async () => {
+test('the plugin reads nothing from a CLAUDE_ variable, and a scrubbed run agrees [integration]', async (t) => {
   // **The structural half, over `src/` and `bin/`.** A run on this machine passes with the
   // variables set, so passing proves nothing; what proves it is that nothing the plugin runs reads
   // one. `src/server/neighbour.ts` and `src/server/plugin-version.ts` each carry a doc comment
@@ -362,11 +364,18 @@ test('the plugin reads nothing from a CLAUDE_ variable, and a scrubbed run agree
   // `process.env[name]` from a computed string passes every sweep above. The child is handed an
   // environment with no `CLAUDE_` variable in it at all and asked to open a database and count the
   // vocabulary — the same start-up path every suite file goes through.
-  const scrubbed = Object.fromEntries(Object.keys(process.env)
-    .filter((name) => name.startsWith('CLAUDE')).map((name) => [name, undefined]));
+  const inherited = Object.keys(process.env).filter((name) => name.startsWith('CLAUDE'));
+  const scrubbed = Object.fromEntries(inherited.map((name) => [name, undefined]));
 
-  assert.ok(Object.keys(scrubbed).length > 0, 'this run has no CLAUDE_ variables to remove, so the '
-    + 'child below is not being scrubbed of anything and its pass would say nothing');
+  // **Reported, not asserted, and that distinction is this criterion arriving at its own test.**
+  // Written as `assert.ok(inherited.length > 0)` — the control saying the scrub removed something —
+  // this failed in precisely the environment the criterion is about: a machine with no Claude Code
+  // has no variables to strip, so the demand that some be stripped turns "the criterion holds
+  // already" into a failure. The child's own check below runs either way and is the real assertion;
+  // what changes is only whether this run had anything to prove it against.
+  t.diagnostic(inherited.length > 0
+    ? `${inherited.length} CLAUDE_ variables removed from the child`
+    : 'this environment carries no CLAUDE_ variables, so the child was already clean');
 
   const { code, stdout, stderr } = await runNode(['-e', [
     "const { start } = await import('./src/start.ts');",
