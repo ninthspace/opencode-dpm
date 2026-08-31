@@ -22,7 +22,8 @@
     "node": ">=24.0.0"
   },
   "exports": {
-    ".": "./src/plugin/index.ts"
+    ".": "./src/plugin/index.ts",
+    "./skills": "./src/plugin/skills-entry.ts"
   },
   "files": [
     "bin/",
@@ -40,6 +41,7 @@
   "dependencies": {},
   "devDependencies": {
     "@opencode-ai/plugin": "0.0.0-beta-18684",
+    "@opencode-ai/plugin-v1": "npm:@opencode-ai/plugin@1.18.25",
     "@types/node": "24.13.3",
     "typescript": "5.9.3"
   }

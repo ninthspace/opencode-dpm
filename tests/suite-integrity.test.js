@@ -30,8 +30,8 @@ import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  SANCTIONED_DEV_DEPENDENCIES, packageManifest, pluginSources, staticImports, sweepSourcesUnder,
-  unsanctionedDependencies, withoutComments,
+  SANCTIONED_DEV_DEPENDENCIES, nodeRuntimeArguments, packageManifest, packageOf, pluginSources,
+  staticImports, sweepSourcesUnder, unsanctionedDependencies, withoutComments,
 } from './support/sources.js';
 import { runNode } from './support/run-node.js';
 
@@ -157,15 +157,15 @@ const ADDED = [
   'dependency-isolation.test.js', //   01-02 story 4 — the empty production tree, read off the lockfile
   'executables-typescript.test.js', // story 3 — the five binaries under plain node
   'guard-hook-path.test.js', //        01-04 story 1 — the hook fires, and no refusal names a host mechanism
-  'installed-runtime.test.js', //      01-05 story 2 — the server starts from under node_modules, where it is installed
+  'installed-runtime.test.js', //      01-05 story 2, rewritten 02-01 story 5 — the two runtimes, and which one starts the server
   'module-sweep.test.js', //           story 6 — every specifier resolves, and the sweep can fail
-  'package-cache.test.js', //          01-04 story 2 — the README's link instruction, run against a built cache
   'parity-v070.test.js', //            story 5 — the port against v0.7.0's own dump and allocator
   'permission-entries.test.js', //     01-04 story 5 — the README's rules name skills and tools that exist
   'plugin-entry.test.js', //           01-02 story 1 — registration, the profile seam, the root
   'plugin-reload.test.js', //          01-02 story 5 — a reload leaves one of everything
   'production-restrictions.test.js', // 01-05 story 3 — nothing contacted, no port bound, no host mechanism
   'publish-package.test.js', //        01-05 story 1 — what the packed tarball ships, and what it must not
+  'readme-symlink.test.js', //         01-04 story 2, rewritten 02-01 story 5 — the link instruction, run against a clone
   'readme-v2.test.js', //              01-04 story 4 — every documented block, classified and run
   'session-scratch.test.js', //        01-04 story 3 — the environment audit, and nothing loose in the tree
   'skill-invocation.test.js', //       01-03 story 3 — the descriptions, and $ARGUMENTS retired
@@ -175,6 +175,10 @@ const ADDED = [
   'suite-integrity.test.js', //        story 4 — this file
   'tool-naming.test.js', //            01-02 story 2 — the v2 rendering, and v0.7.0's own surface
   'typescript-conversion.test.js', //  story 2 — erasable syntax, and node's refusal of the rest
+  'v1-integration.test.js', //         02-01 story 5 — one root across both entries, and a command that starts
+  'v1-registrar.test.js', //           02-01 story 3 — the config hook, and the config files nothing wrote
+  'v1-sdk.test.js', //                 02-01 story 1 — the second SDK, and the controls its criteria name
+  'v1-skills.test.js', //              02-01 story 4 — embedded sources, the prefix on `name`, and the clash alarm
   'vendoring.test.js', //              story 1 — the v0.7.0 tree arrived whole
 ];
 
@@ -252,21 +256,21 @@ test('the test script is node --test, and no third-party runner is installed or 
   // `left-pad` in the same sentence leaves a reader to work out which criterion just broke.
   assert.deepEqual(unsanctionedDependencies(manifest), [],
     'a dependency arrived that is neither the type checker ENVR3 requires nor its type definitions');
-  // **The tripwire, and it has fired once — deliberately.** `@opencode-ai/plugin` joined the set
-  // when the plugin entry landed, and the point of writing the members out here is that widening
-  // the set is an edit someone has to make and explain rather than a silence. What it bought is in
-  // `sources.js`: the SDK is taken `import type` only, so `dependencies` stayed `{}` and the
-  // assertion above kept the meaning it had. A fourth name arriving still fails this line.
+  // **The tripwire, and it has fired twice — deliberately, both times.** `@opencode-ai/plugin`
+  // joined the set when the plugin entry landed, and `@opencode-ai/plugin-v1` when the v1 registrar
+  // needed the other host's published types to check against. The point of writing the members out
+  // here is that widening the set is an edit someone has to make and explain rather than a silence.
+  // What it bought is in `sources.js` both times: each SDK is taken `import type` only, so
+  // `dependencies` stayed `{}` and the assertion above kept the meaning it had. A fifth name
+  // arriving still fails this line.
   assert.deepEqual([...SANCTIONED_DEV_DEPENDENCIES].sort(),
-    ['@opencode-ai/plugin', '@types/node', 'typescript'],
+    ['@opencode-ai/plugin', '@opencode-ai/plugin-v1', '@types/node', 'typescript'],
     'the sanctioned set grew, so the assertion above now permits something it did not');
 
   // The package, not the specifier: `jest/globals` and `chai/register` are the same dependency
-  // arriving through a subpath, and a list of exact specifiers would miss both.
-  const packageOf = (specifier) => (specifier.startsWith('@')
-    ? specifier.split('/').slice(0, 2).join('/')
-    : specifier.split('/')[0]);
-
+  // arriving through a subpath, and a list of exact specifiers would miss both. Shared rather than
+  // local since the module sweep's type-only rule became the second caller — the same reading, and
+  // two copies of it would drift over what a scoped name is.
   assert.deepEqual(importsMatching((specifier) => RUNNERS.includes(packageOf(specifier))), [],
     'a source imports a third-party test runner');
 
@@ -284,12 +288,14 @@ test('must NOT — a test requires a loader or a transpiler in order to pass', (
   // **Asserted over the arguments a process is actually given, not over the words in the tree.**
   // `executables-typescript.test.js` holds the flag names as its subject and this file holds them
   // twice; a sweep for their presence reports all three and calls the rule a breach of itself.
-  const command = packageManifest().scripts.test;
-
-  for (const flag of ['loader', 'experimental-loader', 'experimental-strip-types',
-    'experimental-transform-types', 'require', 'import']) {
-    assert.equal(command.includes(`--${flag}`), false, `the test command carries --${flag}`);
-  }
+  // **Read through `nodeRuntimeArguments` rather than by scanning for flag names.** The list this
+  // replaced was six names long and could only catch the six; the reading reports *any* argument
+  // handed to `node` before its entry path, so a loader arriving under a name nobody listed is
+  // still a finding. `v1-sdk.test.js` drives the same reading against planted manifests, which is
+  // where its failure has actually been observed — this line asserts the tree, and that one
+  // asserts the reading can fail.
+  assert.deepEqual(nodeRuntimeArguments(), [],
+    'a package script hands node an argument beyond the file it runs, which is how a loader arrives');
 
   // **`NODE_OPTIONS`, because that is the vector that hides.** A flag written into a spawn's
   // argument list is visible at the call site and `executables-typescript.test.js` already sweeps

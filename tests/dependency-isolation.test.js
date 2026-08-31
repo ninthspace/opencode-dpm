@@ -28,7 +28,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  SANCTIONED_DEV_DEPENDENCIES, packageLock, packageManifest, unsanctionedDependencies,
+  SANCTIONED_DEV_DEPENDENCIES, lifecycleScripts, packageLock, packageManifest,
+  unsanctionedDependencies,
 } from './support/sources.js';
 
 /** The lockfile's package map, minus the root entry, which describes this project rather than a dependency. */
@@ -41,6 +42,22 @@ const lockedPackages = () => Object.entries(packageLock().packages).filter(([pat
  * `0.0.0-beta-18684`, so a class of `[\w.]` rejects the one pin this story exists to check.
  */
 const exact = (version) => /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(version);
+
+/**
+ * The version half of a dependency spec: the spec itself, or the version an npm alias names.
+ *
+ * **Split structurally rather than matched, and the distinction has cost this project four false
+ * results.** `npm:@opencode-ai/plugin@1.18.25` carries two `@` characters — one opening the scope
+ * and one introducing the version — so anything asking whether the spec *contains* a version, or
+ * splitting on the first `@`, answers a different question from the one being asked. The last `@`
+ * is the only one that can introduce a version, because a package name may not contain one after
+ * position zero.
+ *
+ * An alias naming no version falls out of that correctly rather than by a special case:
+ * `npm:@opencode-ai/plugin` yields `opencode-ai/plugin`, which `exact` rejects — which is the right
+ * answer, since an alias without a version is no more a pin than a dist-tag is.
+ */
+const versionOf = (spec) => (spec.startsWith('npm:') ? spec.slice(spec.lastIndexOf('@') + 1) : spec);
 
 // --- Criterion 1: `dependencies` is empty, and the production install tree with it ---------------
 
@@ -88,7 +105,7 @@ test('every development dependency names one build rather than a range [unit]', 
   const { devDependencies } = packageManifest();
 
   for (const [name, version] of Object.entries(devDependencies)) {
-    assert.ok(exact(version),
+    assert.ok(exact(versionOf(version)),
       `${name} is pinned to ${version}, which resolves to different builds on different days`);
   }
 
@@ -109,6 +126,42 @@ test('every development dependency names one build rather than a range [unit]', 
   // And the manifest agrees with what was actually installed, which is the half a pin exists for.
   assert.equal(packageLock().packages['node_modules/@opencode-ai/plugin'].version, '0.0.0-beta-18684',
     'the lockfile resolved a different build from the one the manifest pins');
+
+  // --- The alias, which is the same package at a second version (ADR 02-05) ---------------------
+
+  // **The loop above now passes through `versionOf`, and that widened what it accepts** — so the
+  // controls on the widening come first, before the alias is asserted through it. Without these,
+  // a `versionOf` that returned something `exact` always liked would make the loop unconditional
+  // for every aliased entry, which is the one entry class it was extended to cover.
+  assert.equal(versionOf('npm:@opencode-ai/plugin@1.18.25'), '1.18.25');
+  assert.equal(versionOf('5.9.3'), '5.9.3', 'a plain version is not read as an alias');
+  for (const unpinned of ['npm:@opencode-ai/plugin@latest', 'npm:@opencode-ai/plugin@^1.18.25',
+    'npm:@opencode-ai/plugin', 'npm:some-fork@beta']) {
+    assert.equal(exact(versionOf(unpinned)), false,
+      `${unpinned} is read as naming one build, so an alias could float`);
+  }
+
+  assert.equal(devDependencies['@opencode-ai/plugin-v1'], 'npm:@opencode-ai/plugin@1.18.25');
+
+  // **What the alias resolved to, read from the lockfile's `name` rather than from the specifier.**
+  // The manifest says where the alias was pointed; only the lockfile says where it landed, and the
+  // `name` field is the package it actually is. Matching the resolved URL instead would be a
+  // substring test over a string that contains the aliased path — the reading this project has had
+  // go wrong four times.
+  const aliased = packageLock().packages['node_modules/@opencode-ai/plugin-v1'];
+
+  assert.ok(aliased, 'the alias is declared but nothing was installed under it');
+  assert.equal(aliased.name, '@opencode-ai/plugin',
+    'the alias resolved to some other package than the one it names');
+  assert.equal(aliased.version, '1.18.25',
+    'the lockfile resolved a different build from the one the alias pins');
+  assert.equal(aliased.dev, true, 'the v1 SDK is not a development dependency, so a user fetches it');
+
+  // And the two are genuinely two: one package name cannot be installed twice, which is the whole
+  // reason ADR 02-05 reached for an alias rather than a second plain entry.
+  assert.notEqual(aliased.version,
+    packageLock().packages['node_modules/@opencode-ai/plugin'].version,
+    'both SDK entries resolved to the same build, so one host is being typed against the other');
 });
 
 // --- Criterion 2 (must NOT): nothing in a production install compiles or ships a binary ----------
@@ -170,8 +223,9 @@ test('a clean production install has nothing to fetch, so it needs no toolchain 
   }
 
   // And nothing runs at install time on either path, which is the other way a toolchain gets
-  // reached for — a `prepare` script is the one that fires on a git-URL install.
-  for (const script of ['preinstall', 'install', 'postinstall', 'prepare', 'prepack']) {
-    assert.equal(manifest.scripts[script], undefined, `${script} runs during installation`);
-  }
+  // reached for — a `prepare` script is the one that fires on a git-URL install. Read through
+  // `lifecycleScripts`, whose list is the union of the four this suite and three others each held
+  // separately; this one had neither `prepublish` nor `build`.
+  assert.deepEqual(lifecycleScripts(manifest), [],
+    'a script runs during installation, so the install can reach for a toolchain after all');
 });

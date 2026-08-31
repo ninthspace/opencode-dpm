@@ -1,72 +1,68 @@
 /**
- * The plugin entry — what OpenCode v2 loads, and the whole of what it registers.
+ * The tools entry — the MCP server, registered through v1's `config` hook. FR2.
  *
- * Two registrations: the bundled MCP server (FR2), and the skills (FR3). Both are computed
- * *before* either transform runs, which is ADR 01-07 and is not a stylistic preference — the host
- * replays transforms on reload, so a transform that reads mutable state observes something
- * different on the replay than it did the first time, and the bug appears only after an edit and
- * reads as flakiness. Computing up front makes the replay identical by construction.
+ * ## The shape, and why it is a named export with no default
  *
- * **`@opencode-ai/plugin` is imported for its types and nothing else, and that is NFR1.** The SDK's
- * `Plugin.define` is `define(plugin) { return plugin }` — the identity function — so importing it
- * at runtime would pull `effect`, `zod` and six more packages into every user's install in order to
- * call a function that returns its argument. `satisfies Plugin.Plugin` is the same compile-time
- * check `define` performs, and `import type` is erased by both Node's type-stripper and `tsc`
- * before anything is evaluated. So `dependencies` stays empty and a user installing dpm installs
- * nothing at all.
+ * v1's own module type is `PluginModule = { id?, server, tui? }`: a **named** `server` export
+ * that the host calls with its `PluginInput`, returning the hooks it wants. `Hooks.config` is
+ * handed the resolved configuration before the host uses it, and `config.mcp` is the only handle
+ * v1's plugin API offers on the MCP registry — the object route's context has no `mcp` domain, and
+ * the v1 SDK's `Config` has no skill field, which is why the skills live in a second module and
+ * not in this one. `registration.ts` carries that argument in full, with the probes it rests on.
+ *
+ * **There is no default export here and that is load-bearing rather than incidental.** A module
+ * carrying both a callable `server` and a default `{ id, setup }` evaluates and then stalls v1's
+ * loader — neither hook runs — where the same two bodies in two files both run. So this file
+ * exports one route and `skills-entry.ts` exports the other.
+ *
+ * ## What stays true from before the host changed
+ *
+ * **`@opencode-ai/plugin-v1` is imported for its types and nothing else, and that is NFR1.** The
+ * SDK would pull `effect`, `zod` and six more packages into every user's install; `import type` is
+ * erased by both Node's type-stripper and `tsc` before anything is evaluated. So `dependencies`
+ * stays empty and a user installing dpm installs nothing at all.
  *
  * **Nothing here writes to disk.** Registration is a description handed to the host; the project's
- * configuration is the user's file and the plugin has no business editing it. The only writes dpm
+ * configuration is the user's file and the plugin has no business editing it. Setting `config.mcp`
+ * mutates the object v1 passed in for exactly that purpose and touches no file. The only writes dpm
  * ever performs are the ones the MCP server makes under `.dpm/`, in the process the host spawns,
  * long after this has returned.
  */
 
-import type { Plugin } from '@opencode-ai/plugin';
-import type { Skill } from '@opencode-ai/schema/skill';
+import type { Plugin } from '@opencode-ai/plugin-v1';
 
-import { profileFrom } from './profile.ts';
-import { packageRoot } from './root.ts';
-import { localServer } from './server.ts';
-import { discoverSkills, type DiscoveredSkill } from './skills.ts';
+import { serverEntry } from './registration.ts';
 
 /** The name the server is registered under, which is the second `dpm` in its tool prefix. */
 export const SERVER_NAME = 'dpm';
 
 /**
- * A discovered skill in the shape the host's registry types demand.
+ * dpm's tools, as v1 wants them.
  *
- * `Skill.ID`, `Skill.Name` and `AbsolutePath` are branded strings — nominal types effect uses to
- * stop an arbitrary string being passed where a validated one belongs. There is no constructor
- * exported for them that does not also pull the runtime in, and asserting is honest here: the id
- * is prefixed by construction, the name comes from the skill's own front matter, and the location
- * is `join`ed onto a root that was checked before it was returned.
+ * The entry is computed once, outside the hook, so the value the hook sets is the same one on every
+ * call the host makes — ADR 01-07 applied to the one registration this module performs.
+ *
+ * **It reads neither of the arguments v1 offers, which is a claim worth being able to see.** The
+ * server dpm registers is the one it ships: the command is this package's own executable under this
+ * package's own root, so there is nothing the host could say that would change it, and no option
+ * selects a different one. The profile — the one thing a user does configure — selects skills, and
+ * is read in the module that registers them.
+ *
+ * The existing `mcp` block is spread rather than replaced: it is the user's, and dpm is adding one
+ * key to it.
  */
-const registrable = (skill: DiscoveredSkill): Skill.Info => ({
-  ...skill,
-  id: skill.id as Skill.ID,
-  name: skill.name as Skill.Name,
-  location: skill.location as Skill.Info['location'],
-});
+export const server: Plugin = async () => {
+  const entry = serverEntry();
 
-export default {
-  id: 'dpm',
-
-  async setup(context) {
-    // Everything the transforms will need, resolved before either of them runs.
-    const root = packageRoot();
-    const server = localServer(root);
-    const skills = profileFrom(context.options).skills(discoverSkills(root)).map(registrable);
-
-    const registered = [
-      await context.mcp.transform((draft) => draft.set(SERVER_NAME, server)),
-      await context.skill.transform((draft) => {
-        for (const skill of skills) draft.add(skill);
-      }),
-    ];
-
-    // Disposal in reverse, so the registry unwinds in the order it was built.
-    return async () => {
-      for (const registration of registered.reverse()) await registration.dispose();
-    };
-  },
-} satisfies Plugin.Plugin;
+  return {
+    config: async (config) => {
+      // The registry's own type is mutable where `LocalServer` is `readonly`, so the arrays are
+      // copied rather than cast. dpm holds one entry and hands out copies of it; a host that later
+      // edited what it was given would otherwise be editing the value every subsequent call reads.
+      config.mcp = {
+        ...config.mcp,
+        [SERVER_NAME]: { ...entry, command: [...entry.command] },
+      };
+    },
+  };
+};

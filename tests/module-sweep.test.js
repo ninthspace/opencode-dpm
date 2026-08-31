@@ -25,7 +25,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { packageManifest } from './support/sources.js';
 import { runNode } from './support/run-node.js';
-import { sweep, specifiersIn } from '../scripts/module-sweep.ts';
+import { sweep, specifiersIn, typeSpecifiersIn } from '../scripts/module-sweep.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 const SWEEP = join(ROOT, 'scripts', 'module-sweep.ts');
@@ -141,6 +141,83 @@ test('a bare specifier makes the sweep fail, even though node_modules would reso
   // exactly why the rule cannot be left to resolution.
   assert.deepEqual((await sweep({ root })).map(({ file }) => file),
     ['src/packaged.ts', 'src/packaged.ts']);
+});
+
+// --- The type-only recognition rule (Epic 02-01 Story 1, NFR2) -------------------------------------
+
+test('a type-only import of an unsanctioned package makes the sweep fail [integration]', async (t) => {
+  // **The rule exists because nothing else in this project can see this line.** `import type` is
+  // erased before evaluation, so the bare-specifier rule never receives it, `staticImports` skips
+  // it, and `dependencies` staying empty says nothing about it — all correct, and between them
+  // they leave the specifier unread. Once two SDKs publish under one package name at two versions,
+  // that specifier is the only thing saying which host a module is typed against.
+  const root = planted(t, {
+    ...GOOD,
+    'src/typed.ts': "import type { Token } from 'marked';\nexport type T = Token;\n",
+  });
+
+  const complaints = await sweep({ root });
+
+  // Exactly one, and that is the assertion rather than a filter: the file loads cleanly, because
+  // the import it names is erased. A second complaint here would mean the tree was broken for some
+  // other reason and this test was reading that instead.
+  assert.equal(complaints.length, 1, JSON.stringify(complaints));
+  assert.equal(complaints[0].file, 'src/typed.ts');
+  assert.equal(complaints[0].specifier, 'marked');
+  assert.match(complaints[0].reason, /imported for its types/);
+});
+
+test('a type-only import of a host SDK passes, through the root and through a subpath [integration]', async (t) => {
+  // The other direction, and without it the test above holds for a rule that complains about every
+  // type-only import — which would pass that assertion and fail this repository.
+  const root = planted(t, {
+    ...GOOD,
+    'src/v2.ts': "import type { Plugin } from '@opencode-ai/plugin';\nexport type A = Plugin;\n",
+    'src/v1.ts': "import type { Plugin } from '@opencode-ai/plugin-v1';\nexport type B = Plugin;\n",
+    'src/sub.ts': "import type { Skill } from '@opencode-ai/schema/skill';\nexport type C = Skill;\n",
+  });
+
+  assert.deepEqual(await sweep({ root }), [],
+    'a sanctioned host type surface was reported, so the rule cannot be satisfied');
+});
+
+test('a value import of either SDK still fails, which the type rule must not have relaxed [integration]', async (t) => {
+  // **Both SDKs, because the point of the alias is that they are one package at two versions** —
+  // and a rule that learned to permit an SDK *name* could permit it in the wrong half. What makes
+  // this safe is that the two readings are separate: `unresolved` judges what is evaluated and
+  // never consults the SDK list, so permitting a type import cannot widen the runtime rule.
+  const root = planted(t, {
+    ...GOOD,
+    'src/value-v2.ts': "import { Plugin } from '@opencode-ai/plugin';\nexport default Plugin;\n",
+    'src/value-v1.ts': "import { Plugin } from '@opencode-ai/plugin-v1';\nexport default Plugin;\n",
+  });
+
+  const bare = (await sweep({ root })).filter(({ reason }) => /is a package/.test(reason));
+
+  assert.deepEqual(bare.map(({ specifier }) => specifier).sort(),
+    ['@opencode-ai/plugin', '@opencode-ai/plugin-v1'],
+    'a runtime import of an SDK stopped being reported once its types were sanctioned');
+});
+
+test('the two import readings partition the static imports between them [unit]', () => {
+  // **The property the type rule rests on, driven rather than described.** Every static import is
+  // either evaluated or erased; if the two readings ever overlap, a specifier is judged twice by
+  // rules that disagree, and if they ever leave a gap, a specifier is judged by nothing at all. The
+  // gap is the dangerous one because it is silent — which is the whole reason this rule exists.
+  const lines = [
+    ["import { a } from 'x';", ['x'], []],
+    ["import type { a } from 'x';", [], ['x']],
+    ["import type from './x.ts';", ['./x.ts'], []],
+    ["import { type a, b } from './x.ts';", ['./x.ts'], []],
+    ["import a, { type b } from 'x';", ['x'], []],
+  ];
+
+  for (const [source, evaluated, erased] of lines) {
+    assert.deepEqual(specifiersIn(source), evaluated, `evaluated half misread: ${source}`);
+    assert.deepEqual(typeSpecifiersIn(source), erased, `erased half misread: ${source}`);
+    assert.equal(specifiersIn(source).length + typeSpecifiersIn(source).length, 1,
+      `${source} was read by both halves or by neither`);
+  }
 });
 
 test('a module that throws while loading makes the sweep fail [integration]', async (t) => {

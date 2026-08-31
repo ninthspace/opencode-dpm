@@ -32,8 +32,8 @@ import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  filesUnder, moduleFilesUnder, packageManifest as readPackageManifest, sweepSourcesUnder,
-  unsanctionedDependencies,
+  filesUnder, lifecycleScripts, moduleFilesUnder, packageManifest as readPackageManifest,
+  sweepSourcesUnder, unsanctionedDependencies,
 } from './support/sources.js';
 import { auditImports } from './support/sweeps.js';
 
@@ -99,13 +99,11 @@ test('dpm declares no runtime dependency, and no development one ENVR3 does not 
 });
 
 test('there is no install step and nothing to compile', () => {
-  for (const script of ['preinstall', 'install', 'postinstall', 'prepare', 'prepublish', 'build']) {
-    assert.equal(
-      packageManifest.scripts?.[script],
-      undefined,
-      `no ${script} script — installing dpm runs nothing`,
-    );
-  }
+  // Read through `lifecycleScripts` rather than looped here, so the list of names lives in one
+  // place: `v1-sdk.test.js` drives the same reading against a manifest carrying each of them in
+  // turn, which is the only run in which this check has ever been seen to fail.
+  assert.deepEqual(lifecycleScripts(packageManifest), [],
+    'installing or publishing dpm runs something, so there is a step to forget');
 
   assert.equal(existsSync(join(DPM, 'binding.gyp')), false, 'no node-gyp build description');
 

@@ -155,6 +155,61 @@ export function packageLock() {
 }
 
 /**
+ * The host SDKs this plugin may be typed against — one package name per host, in host order.
+ *
+ * **Two lists were about to say this, which is the shape retro 02 recorded six times.**
+ * `SANCTIONED_DEV_DEPENDENCIES` below answers "what may be installed" and the module sweep's
+ * recognition rule answers "what may be imported for its types"; both are the same set of SDKs,
+ * and two copies of it would agree until one host was added or dropped. Derived below rather than
+ * repeated, so adding a third host is one edit and the two questions cannot disagree about what an
+ * SDK is.
+ *
+ * **The type-only rule is what this exists for, and it closes a hole the second SDK opens.** A
+ * type-only import is erased before evaluation, so every runtime check in this project is blind to
+ * it by design — `staticImports` skips it, the bare-specifier rule never sees it, and
+ * `dependencies` staying empty says nothing about it. With one SDK that was a hole nothing could
+ * fall into. With two published under the same package name at different versions, a registrar
+ * typed against the wrong host's SDK type-checks, sweeps clean, and is wrong — so the specifier a
+ * module names is the only place that mistake is visible.
+ */
+export const SDK_PACKAGES = ['@opencode-ai/plugin', '@opencode-ai/plugin-v1'];
+
+/**
+ * The package a specifier belongs to — the whole of a scoped name, the first segment otherwise.
+ *
+ * A subpath is the same dependency arriving through a different door: `@opencode-ai/schema/skill`
+ * and `jest/globals` name `@opencode-ai/schema` and `jest`, and a rule written over exact
+ * specifiers would miss both. `suite-integrity.test.js` wrote this to catch a test runner smuggled
+ * in through a subpath and had the only copy; the module sweep's type-only rule is the second
+ * caller, so it moved here rather than being written a second time.
+ *
+ * @param {string} specifier
+ * @returns {string}
+ */
+export const packageOf = (specifier) => (specifier.startsWith('@')
+  ? specifier.split('/').slice(0, 2).join('/')
+  : specifier.split('/')[0]);
+
+/**
+ * The packages `src/` may name for their types — a host's type surface, which is more than its SDK.
+ *
+ * **Separate from `SDK_PACKAGES` because the two answer different questions, and conflating them
+ * was wrong in a way the sweep caught on its first run.** `SDK_PACKAGES` is what the manifest
+ * declares: one entry per host, and what `SANCTIONED_DEV_DEPENDENCIES` is derived from. This is
+ * what a module may be typed against, and it is larger — `src/plugin/index.ts` needs `Skill.Info`
+ * to hand the v2 host a registrable skill, and that type lives in `@opencode-ai/schema` rather
+ * than in the plugin package.
+ *
+ * **`@opencode-ai/schema` is not declared anywhere, and naming it here is a record of that rather
+ * than an endorsement.** It resolves because the v2 SDK depends on it and npm hoists it, so the
+ * type check passes today on an edge nothing in this repository asserts. A v2 release that dropped
+ * the dependency, or an installer that stopped hoisting, breaks `tsc` on a file nobody touched and
+ * with nothing naming the cause. That is a finding this rule surfaced and not one it fixes;
+ * declaring the package is a manifest decision.
+ */
+export const SDK_TYPE_SURFACE = [...SDK_PACKAGES, '@opencode-ai/schema'];
+
+/**
  * What may appear under `devDependencies`, and nothing else may.
  *
  * **The rule this replaces was "no dependencies at all", and it did not lapse — it was superseded.**
@@ -192,8 +247,87 @@ export function packageLock() {
  * and the lockfile carries the prebuilt for every platform this project runs on. `plugin.test.js`
  * checks that no compile happened rather than trusting the name, and CI checks it inside an
  * environment that has no compiler at all.
+ *
+ * **`@opencode-ai/plugin-v1` is the same package at a second version, under an npm alias** —
+ * `npm:@opencode-ai/plugin@1.18.25`, which ADR 02-05 chose so that each registrar is type-checked
+ * against the real published types of the host it targets. npm will not install one package name
+ * twice, and the alias is how the two versions coexist; the lockfile records the entry under the
+ * aliased path with `name` naming the package it actually is, which is the structural evidence
+ * that the alias points where it claims to rather than a reading of the specifier string.
+ *
+ * **It changes nothing the three claims above rest on.** Both SDKs are `devDependencies`, both are
+ * taken `import type`, and both are erased before anything is evaluated — so `dependencies` stays
+ * empty and a user still installs nothing. The v1 package's own dependencies (`effect`, `zod`,
+ * `@opencode-ai/sdk`, `@ai-sdk/provider`) arrive marked `dev` for the same reason the v2 SDK's do.
  */
-export const SANCTIONED_DEV_DEPENDENCIES = ['@opencode-ai/plugin', '@types/node', 'typescript'];
+export const SANCTIONED_DEV_DEPENDENCIES = [...SDK_PACKAGES, '@types/node', 'typescript'];
+
+/**
+ * Every argument a package script hands `node` before the file it runs, as `"script: argument"`.
+ *
+ * **The rule ADR 01-03 actually states, read over every script rather than over the test one.**
+ * dpm runs TypeScript natively under plain `node`: no loader, no transpiler, no build. A flag
+ * between `node` and its entry path is how each of those would arrive, and it would arrive in
+ * whichever script needed it rather than in the one a check happened to read — `suite-integrity`
+ * held this over `scripts.test` alone, which is the command least likely to be the one that grew a
+ * flag.
+ *
+ * **`--test` is excluded by name, and the exclusion is narrow on purpose.** It is the runner ENVR2
+ * names, it takes no entry path, and it neither loads nor compiles anything — so the honest rule is
+ * not "no flags" but "nothing that changes how a module is loaded". Excluding it by name rather
+ * than by shape means `--test-reporter` or `--experimental-strip-types` arriving beside it is still
+ * reported, which a rule shaped like "flags are fine on the runner" would have let through.
+ *
+ * A script that does not invoke `node` is not this rule's business: `typecheck` runs `tsc`, whose
+ * arguments say nothing about how the plugin executes.
+ *
+ * @param {object} [manifest]
+ * @returns {string[]}
+ */
+export function nodeRuntimeArguments(manifest = packageManifest()) {
+  const found = [];
+
+  for (const [script, command] of Object.entries(manifest.scripts ?? {})) {
+    const [runner, ...tokens] = command.trim().split(/\s+/);
+
+    if (runner !== 'node') continue;
+
+    // Stop at the entry path: everything after it is the script's own argv and not Node's.
+    for (const token of tokens) {
+      if (!token.startsWith('-')) break;
+      if (token !== '--test') found.push(`${script}: ${token}`);
+    }
+  }
+
+  return found.sort();
+}
+
+/**
+ * The lifecycle and build scripts a manifest declares — the ones that make installing dpm *run*
+ * something, or that turn `tsc` from a check into a step producing output.
+ *
+ * Named rather than counted, so a failure says which arrived. Four suites asked this question with
+ * a loop each, and **the four lists disagreed** — `plugin.test.js` guarded `prepublish` and not
+ * `prepack`, while `baseline`, `dependency-isolation` and `plugin-entry` guarded `prepack` and not
+ * `prepublish`, two of them omitting `build` as well. So each was a genuine hole somewhere else was
+ * covering, and nothing said so: every one of them passed, and a `prepack` script would have been
+ * caught by three of the four while a `prepublish` would have been caught by one. The list here is
+ * their union, which is the only reading that makes all four claims true at once.
+ *
+ * The story that added the second SDK drives this against a manifest carrying each name in turn,
+ * because a check over a manifest that has never had one of these is a check whose failure has
+ * never been seen.
+ *
+ * @param {object} [manifest]
+ * @returns {string[]}
+ */
+export const LIFECYCLE_SCRIPTS = [
+  'preinstall', 'install', 'postinstall', 'prepare', 'prepack', 'prepublish', 'build',
+];
+
+export function lifecycleScripts(manifest = packageManifest()) {
+  return LIFECYCLE_SCRIPTS.filter((name) => manifest.scripts?.[name] !== undefined);
+}
 
 /**
  * Anything declared to install that the rule above does not sanction, as `"name@spec"` strings.
@@ -270,22 +404,83 @@ export const withoutHashComments = (source) => source.replaceAll(/^\s*#.*$/gm, '
  * `src/db/capability.ts` names `DatabaseSync` that way, and counting it would report a crash that
  * cannot happen.
  *
- * The lookahead is narrow on purpose, in both directions:
+ * The classification is narrow on purpose, in both directions:
  *
  * - `import { type Row, insert } from './crud.ts'` still loads the module for `insert`, and is
  *   **not** skipped.
  * - `import type from './x'` is a value default import bound to the name `type` rather than a
  *   type-only import at all, and is **not** skipped either.
  *
- * A regex rather than a parser, with `withoutComments`'s limit and for its reason.
+ * A regex rather than a parser, with `withoutComments`'s limit and for its reason. One further
+ * limit, unchanged from the pattern this replaced: `from` must be followed by whitespace, so
+ * `import type{X}from'x'` is read as nothing at all. Nothing in this tree writes one.
  *
  * @param {string} source
  * @returns {string[]}
  */
 export function staticImports(source) {
-  return [
-    ...source.matchAll(/^\s*import\s+(?!type\b\s*(?!from\b))[^;]*?from\s+['"]([^'"]+)['"]/gm),
-  ].map((match) => match[1]);
+  return importStatements(source).filter(({ typeOnly }) => !typeOnly).map(({ specifier }) => specifier);
+}
+
+/**
+ * Every static import statement, as its clause and its specifier, classified.
+ *
+ * **One reading split by one predicate, rather than two patterns that have to agree.** The two
+ * exported halves — `staticImports` and `typeOnlyImports` — must partition the static imports
+ * between them: every one is either evaluated at runtime or erased before it, and a specifier that
+ * fell into both would be judged twice by rules that disagree, while one that fell into neither
+ * would be judged by nothing at all. Written as two independent regexes they cannot be held to
+ * that; derived from one match and one boolean, the partition is a property of the shape rather
+ * than a coincidence anyone has to maintain.
+ *
+ * **The pattern this replaced got the second bullet above wrong, and said so in its own comment.**
+ * It excluded type-only imports with a lookahead containing `type\b\s*(?!from\b)`, and `\s*`
+ * backtracks to empty — so on `import type from './x.ts'` the inner test succeeded against a
+ * *space*, the exclusion fired, and a value default import bound to the name `type` was read as
+ * type-only by the one reading whose job is to see runtime edges. Nothing in this tree writes that
+ * form, so the defect cost nothing; what found it was the module sweep's partition control, which
+ * is the argument for having written the control rather than the comment.
+ *
+ * @param {string} source
+ * @returns {Array<{clause: string, specifier: string, typeOnly: boolean}>}
+ */
+function importStatements(source) {
+  return [...source.matchAll(/^\s*import\s+([^;]*?)from\s+['"]([^'"]+)['"]/gm)].map((match) => {
+    const clause = match[1].trim();
+
+    // `type` alone is the whole clause of a default import named `type`; `type` followed by
+    // anything — a binding, a brace, a star — is the type-only modifier.
+    return { clause, specifier: match[2], typeOnly: /^type\b/.test(clause) && clause !== 'type' };
+  });
+}
+
+/**
+ * The specifiers a module names for its types alone — the half `staticImports` skips.
+ *
+ * **The complement of the function above by construction, since both read one match and one
+ * predicate.** That partition is the property to hold them to rather than either pattern:
+ * `module-sweep.test.js` drives it against the narrow cases below, and it is what found the
+ * backtracking defect `importStatements` describes.
+ *
+ * The same two narrow cases, from the other side:
+ *
+ * - `import { type Row, insert } from './crud.ts'` loads the module for `insert`, so it belongs to
+ *   `staticImports` and is **not** returned here.
+ * - `import type from './x'` is a value default import bound to the name `type`, so it is **not**
+ *   returned here either.
+ *
+ * **What this is for.** Erasure makes a type-only import invisible to every runtime check, which is
+ * correct for the properties those checks defend and leaves nobody reading the specifier. Once two
+ * SDKs publish under the same package name at different versions, the specifier is the only thing
+ * distinguishing the host a module is typed against — see `SDK_PACKAGES`.
+ *
+ * A regex rather than a parser, with `withoutComments`'s limit and for its reason.
+ *
+ * @param {string} source
+ * @returns {string[]}
+ */
+export function typeOnlyImports(source) {
+  return importStatements(source).filter(({ typeOnly }) => typeOnly).map(({ specifier }) => specifier);
 }
 
 /**

@@ -20,7 +20,9 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { openDatabase } from './support/database.js';
-import { packageManifest, sweepSourcesUnder, unsanctionedDependencies } from './support/sources.js';
+import {
+  lifecycleScripts, packageManifest, sweepSourcesUnder, unsanctionedDependencies,
+} from './support/sources.js';
 import {
   auditEnvironment, auditImports, auditReach, auditWrites, importGraph, withoutComments,
 } from './support/sweeps.js';
@@ -161,10 +163,11 @@ test('the suite runs from a clean checkout with no install step [integration]', 
   assert.deepEqual(unsanctionedDependencies(manifest), []);
 
   // **The maps being empty is not the whole claim.** A `prepare`, `preinstall` or `build` script
-  // is an install step that no dependency map records, and it would run on every clone.
-  for (const script of ['preinstall', 'install', 'postinstall', 'prepare', 'prepack', 'build']) {
-    assert.equal(manifest.scripts?.[script], undefined, `package.json declares a ${script} script`);
-  }
+  // is an install step that no dependency map records, and it would run on every clone. Read
+  // through `lifecycleScripts` since four suites asked this with a loop each and the four lists
+  // disagreed — this one missed `prepublish`.
+  assert.deepEqual(lifecycleScripts(manifest), [],
+    'package.json declares a script that runs at install or pack time');
 
   // **What replaced the `node_modules` check, and why it is a better claim rather than a weaker
   // one.** This used to assert the directory was absent, reading its own run as the clean checkout.

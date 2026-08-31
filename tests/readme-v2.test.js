@@ -26,7 +26,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { initRepository } from './support/git.js';
-import { cache, follow } from './support/package-cache.js';
+import { DOCUMENTED_CLONE, follow } from './support/dpm-clone.js';
 import { ownedDirectory } from './support/scratch.js';
 import { COMMANDS } from '../src/guard/index.ts';
 
@@ -56,17 +56,19 @@ const CPM_DIRECTORIES = [
  */
 const RULES = [
   {
-    what: 'the install command',
-    matches: ({ body }) => body.startsWith('opencode2 '),
+    what: 'the clone command',
+    matches: ({ body }) => body.startsWith('git clone '),
     run: false,
-    why: 'it fetches over the network and rewrites the reader\'s opencode.json',
+    why: 'it reaches the network and would write a second checkout of this repository',
     check: (body) => {
-      // What is checkable without running it: the specifier names this repository, in the form
-      // OpenCode resolves, and the package it installs is the one this manifest declares.
-      assert.match(body.trim(), /^opencode2 plugin add github:[\w.-]+\/[\w.-]+$/,
-        `the install command is not a plugin add of a github specifier: ${body.trim()}`);
-      assert.ok(body.includes(`/${JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).name}`),
-        'the install specifier does not name the package this repository publishes');
+      // What is checkable without running it: it clones *this* repository, and it clones it to the
+      // path every link instruction and the permission entry then name.
+      assert.match(body.trim(), /^git clone https:\/\/github\.com\/[\w.-]+\/[\w.-]+\.git \S+$/,
+        `the install command is not a clone of a github repository: ${body.trim()}`);
+      assert.ok(body.includes(`/${JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).name}.git`),
+        'the clone command does not name the repository this package is published from');
+      assert.ok(body.trim().endsWith(DOCUMENTED_CLONE),
+        `the clone lands somewhere the rest of the README does not name: ${body.trim()}`);
     },
   },
   {
@@ -113,13 +115,6 @@ const RULES = [
     prepare: (project) => {
       writeFileSync(join(project, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
     },
-  },
-  {
-    what: 'the clone form of the symlink',
-    matches: ({ body }) => body.includes('~/src/opencode-dpm'),
-    // The README names a path on the author's machine, deliberately — it is an illustration of the
-    // shape. Substituted for this checkout, which is the thing that path stands for.
-    substitute: (body) => body.replaceAll('~/src/opencode-dpm', ROOT),
   },
   {
     what: 'the two shell functions',
@@ -223,7 +218,7 @@ test('every fenced block in the README is accounted for by a rule [unit]', () =>
   }
 
   assert.deepEqual(RULES.filter((rule) => rule.run === false).map(({ what }) => what), [
-    'the install command',
+    'the clone command',
     'a configuration block',
     'the pre-commit framework entry',
     'a guard fix naming one of the executables',
@@ -238,10 +233,9 @@ test('every runnable command the README gives succeeds in a fresh project [integ
   for (const block of runnable) {
     const rule = ruleFor(block);
     const root = project(t);
-    const installed = cache(t);
     const command = rule.substitute ? rule.substitute(block.body) : block.body;
 
-    rule.prepare?.(root, installed);
+    rule.prepare?.(root);
 
     // `execFileSync` throws on a non-zero exit, so the status is read off the error rather than
     // from a flag — and compared against what the rule says this block may exit with.
@@ -249,7 +243,10 @@ test('every runnable command the README gives succeeds in a fresh project [integ
     let output = '';
 
     try {
-      follow(command, { cwd: root, cacheRoot: installed.root, shell: rule.shell });
+      // `into` is this checkout, which is what the documented clone path stands for: a DPM tree
+      // with a `hooks/pre-commit` in it. A test linking at the author's actual home directory
+      // would be reading that machine rather than the instruction.
+      follow(command, { cwd: root, into: ROOT, shell: rule.shell });
     } catch (error) {
       status = error.status ?? -1;
       output = String(error.stderr ?? error.message);
@@ -264,9 +261,8 @@ test('a documented command that stopped working is reported [integration]', (t) 
   // **The control on the runner**, and the reason the test above is an observation rather than a
   // loop that cannot fail. `follow` has to surface a non-zero exit, or every command "passes".
   const root = project(t);
-  const installed = cache(t);
 
-  assert.throws(() => follow('ls /a/path/that/is/not/there', { cwd: root, cacheRoot: installed.root }));
+  assert.throws(() => follow('ls /a/path/that/is/not/there', { cwd: root, into: ROOT }));
 
   // And the fixture is a fixture: a fresh project is a git repository with hooks to install into.
   assert.equal(existsSync(join(root, '.git', 'hooks')), true, 'the fresh project has no .git/hooks');
@@ -282,35 +278,39 @@ test('the blocks that are checked rather than run hold up [unit]', () => {
 
 // --- Criterion 3: the beta statement ----------------------------------------------------------
 
-test('the README says OpenCode v2 is beta and that entrypoints may move [unit]', () => {
+test('the README names the host it is written against and warns that it moves [unit]', () => {
+  // **The criterion was written when the host was a beta and the warning was about that.** Epic
+  // 02-01 retargeted the plugin at OpenCode v1, which is not a beta — so what survives is the half
+  // that was load-bearing: the plugin API is one the host is free to change, and a reader whose
+  // commands stop matching should suspect the host before suspecting DPM.
+  //
   // Blockquote markers come out with the line breaks: the statement is inside a `>` callout, and a
   // collapse that kept the `>` would read "Entrypoints may > move" and match nothing. Assertions
   // about a sentence have to be made about the sentence.
   const collapsed = README.replace(/^\s*>\s?/gm, '').replace(/\s+/g, ' ');
 
-  assert.match(collapsed, /OpenCode v2 is a beta/,
-    'the README does not say OpenCode v2 is a beta');
+  assert.match(collapsed, /OpenCode v1/, 'the README does not name the host it is written against');
   assert.match(collapsed, /[Ee]ntrypoints may move/,
     'the README does not warn that entrypoints may move under it');
 
-  // **Both in one place, not two facts a reader has to join.** A beta notice somewhere near the
+  // **Both in one place, not two facts a reader has to join.** A host notice somewhere near the
   // top and a moving-target warning three hundred lines later is two statements; what the
   // criterion asks for is one, so both have to sit in the same callout.
   //
-  // **The callout is taken as a blockquote rather than matched from the first "is a beta".** The
-  // TL;DR says it too, in a shorter form and on purpose — a reader who stops at the summary should
-  // still know — and a search anchored on the phrase finds that one, reports the warning missing
-  // from it, and is right about the wrong paragraph. So the run of `>` lines is what is read, and
-  // the assertion that there is exactly one of them is what keeps that unambiguous.
+  // **The callout is taken as a blockquote rather than matched from the first "OpenCode v1".** The
+  // TL;DR and *Requirements* both name the host, on purpose — a reader who stops at the summary
+  // should still know — and a search anchored on the phrase finds one of those, reports the
+  // warning missing from it, and is right about the wrong paragraph. So the run of `>` lines is
+  // what is read, and the assertion that there is exactly one of them keeps that unambiguous.
   const callouts = [...README.matchAll(/(?:^>.*\n)+/gm)]
     .map(([block]) => block.replace(/^>\s?/gm, '').replace(/\s+/g, ' ').trim());
 
   assert.equal(callouts.length, 1,
-    `the README has ${callouts.length} blockquotes, and this reading expects the beta callout alone`);
-  assert.match(callouts[0], /OpenCode v2 is a beta/,
-    'the README\'s callout is not the beta statement');
+    `the README has ${callouts.length} blockquotes, and this reading expects the host callout alone`);
+  assert.match(callouts[0], /still free to change/,
+    'the README\'s callout is not the statement about the host moving');
   assert.match(callouts[0], /[Ee]ntrypoints may move/,
-    'the beta statement and the warning that entrypoints may move are in different places');
+    'the host statement and the warning that entrypoints may move are in different places');
 });
 
 // --- Criterion 4: the CPM guide is gone -------------------------------------------------------

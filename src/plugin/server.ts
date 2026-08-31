@@ -13,28 +13,37 @@
  * in it, substituted by the host. v2 has no such substitution: the plugin is code, it knows where
  * it is, and it says so. `packageRoot` is what makes "knows where it is" true rather than assumed.
  *
- * ## Why the runtime is chosen rather than written down
+ * ## Why the runtime is `node`, and why that also decides how dpm is installed
  *
- * The command said `node` until epic 01-05 installed the package by the documented route and
- * watched the server fail to start. **Node refuses to strip types from any `.ts` file underneath a
- * `node_modules` directory** — `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`, on 22 and on 24, with
- * no flag that lifts it — and OpenCode installs every plugin to
- * `$XDG_CACHE_HOME/opencode/packages/git-<digest>/node_modules/<name>/`. So `node bin/dpm-mcp.ts`
- * runs in the checkout and cannot run in the artefact, which is the only copy a user ever has. The
- * install registered 23 skills and zero tools, and nothing in the interface said the skills were
- * inert.
+ * There are two runtimes that could be named here and each is closed off by one fact, so the pair
+ * of facts settles the command and the install route together.
  *
- * **What the plugin already has is the runtime that has no such restriction.** OpenCode loads
- * plugin entrypoints with the bun compiled into `opencode2`, which is why this very file ran at all
- * from inside `node_modules`. `process.execPath` is that binary, and a bun-compiled executable
- * honours `BUN_BE_BUN=1` by behaving as the bun CLI — so the host's own runtime can be handed the
- * source directly. It reads TypeScript from anywhere and carries `node:sqlite`, which are the two
- * things the server needs.
+ * **Node refuses to strip types from any `.ts` file underneath a `node_modules` directory** —
+ * `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`, on 22 and on 24, with no flag that lifts it. Epic
+ * 01-05 found that by installing the package the documented way and watching the server fail: the
+ * host had 23 skills registered from the installed copy and zero tools, and nothing in the
+ * interface said the skills were inert. Both OpenCode majors unpack a plugin under `node_modules` —
+ * v1 to `$XDG_CACHE_HOME/opencode/packages/<spec>/node_modules/<name>/`, probed directly — so
+ * `node bin/dpm-mcp.ts` runs in a checkout and cannot run in an installed package.
  *
- * **This is not a build step and does not weaken NFR2.** No artefact is produced, nothing is
- * compiled, and what is spawned is still one runtime and one `.ts` source. The change is which
- * runtime, and it is *detected* rather than assumed: `node` remains the answer wherever the host is
- * not bun, which is every path the suite exercised before this and the reason that branch stays.
+ * **The host's own bun has no `node:sqlite`.** 01-05 answered the paragraph above by spawning the
+ * host binary in bun mode (`BUN_BE_BUN=1`), a runtime with no such restriction, and recorded that
+ * it "carries `node:sqlite`". That was measured against `opencode2` — bun 1.4.0 — and it is not
+ * true of the bun compiled into OpenCode v1 1.18.25, which is 1.3.14 and answers
+ * `No such built-in module: node:sqlite`. Under v1 the host does not fail loudly either: it blocks
+ * waiting for the server it just registered, and the skills that would have loaded after it never
+ * do.
+ *
+ * **So the runtime is `node` and the install is a checkout**, which is where a `.ts` source is one
+ * Node will read. Epic 02-01 story 5 established both halves live against 1.18.25 rather than
+ * inferring either, and the install route the README documents follows from them rather than being
+ * a separate preference. What would reopen the packaged install is `src/db/connection.ts` choosing
+ * `bun:sqlite` under bun — it is the one value import of `node:sqlite` in `src/`, and v1's bun does
+ * carry `bun:sqlite` and does read TypeScript from `node_modules`. That is storage-layer work and
+ * not a registrar's.
+ *
+ * **NFR2 is untouched throughout.** No artefact is produced and nothing is compiled: the command is
+ * one runtime and one `.ts` source, as it was before.
  */
 
 import { join } from 'node:path';
@@ -45,24 +54,10 @@ import { SERVER_EXECUTABLE } from './root.ts';
 export type LocalServer = {
   readonly type: 'local';
   readonly command: readonly string[];
-  readonly environment?: Readonly<Record<string, string>>;
 };
 
-/**
- * How the host is running us, which decides what the server is spawned with.
- *
- * Both fields are read from `process` by the caller's default rather than in here, so a test can
- * drive either branch without a subprocess — the same reason `packageRoot` takes its `from`.
- */
-export type Runtime = {
-  /** `process.versions.bun`, present only under bun. */
-  readonly bun?: string | undefined;
-  /** `process.execPath` — under a bun-compiled host, the host binary itself. */
-  readonly execPath: string;
-};
-
-/** What a bun-compiled standalone executable reads to behave as the bun CLI instead of as itself. */
-export const BE_BUN = 'BUN_BE_BUN';
+/** The runtime the server is spawned with. Named once, so a reader finds it in one place. */
+export const RUNTIME = 'node';
 
 /**
  * The bundled server, as the host's registry wants it.
@@ -71,25 +66,15 @@ export const BE_BUN = 'BUN_BE_BUN';
  * comes from the same answer — ADR 01-07's "compute before the transform", applied to the input as
  * well as to the output.
  *
+ * **There is no branch on the host runtime, and the absence is the decision.** One stood here,
+ * naming the host's own binary in bun mode wherever `process.versions.bun` was set. It was correct
+ * against v2 and wrong against v1, whose bun has no `node:sqlite`, and a branch that picks the
+ * broken runtime precisely when it is running under the supported host is worse than no branch —
+ * the file comment holds why.
+ *
  * @param root The package root, as `packageRoot()` returned it.
- * @param runtime How the host is running us. Defaults to this process.
  * @returns {LocalServer}
  */
-export function localServer(root: string, runtime: Runtime = {
-  bun: process.versions.bun,
-  execPath: process.execPath,
-}): LocalServer {
-  const executable = join(root, SERVER_EXECUTABLE);
-
-  // Under a bun host, spawn the host's own binary in bun mode. `environment` is a field
-  // `Mcp.LocalConfig` already carries, so this needs nothing of the host it did not offer.
-  if (runtime.bun) {
-    return {
-      type: 'local',
-      command: [runtime.execPath, executable],
-      environment: { [BE_BUN]: '1' },
-    };
-  }
-
-  return { type: 'local', command: ['node', executable] };
+export function localServer(root: string): LocalServer {
+  return { type: 'local', command: [RUNTIME, join(root, SERVER_EXECUTABLE)] };
 }

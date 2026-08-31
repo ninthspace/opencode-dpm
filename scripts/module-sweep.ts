@@ -20,6 +20,15 @@
  * hidden: an executable whose body is broken is caught by `executables-typescript.test.js`, which
  * runs each of the five as a process and reads what it says.
  *
+ * **A third reading joined the two above when the second SDK arrived, and it is the only one here
+ * that resolution cannot help with.** A type-only import is erased before evaluation, so it has
+ * nothing to resolve and breaks none of the properties the rules above defend — which is why every
+ * other check in this project is blind to it, correctly. What that leaves unread is the specifier
+ * itself, and once v1 and v2 publish the same package name at different versions the specifier is
+ * the only thing saying which host a module is typed against. A registrar typed against the wrong
+ * one type-checks and sweeps clean. So type-only specifiers are judged on what they name, against
+ * `SDK_PACKAGES`, and that is a list because nothing structural distinguishes the two.
+ *
  * Run as `npm run modules`. Deliberately not part of `npm test` — NFR5 asks for a separate step,
  * and folding it in would make a suite that already passes responsible for a claim it cannot make.
  */
@@ -28,7 +37,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { isBuiltin } from 'node:module';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { staticImports, withoutComments } from '../tests/support/sources.js';
+import {
+  SDK_TYPE_SURFACE, packageOf, staticImports, typeOnlyImports, withoutComments,
+} from '../tests/support/sources.js';
 
 /** Extensions this tree's modules are written in. `.sql` and `.md` sit beside them and are data. */
 const MODULE = ['.ts', '.js', '.mjs'];
@@ -74,8 +85,48 @@ export function specifiersIn(source: string): string[] {
   ];
 }
 
+/**
+ * The specifiers a file names for its types alone, which resolution never reaches.
+ *
+ * Separate from `specifiersIn` rather than folded into it, because the two are judged by different
+ * rules: a runtime specifier must resolve and must not be a package, while a type-only one is
+ * erased before anything runs and is judged only on *which* package it names.
+ */
+export function typeSpecifiersIn(source: string): string[] {
+  return typeOnlyImports(withoutComments(source));
+}
+
 /** One thing wrong with one specifier, as a sentence naming both. */
 type Complaint = { file: string; specifier: string; reason: string };
+
+/**
+ * Judge one type-only specifier: erased before evaluation, so the only question is what it names.
+ *
+ * **This is the one rule here that is a list rather than a property, and the reason is that no
+ * property distinguishes the right SDK from the wrong one.** Everywhere else the sweep asks
+ * something structural — does it resolve, is it a package — and a list would be a weaker version
+ * of a question already answered. Here the two SDKs are the same package published under one name
+ * at two versions, reached through an npm alias, so `@opencode-ai/plugin` and
+ * `@opencode-ai/plugin-v1` are indistinguishable to every mechanical test and differ only in which
+ * host's types they carry. `SDK_TYPE_SURFACE` names what may be reached, and it is derived from
+ * the same list the manifest's sanction is, so the two cannot disagree about what an SDK is.
+ *
+ * **Judged on the package rather than the specifier**, because a type arrives through a subpath as
+ * readily as through the root: `@opencode-ai/schema/skill` is `@opencode-ai/schema`, and a rule
+ * over whole specifiers would have to enumerate every subpath anyone might name. Matched whole
+ * rather than by prefix, for the reason the library entry gives — `@opencode-ai/plugin-v1`
+ * *contains* `@opencode-ai/plugin`, so a `startsWith` would accept any package whose name began
+ * with a sanctioned one, and the two readings would agree until somebody published one.
+ *
+ * @returns The reason it is not allowed, or `null`.
+ */
+function unsanctionedType(specifier: string): string | null {
+  if (isBuiltin(specifier) || specifier.startsWith('.') || specifier.startsWith('/')) return null;
+  if (SDK_TYPE_SURFACE.includes(packageOf(specifier))) return null;
+
+  return 'is imported for its types and is not part of a host type surface this plugin may be '
+    + `typed against (${SDK_TYPE_SURFACE.join(', ')})`;
+}
 
 /**
  * Resolve one specifier as Node would, relative to the file that names it.
@@ -131,10 +182,23 @@ export async function sweep(
 
     for (const file of modulesUnder(directory)) {
       const where = relative(root, file);
-      for (const specifier of specifiersIn(readFileSync(file, 'utf8'))) {
+      const source = readFileSync(file, 'utf8');
+
+      for (const specifier of specifiersIn(source)) {
         examined += 1;
 
         const reason = unresolved(specifier, file);
+
+        if (reason) complaints.push({ file: where, specifier, reason });
+      }
+
+      // Counted into `examined` alongside the rest, so the "checked nothing" guard below speaks for
+      // this reading too. A tree of nothing but type-only imports would otherwise be swept in full
+      // and then reported as unexamined.
+      for (const specifier of typeSpecifiersIn(source)) {
+        examined += 1;
+
+        const reason = unsanctionedType(specifier);
 
         if (reason) complaints.push({ file: where, specifier, reason });
       }
@@ -167,7 +231,11 @@ export async function main(root = process.argv[2] ?? ROOT): Promise<number> {
     process.stderr.write(`dpm: ${file}${specifier ? ` imports ${specifier}, which ` : ' '}${reason}\n`);
   }
 
-  if (complaints.length === 0) process.stdout.write('dpm: every import under src/ and bin/ resolves\n');
+  if (complaints.length === 0) {
+    process.stdout.write(
+      'dpm: every import under src/ and bin/ resolves, and every type-only one names a host SDK\n',
+    );
+  }
 
   return complaints.length === 0 ? 0 : 1;
 }
