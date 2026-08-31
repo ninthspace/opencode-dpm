@@ -15,7 +15,7 @@
 | 5 | FR3 | All twenty-three skills port and are registered via `ctx.skill.transform` | The registration list computed before the transform contains twenty-three entries and every ID is `dpm-` prefixed. | Story 2 | `[unit]` | ✓ |
 | 6 | FR3 | All twenty-three skills port and are registered via `ctx.skill.transform` | All twenty-three skills appear in the host's skill registry after install, every ID carrying the `dpm-` prefix. | Story 2 | `[manual]` | ✓ |
 | 7 | FR3 | with `location` pointing into the installed package so directory-based skills keep their supporting files | Each registered skill's `location` points into the installed package. | Story 2 | `[integration]` | ✓ |
-| 8 | FR3 | Skill prose is revised wherever it names host mechanics | must NOT — A skill body names a Claude Code mechanism — `mcp__plugin_`, `/dpm:`, `CLAUDE_PLUGIN_ROOT`, or `.claude/`. | Story 2 | `[unit]` |  |
+| 8 | FR3 | Skill prose is revised wherever it names host mechanics | must NOT — A skill body names a Claude Code mechanism — `mcp__plugin_`, `/dpm:`, `CLAUDE_PLUGIN_ROOT`, or `.claude/`. | Story 2 | `[unit]` | ✓ |
 | 9 | FR3 | the invocation story replaces Claude Code's slash-command triggers | Every skill body's invocation prose names the v2 skill-first mechanism rather than a slash-command trigger. | Story 3 | `[unit]` | ✓ |
 | 10 | FR3 | the invocation story replaces Claude Code's slash-command triggers | In a scratch project, a user can start each of the twenty-three skills by the documented v2 invocation. | Story 3 | `[manual]` |  |
 | 11 | FR3 | Skill prose is revised wherever it names host mechanics | A CI check fails the build when a skill body names `mcp__plugin_`, `/dpm:`, `CLAUDE_PLUGIN_ROOT` or `.claude/`. | Story 4 | `[integration]` | ✓ |

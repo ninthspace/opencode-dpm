@@ -1,7 +1,8 @@
 /**
  * One example document per kind, built so a template can be rendered without a project (FR6).
  *
- * **What this is for.** `/dpm:templates preview {kind}` answers "what will this look like?", and the
+ * **What this is for.** `dpm-templates`, asked to preview a kind, answers "what will this look
+ * like?", and the
  * only honest answer is the bytes the real template produces. So the preview does not describe a
  * format — it renders one, through `TEMPLATES[kind]`, from rows built here. A skeleton stored
  * anywhere as *text* would be a second copy of the format, free to drift from the renderer the

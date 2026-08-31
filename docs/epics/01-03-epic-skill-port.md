@@ -176,6 +176,39 @@ divergence** — the descriptions and the `/dpm:` references were intentional pr
 the count establishes is the thing worth establishing: no line differs that neither story meant to
 change, so the procedure prose, the gate wording and the tables came through both passes untouched.
 
+## `ralph` under v2 — an open decision, deferred to after the invocation walk
+
+`ralph` is the one skill body that still names a Claude Code mechanism. Its loop is driven by
+`.claude/ralph-loop.local.md`, a stop hook, and v2 has no equivalent — so the body ports but the
+mechanism it describes does not.
+
+**The gap is instrumented rather than ignored.** `tests/skill-port.test.js` pins the number of
+references the body carries and asserts `ralph` is the *only* body claiming the exemption, so a
+second skill acquiring one would have to acquire it in the open rather than by being added to a list
+nobody reads.
+
+**On 2026-08-31 the decision was taken to withdraw `ralph` from v2 registration, and then deferred
+until after the invocation walk.** Two reasons, and the second is the one that decided it.
+
+The first is cost. Withdrawal is not a one-line exclusion. Twelve assertions across eight test files
+pin the corpus at twenty-three; `corpus.test.js` asserts the corpus is *exactly* the list FR25 names,
+in both directions, with a must-NOT control proving the comparison reports which skill rather than
+how many — and FR25 names `ralph` and is frozen in the v0.7.0 oracle that another must-NOT forbids
+regenerating, so the divergence needs a recorded, controlled exemption citing ADR 01-01 rather than
+an edit to the oracle. `skill-port.test.js`'s exemption test inverts: with `ralph` gone it asserts an
+empty set against a one-element list. Four places in the README and four coverage fragments say
+"twenty-three". That is an epic's worth of work.
+
+The second is that the decision is better made with evidence that does not exist yet. What `ralph`
+should become under v2 depends on how v2 actually drives a skill — whether anything in the host can
+carry a loop, and what a skill can do when it reaches the end of its own body. The invocation walk
+is what answers that, and it is the one piece of evidence still outstanding on this epic. Deciding
+`ralph`'s future first would be deciding it against a host nobody has watched.
+
+**What this section is for.** Withdrawal is decided in principle and unscheduled in practice. It is
+recorded here so that the deferral is a decision with a reason rather than an omission, and so the
+next run meets it as a known item. Nothing in the corpus changes until it is picked up.
+
 ## Story 1 — Pilot the spec skill end-to-end
 
 **Status**: complete — Gates limb of criterion 1 unmet; completed on the user's call.  

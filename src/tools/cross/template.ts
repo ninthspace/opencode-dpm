@@ -1,5 +1,5 @@
 /**
- * `read_document_kind` and `preview_document_kind` — the two questions `/dpm:templates` asks (FR6).
+ * `read_document_kind` and `preview_document_kind` — the two questions `dpm-templates` asks (FR6).
  *
  * **Why a preview needs a tool at all.** A skill reaches the database through tools and through
  * nothing else, so "what does an epic look like?" has no route unless something renders one. The

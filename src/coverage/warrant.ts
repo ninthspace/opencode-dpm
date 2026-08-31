@@ -8,7 +8,7 @@
  * finished work and the other is a gap, and reporting them the same way is how a project comes to
  * ignore its own gap list.
  *
- * **So the rule is a query, not a paragraph in two skills.** `/dpm:do`'s roll-up and `/dpm:epics`'
+ * **So the rule is a query, not a paragraph in two skills.** `dpm-do`'s roll-up and `dpm-epics`'
  * gap check both need this judgement, and it has three inputs rather than one: a live binding, a
  * warrant, and — since a superseded criterion's bindings retire — the fact that a binding can stop
  * counting without going anywhere. Written out in English twice it would drift, and nothing would

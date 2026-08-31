@@ -113,7 +113,13 @@ test('src and skills are in the working tree, so the constant the sweeps use res
   assert.ok(existsSync(join(DPM, 'skills')), 'and so is dpm/skills');
 });
 
-// --- ENVR4: where the test data comes from, and where it does not --------------------------------
+// --- Where the test data comes from, and where it does not --------------------------------------
+//
+// Untagged. This carried `ENVR4` from upstream, where that tag meant something else; this fork's
+// ENVR4 is the OpenCode v2 beta CLI on the contributor's machine, and no requirement here asks for
+// the property below. It is worth keeping on its own merits — a suite that reads the project's own
+// database is one whose results depend on the project's own state — but it is nobody's criterion,
+// and a tag naming one it does not serve reads as coverage that does not exist.
 
 /**
  * A path the suite resolved from its own location up out of `dpm/` — the only way a test can reach
@@ -121,7 +127,7 @@ test('src and skills are in the working tree, so the constant the sweeps use res
  *
  * That distinction is the whole check. Six suite files name `.dpm/dpm.db`, and every one of them
  * means a database inside a temporary directory the test created a line earlier; a sweep that
- * matched the *string* would report all six and be wrong about all six. What ENVR4 forbids is
+ * matched the *string* would report all six and be wrong about all six. What is forbidden is
  * reaching the project's, and reaching the project's means anchoring at the project.
  */
 const anchored = (code) => [...code.matchAll(
@@ -178,7 +184,12 @@ test('no test reaches the host plugin cache, so an absent or read-only one chang
     'the reading complains about prose that explains the rule');
 });
 
-// --- ENVR5: the scratch tree ---------------------------------------------------------------------
+// --- The scratch tree ---------------------------------------------------------------------------
+//
+// Untagged, and inherited the same way. This fork's ENVR5 is a scratch OpenCode *project* to
+// register the plugin into, whose criterion is `[manual]` and whose evidence is a run in a real
+// host — not a corpus published into a temporary directory by the suite. The two share the word
+// "scratch" and nothing else.
 
 test('the suite can publish a corpus into a scratch tree and read the files back', (t) => {
   const { root, documents } = publishedTree(t);
