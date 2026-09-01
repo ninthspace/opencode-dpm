@@ -24,6 +24,22 @@ const ROOT = join(import.meta.dirname, '..', '..');
 export const DOCUMENTED_CLONE = '~/src/opencode-dpm';
 
 /**
+ * The token the README's command blocks put where that path goes, for a reader who chose another.
+ *
+ * Beside `DOCUMENTED_CLONE` because the two are the same fact in the two forms the README needs —
+ * a path for the line you copy, a placeholder for the lines you edit first — and because they go
+ * stale together. It was `<package path>` until epic 02-04: correct while there was a package to
+ * point at, and left reading as though there still were once epic 02-01 replaced the packaged
+ * install with a clone.
+ *
+ * **Here rather than in either test that reads it**, which is the whole of the reason: two files
+ * now check the README against this string, and a rename that reached one of them would leave the
+ * other looking for a token no longer in the document — a check that has stopped constraining
+ * anything while still passing, if its assertion is ever loosened to tolerate an absence.
+ */
+export const CLONE_PLACEHOLDER = '<dpm clone>';
+
+/**
  * `count` clones of this checkout's hook, oldest first.
  *
  * More than one is not hypothetical: the README's *When the guard is out of date* is about a link

@@ -164,6 +164,7 @@ const ADDED = [
   'plugin-reload.test.js', //          01-02 story 5 — a reload leaves one of everything
   'production-restrictions.test.js', // 01-05 story 3 — nothing contacted, no port bound, no host mechanism
   'publish-package.test.js', //        01-05 story 1 — what the packed tarball ships, and what it must not
+  'readme-host.test.js', //            02-04 story 1 — the prose around the blocks, and no second host named
   'readme-symlink.test.js', //         01-04 story 2, rewritten 02-01 story 5 — the link instruction, run against a clone
   'readme-v2.test.js', //              01-04 story 4 — every documented block, classified and run
   'registration-prefix.test.js', //    02-02 story 2 — the name copied not composed, and the constant gone

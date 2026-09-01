@@ -225,19 +225,24 @@ regenerated and staged the result would silently overwrite a hand-edit, which is
 failure the guard exists to catch. So the refusal is the reminder, and running the
 publish is still yours.
 
-The refusal names `node <package path>/bin/dpm-publish.ts` — the absolute path the guard
-itself was loaded from — because it may arrive at a terminal with no session open. That is
+The refusal names `node <dpm clone>/bin/dpm-publish.ts` — the absolute path the guard
+itself was loaded from — because it may arrive at a terminal with no session open.
+`<dpm clone>` is that checkout, the one you named in `opencode.json`, and it stands for the
+same path everywhere below; the refusal prints it in full rather than leaving you to find
+it. That is
 the same publish without the gate: the `dpm-publish` skill shows you every file it would
 remove and asks first, and the binary alone does not. Reach for the skill whenever you are
 in a session, which is nearly always.
 
 ## Permissions
 
-One entry here is a step, and the rest is not. Every skill reads a file from the package
-directory, which the host treats as outside your project and asks about by default — so
-that one rule is worth setting whatever your configuration looks like. Everything after it
-is for the case where you have set a restrictive baseline and DPM has to be let back
-through it; under the stock `build` agent those are already the answer.
+**None of this is a step.** Under the stock `build` agent DPM works with nothing added:
+nothing it does reads outside your project, and its tools are ordinary tools the agent
+already allows. What follows is for the case where you have set a restrictive baseline and
+DPM has to be let back through it.
+
+There was an entry here that everybody had to add, and it is gone rather than moved — the
+paragraph below headed *Nothing DPM does reads outside the project* is what replaced it.
 
 **None of it is about restricting DPM's skills.** The twenty-three are the product — they
 are meant to be used, they are how the method is followed at all, and a repository that
@@ -272,6 +277,14 @@ DPM occupies two actions, and telling them apart is the whole of this section:
 |---|---|---|
 | A skill is loaded into the conversation | `skill` | the skill's id — `dpm-spec`, `dpm-publish`, … |
 | A DPM tool runs | the tool's own name — `dpm_create_spec`, `dpm_publish`, … | `*` |
+
+**The id a `skill` rule matches against is the `name` in that skill's front matter** — not
+its directory, and not anything DPM composes while registering it. Each of the twenty-three
+declares its own `dpm-` prefix at the top of `skills/dpm-<skill>/SKILL.md`, so the string
+the host registers is the string you can read out of the file, and one `dpm-*` covers all
+twenty-three. That is worth knowing rather than taking on trust: a prefix applied at
+registration would leave the file saying one thing and the permission engine matching
+another, which is what a rule that silently matches nothing looks like from the outside.
 
 **If you have set a restrictive baseline**, these two entries are the minimum that lets
 DPM work:
@@ -351,7 +364,7 @@ repos:
     hooks:
       - id: dpm-guard
         name: DPM projection guard
-        entry: <package path>/hooks/pre-commit
+        entry: <dpm clone>/hooks/pre-commit
         language: system
         pass_filenames: false
 ```
@@ -365,7 +378,7 @@ cat > .git/hooks/pre-commit <<'SH'
 #!/bin/sh
 set -e
 .git/hooks/pre-commit.local
-exec <package path>/hooks/pre-commit
+exec <dpm clone>/hooks/pre-commit
 SH
 chmod +x .git/hooks/pre-commit
 ```
@@ -375,8 +388,8 @@ guard is the one whose refusal has a specific fix attached — reaching it after
 checks have passed means the message you are reading is about the thing you still have
 to do. It stays `exec` so the guard's exit status is the hook's.
 
-In both, `<package path>` is the clone you named in `opencode.json` — the same path step 1's
-`ln` uses.
+In both, `<dpm clone>` is what it is everywhere else in this file: the checkout you named in
+`opencode.json`, which is the same path step 1's `ln` uses.
 
 The wrapper is a real file rather than a symlink, so nothing re-points it — but nothing
 re-points a symlink either, and here the path is spelled out rather than resolved. It goes
@@ -399,7 +412,7 @@ not one of these commands.
 artefacts:
 
 ```sh
-node <package path>/bin/dpm-publish.ts
+node <dpm clone>/bin/dpm-publish.ts
 ```
 
 or invoke the skill tool with id `dpm-publish` if you are already in a session — which is
@@ -409,7 +422,7 @@ the wording the refusal itself uses. This is step 2 above, and it is the common 
 behind it. Rebuild the database from the dump:
 
 ```sh
-node <package path>/bin/dpm-import.ts
+node <dpm clone>/bin/dpm-import.ts
 ```
 
 Publishing here would do the opposite of what you want — it regenerates the dump from a
@@ -420,7 +433,7 @@ from the other without losing whatever is only on the side being overwritten, so
 have to be reconciled:
 
 ```sh
-node <package path>/bin/dpm-merge.ts
+node <dpm clone>/bin/dpm-merge.ts
 ```
 
 Run it during the conflicted `git merge`, from the repository root. It reads git's three
@@ -505,26 +518,37 @@ guide walks you through.
 
 ## Status
 
-**Beta, and young — but not new.** This package is a standalone fork of DPM 0.7.0, ported
-to OpenCode v2. The method, the schema, the 183 tools and the 23 skills are DPM's and have
-been in use for some time; what is new is the host binding, and that is the part still
-settling. One spec is built out here, across the five epics sharing its number in
-`docs/epics/`:
+**Beta, and young — but not new.** This package is a standalone fork of DPM 0.7.0. The
+method, the schema, the 183 tools and the 23 skills are DPM's and have been in use for some
+time; what is new is the host binding, and that is the part still settling.
+
+**Two specifications are built out here, and the second changed the first one's answer.**
+The fork was written against the OpenCode beta, because that was the release on hand. The
+second specification moved it onto the 1.x line, and the host turned out to differ in ways
+that reached well past the registrar: two entry files rather than one, a clone rather than a
+packaged install, and the shared conventions served by a tool rather than rewritten into
+skill bodies as they were registered. The epics are in `docs/epics/`:
 
 | Epic | What it delivered |
 |---|---|
 | `01-01-epic-repo-bootstrap.md` | The standalone repository and the JavaScript-to-TypeScript conversion, checked byte-for-byte against a dump v0.7.0 wrote |
-| `01-02-epic-plugin-entry.md` | The plugin entry, one MCP server, 183 `dpm_` tools, and the conventions path resolved to an absolute one at registration |
+| `01-02-epic-plugin-entry.md` | The plugin entry, one MCP server and 183 `dpm_` tools |
 | `01-03-epic-skill-port.md` | All twenty-three skill bodies off Claude Code's tool prefix and slash commands, with the prohibition enforced in CI |
-| `01-04-epic-guard-and-docs.md` | The pre-commit guard at OpenCode's hook path, where a package is cached, this README, and permission behaviour |
-| `01-05-epic-publish.md` | What the package ships, the install verified from a wholly cold clone, and the production restrictions |
+| `01-04-epic-guard-and-docs.md` | The pre-commit guard at OpenCode's hook path, this README, and permission behaviour |
+| `01-05-epic-publish.md` | What the package ships, and the restrictions it holds to in production |
+| `02-01-epic-v1-registrar.md` | The move to the supported host: two entry files for its two plugin protocols, and the clone install that replaced the packaged one |
+| `02-02-epic-skill-identity.md` | The `dpm-` prefix moved into each skill's own front matter, which is where both the skill registry and the permission engine read it |
+| `02-03-epic-shared-documents.md` | The shared conventions served by `dpm_read_shared_document`, so no host hook has to rewrite a skill body |
+| `02-04-epic-two-host-docs.md` | This README and the permission guidance, brought onto the one host DPM supports |
+| `02-05-epic-v1-walk.md` | **Not delivered yet** — starting a skill in a real session and following it through to a commit the guard accepts |
 
 **What is not settled at 0.1.0.** Three things are on the record as unfinished rather than
 unknown. Starting a skill and following it through has not been watched inside a real
-session — the registry is verified, the walk is assumed. `ralph` is registered like the
-other twenty-two, but the loop it describes rests on a Claude Code stop hook that has no v2
-equivalent, so that loop does not run. And DPM's database path is relative, which means the
-working directory OpenCode hands a spawned MCP server is what decides which repository
+session — the registry is verified, the walk is assumed, and the last epic in the table is
+where that gets answered rather than restated. `ralph` is registered like the other
+twenty-two, but the loop it describes rests on a Claude Code stop hook that OpenCode has no
+equivalent for, so that loop does not run. And DPM's database path is relative, which means
+the working directory OpenCode hands a spawned MCP server is what decides which repository
 `.dpm/` lands in.
 
 ## Licence

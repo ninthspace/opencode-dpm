@@ -151,7 +151,7 @@ export function run(root: string): number {
   console.log(`dpm: ${checked.length} files — every skill body and every file they read at startup `
     + '— name no host mechanism and no SQL');
   console.log(`     one recorded gap, printed rather than hidden: ${RECORDED_GAP.skill} names the `
-    + 'Claude Code stop-hook file, which has no v2 equivalent');
+    + 'Claude Code stop-hook file, which OpenCode has no equivalent for');
 
   return 0;
 }

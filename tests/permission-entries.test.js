@@ -21,11 +21,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { CALLABLE, section } from './support/skills.js';
+import { basename, join } from 'node:path';
+import { CALLABLE, PREFIX, frontMatter, section, skillSource, sweep } from './support/skills.js';
 import { packageManifest, pluginSources, withoutComments } from './support/sources.js';
 import { discoverSkills, SKILL_FILE } from '../src/plugin/skills.ts';
-import { PREFIX } from './support/skills.js';
 import { start } from '../src/start.ts';
 import { spineTools } from '../src/tools/index.ts';
 
@@ -133,6 +132,157 @@ test('every skill resource the README names resolves to a registered skill [unit
   // The matcher has to be capable of failing, or the loop above passes on any string at all.
   assert.equal(ids.some((id) => matches(id, `${PREFIX}not-a-skill`)), false);
   assert.equal(matches(`${PREFIX}spec`, `${PREFIX}*`), true);
+});
+
+// --- Epic 02-04 story 2: and every skill is covered by one of them ---------------------------
+
+/**
+ * The other direction, and the half that was missing.
+ *
+ * The test above asks whether each recommended rule finds a skill. This one asks whether each
+ * skill finds a rule — and the two together are the partition, which is the reading retro 06 named
+ * after four green files each checked one side of one. A recommendation can name only skills that
+ * exist and still leave a reader with a configuration that denies half the method: the rule matches
+ * something, so the first test passes, and the skills it does not reach are invisible from there.
+ *
+ * **What the engine matches against is the front-matter `name`,** which is why this reads
+ * `discoverSkills` rather than the directory listing — it returns the string the host is handed and
+ * therefore the string a `skill` rule is tested against. Before ADR 02-04 the prefix was composed
+ * at registration and the two differed, which is exactly the state in which `dpm-*` matches every
+ * registration and nothing a reader can find in the tree.
+ */
+test('every skill the package registers is covered by a rule the README recommends [unit]', () => {
+  const ids = discoverSkills(ROOT).map((skill) => skill.name);
+
+  // **The floor, and criterion 1 asks for it by name.** Everything below is a filter that comes
+  // back empty over an empty corpus, which is the shape that passes by doing nothing. The count is
+  // written down rather than derived; what the twenty-three *are* is held against `corpus.test.js`'s
+  // transcribed list by `suite-skill-names.test.js`, and a fourth copy here would be a fourth thing
+  // to keep in step rather than a second opinion.
+  assert.equal(ids.length, 23, `${ids.length} skills discovered, and the recommendation is for 23`);
+
+  const allowed = documented()
+    .filter((rule) => rule.action === 'skill' && rule.effect === 'allow')
+    .map((rule) => rule.resource);
+
+  assert.ok(allowed.length > 0, 'the README recommends no allow rule for the skill action at all');
+
+  const uncovered = ids.filter((id) => !allowed.some((resource) => matches(id, resource)));
+
+  assert.deepEqual(uncovered, [],
+    'a skill this package registers is matched by no rule the README recommends — a reader who '
+    + 'pasted the block would have DPM working except for these');
+});
+
+test('control — a recommendation that reaches no skill fails rather than passing empty [unit]', () => {
+  const ids = discoverSkills(ROOT).map((skill) => skill.name);
+
+  // A plausible wrong recommendation: the *tool* glob written into the skill slot. It is a rule, it
+  // is well formed, and it matches none of the twenty-three — and criterion 1 asks that this be a
+  // failure rather than an empty match set nobody looks at.
+  assert.equal(ids.filter((id) => !matches(id, `${CALLABLE}*`)).length, ids.length,
+    'a rule matching no skill was read as covering them');
+
+  // The unprefixed form, which is what the recommendation was before ADR 02-04 moved the prefix
+  // onto the front matter and the reason that ADR has a permission clause at all.
+  assert.equal(ids.some((id) => matches(id, 'spec')), false,
+    'an unprefixed resource matches a registered skill, so the prefix is not where this thinks');
+
+  // And the direction the floor above guards: with nothing discovered, the sweep is empty and says
+  // exactly as much as a clean pass.
+  assert.deepEqual([].filter((id) => !matches(id, 'nothing-at-all')), [],
+    'an empty corpus reports uncovered skills, so the floor is not the thing holding this up');
+});
+
+test('the section says what a skill rule is matched against, and it is true [unit]', () => {
+  const body = permissions();
+
+  // Criterion 2: a reader must be able to tell *why* one `dpm-*` covers everything, rather than
+  // being handed a glob that happens to work.
+  assert.match(body, /front matter/,
+    'the section does not say what the permission engine matches a skill rule against');
+  assert.match(body, /skills\/dpm-<skill>\/SKILL\.md/,
+    'the section says the id is in the front matter without saying which file to open');
+
+  // **And the claim is checked against the tree, not just found in the prose.** A README sentence
+  // about where a name comes from is the kind that stays after the mechanism moves — this one is
+  // here *because* the mechanism moved, and epic 02-02 is the epic that moved it.
+  const registered = discoverSkills(ROOT);
+  const disagree = registered
+    .filter(({ name, location }) => frontMatter(skillSource(basename(location))).name !== name)
+    .map(({ name }) => name);
+
+  assert.deepEqual(disagree, [],
+    'the README says a registered id is the front-matter name, and for these two it is not');
+  assert.equal(registered.length, 23, 'the check above ran over a corpus that is not this one');
+});
+
+/**
+ * Claims the section used to make that DPM has since stopped making true.
+ *
+ * **This exists because a test held the last one in place.** Epic 02-03 removed the
+ * `external_directory` rule and `permission-entries.test.js` had been asserting that block was
+ * *present* — so the instruction survived in the checks after it stopped being true in the product.
+ * The paragraphs framing the rule then outlived the rule itself by an epic: the section opened by
+ * telling a reader that one entry was worth setting whatever their configuration looked like, three
+ * paragraphs above the text saying nothing DPM does reads outside the project.
+ *
+ * Matched on the claim rather than on the wording, so a rephrasing of the same false thing is
+ * caught: a present-tense sentence saying DPM reads outside the project, and any sentence urging a
+ * rule be set regardless of configuration.
+ *
+ * **Every space here is `\s+`, and the control is what established that it had to be.** The first
+ * pattern was written line-anchored, which reads naturally and cannot work: the README is
+ * hard-wrapped, the sentence it was written against breaks between `package` and `directory`, and
+ * a `[^\n]*` pattern therefore stepped straight over the exact paragraph it exists to find. It
+ * passed against the current section, where there is nothing to find, and would have gone on
+ * passing. `tests/support/skills.js` records the same trap for skill bodies; it is a property of
+ * every wrapped document in this repository and not of that corpus.
+ */
+const CONTRADICTED = [
+  {
+    pattern: /\b(?:reads?|opens?)\s+a\s+file\s+(?:from|in)\s+the\s+package\s+directory/,
+    why: 'a present-tense claim that a skill reads outside the project',
+  },
+  {
+    pattern: /\bworth\s+setting\s+whatever\s+your\s+configuration\b/,
+    why: 'an entry urged on every reader, when none is needed any more',
+  },
+  {
+    pattern: /\bOne\s+entry\s+here\s+is\s+a\s+step\b/,
+    why: 'the section still opening on a step it no longer has',
+  },
+];
+
+test('must NOT — the section makes a claim DPM has stopped making true [unit]', () => {
+  assert.deepEqual(sweep(permissions(), CONTRADICTED), [],
+    'the Permissions section says something about DPM that is no longer so');
+
+  // The negative claim that replaced them is still there, so this did not pass by the section
+  // having lost the subject altogether.
+  assert.match(permissions(), /Nothing DPM does reads outside the project/,
+    'the section no longer says what it does instead');
+});
+
+test('control — the paragraph this replaced is reported, by line [unit]', () => {
+  // The actual text that stood here until this story, planted verbatim. A sweep written against a
+  // remembered paraphrase is one that passes over the thing it was written for.
+  const planted = 'One entry here is a step, and the rest is not. Every skill reads a file from '
+    + 'the package\ndirectory, which the host treats as outside your project and asks about by '
+    + 'default — so\nthat one rule is worth setting whatever your configuration looks like.';
+
+  const found = sweep(planted, CONTRADICTED);
+
+  assert.deepEqual(found.map((report) => report.split(' — ')[0]).sort(),
+    CONTRADICTED.map(({ why }) => why).sort(),
+    'the reading does not see every claim in the paragraph it was written against');
+
+  assert.ok(found.every((report) => report.includes('"')), 'the report does not quote the line');
+
+  // And the history is allowed to stay: the section still explains what the rule was for, and that
+  // explanation must not be what this sweep finds.
+  assert.deepEqual(sweep(section(README, 'Permissions'), CONTRADICTED), [],
+    'the account of why the rule existed reads as the rule being recommended');
 });
 
 // --- Every tool action the section names is a tool the server registers ----------------------

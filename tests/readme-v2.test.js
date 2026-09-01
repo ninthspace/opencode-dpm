@@ -26,15 +26,15 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { initRepository } from './support/git.js';
-import { DOCUMENTED_CLONE, follow } from './support/dpm-clone.js';
+import { CLONE_PLACEHOLDER, DOCUMENTED_CLONE, follow } from './support/dpm-clone.js';
 import { ownedDirectory } from './support/scratch.js';
 import { COMMANDS } from '../src/guard/index.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 const README = readFileSync(join(ROOT, 'README.md'), 'utf8');
 
-/** The placeholder the README uses for an installed package, and what it stands for. */
-const PLACEHOLDER = '<package path>';
+/** The placeholder the README uses for the checkout DPM is loaded from. */
+const PLACEHOLDER = CLONE_PLACEHOLDER;
 
 /** Every fenced block, with the language it declares. */
 const blocks = (source = README) => [...source.matchAll(/```(\w*)\n([\s\S]*?)```/g)]
