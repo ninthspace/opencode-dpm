@@ -10,7 +10,8 @@ Build a spec through facilitated conversation, one gated section at a time.
 Everything this skill records is a typed tool call. It composes no markdown, allocates no numbers,
 names no files, and never reads back what it or another skill wrote.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Gate Presentation**, **Perspectives**, **Conversational Output**, **Written
 Deliverable Length**, **Cross-References** and **Artifact Publishing** from it.
 

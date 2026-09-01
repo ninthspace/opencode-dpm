@@ -14,7 +14,8 @@ artifact. Every other dpm skill opens a session row because it has state worth r
 finishes in a single pass and has none, so it opens none. A `dpm:status` row in the session table
 would be a resumable run that cannot be resumed.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Gate Presentation**, **Conversational Output**, **Written Deliverable Length** and
 **Artifact Publishing** from it.
 
@@ -121,8 +122,9 @@ If no rows exist at all, say so: the project has not started the dpm pipeline ye
 
 **Recommended next steps** — one to three, in priority order, each with a runnable command. **The
 order of the table is the priority order.** `dpm-do`, `dpm-epics` and `dpm-retro` appear in that
-relative order because it is the candidate ordering in `dpm/shared/status-model.md`: work that can
-start now, then work that needs planning, then the follow-up on work already done.
+relative order because it is the candidate ordering in the shared status model — `dpm_read_shared_document`
+with `name: "status-model"` — work that can start now, then work that needs planning, then the
+follow-up on work already done.
 
 **Each command is written out with the target's reference in it**, which every row of the lists
 above already carries beside its columns. The command is then one a reader can copy, and the skill

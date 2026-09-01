@@ -30,6 +30,7 @@ import { renderDocument } from '../src/projection/index.ts';
 import { EXAMPLE_KINDS, exampleDocument } from '../src/preview/example.ts';
 import { start } from '../src/start.ts';
 import {
+  SHARED_DOCUMENT_TOOL as SHARED,
   skillSource, toolNames, reachable, prose, section, recorder, recoveries, bindings,
 } from './support/skills.js';
 
@@ -234,7 +235,16 @@ test('must NOT — the skill recovers an entity by reading a generated markdown 
 
   // The whole surface it needs is two tools, and that is worth pinning: this is the smallest
   // converted skill, and a third tool appearing is a scope change rather than a detail.
-  assert.deepEqual(named, ['list_document_kind', 'preview_document_kind']);
+  //
+  // **`read_shared_document` is subtracted rather than admitted into the list**, and the difference
+  // matters. It is not part of this skill's surface — every one of the twenty-three names it, in the
+  // same sentence, to obtain the shared conventions epic 02-03 moved behind the MCP boundary. Adding
+  // it to the expected list would say this skill needs three tools; subtracting it keeps the claim
+  // at two and keeps a genuine third addition failing.
+  assert.deepEqual(named.filter((tool) => tool !== SHARED),
+    ['list_document_kind', 'preview_document_kind']);
+  assert.ok(named.includes(SHARED),
+    'the skill no longer calls for the shared conventions, so the subtraction above hides nothing');
 
   // The control: the file CPM's flow would produce trips the sweep in four places at once.
   const regressed = `${source}\n\nRun scaffold {skill} to copy the embedded default into `

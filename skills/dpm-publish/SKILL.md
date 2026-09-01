@@ -25,7 +25,8 @@ belongs to `dpm_publish`. A skill that wrote a file would be a second renderer, 
 that removed one would be a second answer to which files no longer belong — and the two answers
 would disagree the first time anything was renamed, silently, in the direction that deletes.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Gate Presentation**, **Conversational Output** and **Written Deliverable Length**
 from it. It uses **Session Startup** for nothing, being stateless, and neither **Library Check** nor
 **Retro Awareness**, because it has no step a documented standard or a past lesson would change.

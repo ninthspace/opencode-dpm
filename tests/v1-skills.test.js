@@ -24,7 +24,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import skillsEntry, {
@@ -32,7 +32,7 @@ import skillsEntry, {
 } from '../src/plugin/skills-entry.ts';
 import { skillSources } from '../src/plugin/registration.ts';
 import { SKILLS_DIRECTORY, packageRoot, withinPackage } from '../src/plugin/root.ts';
-import { SHARED_DIRECTORY, discoverSkills, resolveSupportingPaths } from '../src/plugin/skills.ts';
+import { SKILL_FILE, discoverSkills } from '../src/plugin/skills.ts';
 import { PREFIX } from './support/skills.js';
 import { registerSkills } from './support/host-contexts.js';
 
@@ -400,39 +400,42 @@ test('the displacement notice names each skill and where it went [unit]', () => 
   assert.match(two, /dpm-review \(not in the registry at all\)/);
 });
 
-// --- Criterion 8: the conventions every body opens by reading — FR4, ENVX2 -----------------------
+// --- Criterion 8: what the host is handed is what is on disk — FR4 --------------------------------
 
-test('every registered body names shared files that are on disk [integration]', async () => {
+test('every registered body is byte-identical to the file on disk [integration]', async () => {
+  // **This assertion is the inverse of the one it replaces, and the inversion is the story.** Until
+  // epic 02-03 the claim here was that every body's `dpm/shared/<file>.md` reference had been
+  // rewritten to an absolute path that exists — with a control counting the substitutions, because
+  // an empty list of broken paths is also what a body with no references produces.
+  //
+  // That rewrite is gone. It ran on v2 and could not run on v1, which reads `SKILL.md` off disk and
+  // never asks the plugin, so the two hosts were handed different text; and where it did run, the
+  // absolute path it produced was auto-rejected as `external_directory`, so it was not working on
+  // that host either. The shared documents are behind `read_shared_document` now, and the property
+  // worth holding the registrar to is the plain one: **it transforms nothing.**
   const { sources } = await registerSkills(skillsEntry);
-  const shared = join(ROOT, SHARED_DIRECTORY);
-  const missing = [];
-  let referenced = 0;
 
+  assert.equal(sources.length, 23, `${sources.length} skills registered, not the twenty-three on disk`);
+
+  const altered = sources
+    .filter(({ skill }) => skill.content !== readFileSync(join(skill.location, SKILL_FILE), 'utf8'))
+    .map(({ skill }) => skill.name);
+
+  assert.deepEqual(altered, [],
+    'a registered body differs from the file it was read from, so something is still transforming it');
+
+  // The control: the comparison is over real text and can come out false. Without it a registrar
+  // handing back empty strings against files it failed to read would report perfect fidelity.
   for (const { skill } of sources) {
-    for (const [path] of skill.content.matchAll(/\/[^\s)`'"]+\/shared\/[\w-]+\.md/g)) {
-      referenced += 1;
-      if (!existsSync(path)) missing.push(`${skill.name} -> ${path}`);
-    }
+    assert.ok(skill.content.length > 500, `${skill.name} registered ${skill.content.length} characters`);
+    assert.notEqual(skill.content, `${skill.content} `, 'the equality above is not comparing anything');
   }
 
-  assert.deepEqual(missing, [], 'a registered body names a shared file that is not there');
-
-  // **The control the criterion needs.** An empty `missing` is also what a reading that found no
-  // references at all returns, and twenty-three bodies opening with "read that file at startup" is
-  // the whole reason FR4 exists.
-  assert.ok(referenced >= 20,
-    `only ${referenced} absolute shared references were found across ${sources.length} bodies, so `
-    + 'the rewrite did not run and the emptiness above means nothing');
-
-  // No body still carries the unresolved form, which is what a session would fail to open.
-  const unresolved = sources.filter(({ skill }) => /(^|[\s(`])dpm\/shared\//.test(skill.content));
-
-  assert.deepEqual(unresolved.map(({ skill }) => skill.name), []);
-
-  // And the rewrite refuses rather than guesses: a body naming a shared file that is not in the
-  // package throws at registration, where the message can name it.
-  assert.throws(() => resolveSupportingPaths('read dpm/shared/not-a-file.md first', ROOT),
-    /which resolves to[\s\S]*not in the package/);
-  assert.equal(resolveSupportingPaths('read dpm/shared/skill-conventions.md first', ROOT),
-    `read ${join(shared, 'skill-conventions.md')} first`);
+  // And no body carries the path form at all — the reference the rewrite existed to fix is gone
+  // from the source rather than fixed on its way past. Story 2 of this epic made that true of the
+  // tree; this says it is still true of what the host receives.
+  assert.deepEqual(
+    sources.filter(({ skill }) => /shared\/[\w-]+\.md/.test(skill.content)).map(({ skill }) => skill.name),
+    [],
+  );
 });

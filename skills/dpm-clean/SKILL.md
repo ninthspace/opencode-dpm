@@ -14,7 +14,8 @@ run recording its own progress would leave behind exactly what it came to clear.
 unattended never invokes it. Deletion is irreversible, a session row is the only thing a stopped run
 left behind, and deciding which of those are finished is a judgement that has to be made by someone.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Gate Presentation**, **Conversational Output** and **Written Deliverable Length**
 from it. It uses **Session Startup** for nothing, being stateless, and neither **Library Check** nor
 **Retro Awareness**, because it has no step a documented standard or a past lesson would change.

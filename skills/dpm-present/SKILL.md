@@ -10,7 +10,8 @@ from its sources and never written from scratch, and the same sources support se
 communications — an executive memo and an onboarding guide are different reframings of one set of
 rows, not different documents.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Conversational Output**, **Gate Presentation**, **Written Deliverable Length**,
 **Cross-References** and **Artifact Publishing** from it.
 

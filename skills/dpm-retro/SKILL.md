@@ -11,7 +11,8 @@ and gathered here; the durable ones graduate to the library and the spent ones s
 Everything this skill records is a typed tool call. It composes no markdown, allocates no numbers,
 names no files, and never reads back what it or another skill wrote.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Gate Presentation**, **Conversational Output**, **Written Deliverable Length**,
 **Cross-References** and **Artifact Publishing** from it.
 

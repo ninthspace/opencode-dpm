@@ -20,7 +20,8 @@ one is a write to its row. That also settles what a mirrored tree was for: numbe
 accepts a number. A number issued before an archive cannot be issued again after it, and nothing here
 has to arrange that.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Session Startup**, **Library Check**, **Retro Awareness**, **Gate Presentation**,
 **Conversational Output** and **Written Deliverable Length** from it.
 

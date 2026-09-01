@@ -37,6 +37,7 @@ import { listTools } from './list.ts';
 import { referenceTools } from './reference.ts';
 import { searchTools } from './search.ts';
 import { sessionTools } from './session.ts';
+import { sharedDocumentTools } from './shared.ts';
 import { coverageTools } from './spine/coverage.ts';
 import { criterionTools } from './spine/criterion.ts';
 import { deliveryTools } from './spine/delivery.ts';
@@ -269,6 +270,13 @@ export function spineTools(
     // it — because session lifecycle is a server concern every skill needs from the first
     // conversion. The epic's Notes carry the reasoning.
     ...sessionTools(context),
+
+    // FR4's tool, and the first in this registry whose subject is a file rather than a row. It
+    // sits here rather than in `spine` for `search` and `resolve_reference`'s reason — it belongs
+    // to no entity type — and takes no `context`: what it reads is the installed package, not the
+    // project this server was started in, so `Context.root` is the wrong root and it resolves its
+    // own. Story 2 of epic 02-03 points all twenty-four skill-body references at it.
+    ...sharedDocumentTools(),
 
     // The three that belong to no single entity: a number, the sweep over everything, and the one
     // that writes the tree rather than a row (AD11).

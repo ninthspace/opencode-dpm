@@ -68,7 +68,7 @@ export const HOST_MECHANISM = [
  * check would refuse a corpus that had not changed. Library lesson 04's rule about renames — grep
  * for the predicates that filter on the old form, separately from the literal name.
  */
-const RECORDED_GAP = { skill: 'dpm-ralph', pattern: /`?\.claude\/ralph-loop\.local\.md`?/g };
+export const RECORDED_GAP = { skill: 'dpm-ralph', pattern: /`?\.claude\/ralph-loop\.local\.md`?/g };
 
 /** Every skill directory holding a body, read from the tree so a new one is covered on arrival. */
 function bodies(root: string): { name: string, path: string, source: string }[] {

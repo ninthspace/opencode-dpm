@@ -21,12 +21,17 @@
  * been the only defence against. So the skills are compared against `discoverSkills`, the
  * executables against `EXECUTABLES`, and the plugin entry against what `exports` names.
  *
- * **The must-NOT has a control, and the control is the shipped code.** `resolveSupportingPaths`
- * throws when a skill names a `shared/` file the package does not hold, because registering that
- * skill would advertise a reference the model cannot follow. So the check is not an assertion about
- * the file list: the extracted package is handed to `discoverSkills`, and then a `shared/` document
- * is deleted from it and the same call must throw. An absence is only an observation when something
- * was watching, and here the thing watching ships to users.
+ * **The must-NOT has a control, and the control is the shipped code.** The extracted package is
+ * handed to the code that reads it at runtime, and then a `shared/` document is deleted from it and
+ * the same call must refuse. An absence is only an observation when something was watching, and
+ * here the thing watching ships to users.
+ *
+ * **Epic 02-03 changed which shipped code that is, and made the check matter more.** It used to be
+ * `resolveSupportingPaths`, which threw at *registration* when a skill named a `shared/` document
+ * the package did not hold — so a tarball missing those files failed loudly on load. That rewrite
+ * is gone: the shared documents are served by `read_shared_document`, read out of the package when
+ * a skill asks for them. A tarball missing `shared/` now loads perfectly and fails on the first
+ * call of every session, which is later and quieter, so the check moves to the tool.
  */
 
 import { test } from 'node:test';
@@ -37,6 +42,7 @@ import { join } from 'node:path';
 import { ownedDirectory } from './support/scratch.js';
 import { EXECUTABLES, packageManifest } from './support/sources.js';
 import { discoverSkills } from '../src/plugin/skills.ts';
+import { sharedDocumentTools } from '../src/tools/shared.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 
@@ -185,21 +191,34 @@ test('the tarball leaves out the corpus, the suite and the Claude Code manifest 
 test('must NOT — the tarball omits a file a registered skill needs at runtime [integration]', (t) => {
   const { root } = packed(t);
 
-  // **The registrar is run against the extracted package**, which is the only reading that answers
-  // the criterion: `resolveSupportingPaths` throws when a skill names a `shared/` document the
-  // package does not hold, so a tarball that shipped the skills and not their supporting files
-  // fails here and passes every listing.
+  // **Both halves of the runtime are run against the extracted package**, which is the only reading
+  // that answers the criterion. The skills register from it, and the tool every one of their bodies
+  // opens by calling serves the shared documents out of it. A tarball that shipped the skills and
+  // not their supporting files passes every listing and fails here.
   const registered = discoverSkills(root);
 
   assert.equal(registered.length, 23, `${registered.length} skills registered from the tarball, and there are 23`);
-  assert.ok(registered.every(({ content }) => content.includes(root)),
-    'no skill resolved a supporting path into the extracted package, so the substitution was not exercised');
+
+  const [shared] = sharedDocumentTools({ root });
+
+  for (const name of ['skill-conventions', 'status-model']) {
+    assert.ok(shared.handler({ name }).content.length > 1000,
+      `the tarball's ${name} came back too short to be the document`);
+  }
+
+  // Every registered body asks for the conventions, which is what makes the two halves one check
+  // rather than two facts that happen to be true of the same directory.
+  assert.deepEqual(
+    registered.filter(({ content }) => !content.includes('read_shared_document')).map(({ name }) => name),
+    [], 'a skill in the tarball does not call for its conventions, so the tool above serves nobody');
 
   // **The control, and it is the shipped code rather than a second reading.** Take the supporting
-  // document away and registration must refuse — otherwise the pass above says only that nothing
-  // was checked.
+  // document away and the call must refuse — otherwise the pass above says only that nothing was
+  // checked. The refusal names what is left, which is how a user with a broken install finds out
+  // what their package is missing.
   rmSync(join(root, 'shared', 'skill-conventions.md'));
 
-  assert.throws(() => discoverSkills(root), /not in the package/,
-    'a package missing a document its skills name registered anyway, so this check cannot fail');
+  assert.throws(() => sharedDocumentTools({ root })[0].handler({ name: 'skill-conventions' }),
+    /no shared document is called 'skill-conventions'[\s\S]*status-model/,
+    'a package missing a document its skills call for served it anyway, so this check cannot fail');
 });

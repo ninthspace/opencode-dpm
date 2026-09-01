@@ -8,7 +8,8 @@ description: A multi-persona discussion. The whole roster is in the room; two or
 Several specialists in one conversation, chosen per turn from what was just said. Where `consult` is
 a room you staff, this is a room that staffs itself.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Session Startup**, **Library Check**, **Conversational Output** and
 **Cross-References** from it.
 

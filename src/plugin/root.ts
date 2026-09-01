@@ -28,6 +28,16 @@ export const SERVER_EXECUTABLE = join('bin', 'dpm-mcp.ts');
 export const SKILLS_DIRECTORY = 'skills';
 
 /**
+ * Where the shared documents live, relative to the package root.
+ *
+ * Beside `SKILLS_DIRECTORY` because it is the same kind of fact. It was declared in `skills.ts`
+ * while the registration-time path rewrite was its only user; epic 02-03 deleted that rewrite and
+ * moved the shared documents behind `read_shared_document`, so the reader is now a tool in the MCP
+ * server and `skills.ts` — which registers skills — has nothing to do with `shared/` at all.
+ */
+export const SHARED_DIRECTORY = 'shared';
+
+/**
  * Whether a path is inside a root — **asked with `relative`, never with `startsWith`.**
  *
  * `path.startsWith(root)` is the reading this repeatedly wants to be, and it is wrong in the

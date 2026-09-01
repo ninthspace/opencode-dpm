@@ -26,7 +26,8 @@ point at `dpm-audit`.
 **The repository does not need to be a dpm project.** Everything below degrades to whatever is
 actually there, and says which channel it fell back to.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Conversational Output**, **Written Deliverable Length** and **Artifact
 Publishing** from it.
 

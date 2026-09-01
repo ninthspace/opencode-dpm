@@ -17,7 +17,8 @@ it was written and silently wrong after the next template change.
 message; there is no step to resume, and nothing a project writes down changes what its own renderer
 produces.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Conversational Output** from it.
 
 **No session**: both actions are one read and one render, and neither carries anything from the

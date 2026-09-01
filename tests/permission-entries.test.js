@@ -140,21 +140,25 @@ test('every skill resource the README names resolves to a registered skill [unit
 /**
  * The actions the section names that belong to the **host** rather than to dpm.
  *
- * `external_directory` is OpenCode's own. It gates a read that leaves the project, and every skill
- * body opens by reading the conventions file out of the package directory — which is outside
- * whatever repository the session is running in, wherever the package was installed. So the
- * section has to recommend a rule for an action no dpm tool will ever be registered under, and
- * the two-way partition this file was written around no longer covers what the README says.
+ * **Empty, and it was not.** It held `external_directory` — OpenCode's own action, gating a read
+ * that leaves the project — because every skill body opened by reading the conventions file out of
+ * the package directory, which is outside whatever repository the session is running in. The README
+ * had to recommend a rule for an action no dpm tool would ever be registered under, so this file's
+ * two-way partition needed a third case.
  *
- * **Named individually, and asserted as an exact set in both directions.** A predicate — "not the
- * dpm prefix, so presumably the host's" — would wave through `externl_directory` exactly as
- * readily as the real thing, and a mistyped action is a rule that never fires, which is the one
- * failure this whole file exists to catch. An exact set fails until somebody classifies a new
- * arrival, and fails again if the guidance is deleted from the README, so the entry cannot quietly
- * stop being documented either. Same shape `suite-integrity.test.js` uses for its own exceptions,
- * and for the same reason: a rule loosened to admit one thing admits the next one silently.
+ * Epic 02-03 removed the read. The conventions arrive through `dpm_read_shared_document`, which is
+ * an ordinary dpm tool served in the server's own process, so nothing dpm does leaves the project
+ * and the recommendation went with the mechanism. The list stays, empty, because the next host
+ * action to be recommended needs somewhere to be classified — and because an empty list with this
+ * paragraph attached says *we checked* where a deleted list would say nothing at all.
+ *
+ * **Asserted as an exact set in both directions, which is why the control below matters more now.**
+ * A predicate — "not the dpm prefix, so presumably the host's" — would wave through
+ * `externl_directory` exactly as readily as the real thing, and a mistyped action is a rule that
+ * never fires. An exact set over an empty list is satisfied by a reading that finds nothing at all,
+ * so the reading is driven over a planted block that names one.
  */
-const HOST_ACTIONS = ['external_directory'];
+const HOST_ACTIONS = [];
 
 test('every tool action the README names resolves to a registered tool [unit]', () => {
   const actions = registeredActions();
@@ -168,8 +172,23 @@ test('every tool action the README names resolves to a registered tool [unit]', 
   const host = named.filter((action) => HOST_ACTIONS.includes(action));
 
   assert.deepEqual([...new Set(host)].sort(), [...HOST_ACTIONS].sort(),
-    'the section stopped naming a host action this file knows about — the rule a reader needs '
-    + 'before any skill can read its conventions is the one most easily lost in an edit');
+    'the section names a host action this file has not classified, or has stopped naming one it had');
+
+  // **The control the empty list needs.** With nothing to find, the assertion above is satisfied by
+  // a reader that cannot find anything — which is the state a broken block parser would leave it
+  // in, silently, for as long as no host action is recommended. Driven over a planted block naming
+  // the action that used to be there.
+  const planted = '```json\n{"permissions":[{"action":"external_directory","resource":"*",'
+    + '"effect":"allow"}]}\n```';
+
+  assert.deepEqual(documented(planted).map((rule) => rule.action), ['external_directory'],
+    'the reader does not see a host action in a block that names one');
+
+  // And the recommendation really is gone from the README rather than moved out of a JSON block —
+  // the prose above it explains the removal and names the action while doing so, which a check on
+  // the raw text would report as the thing it is describing.
+  assert.deepEqual(documented().map((rule) => rule.action).filter((action) => action === 'external_directory'),
+    [], 'the README still recommends an external_directory rule for a read dpm no longer performs');
 
   for (const action of named.filter((candidate) => !HOST_ACTIONS.includes(candidate))) {
     assert.ok(action.startsWith(CALLABLE),

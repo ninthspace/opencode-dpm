@@ -10,7 +10,8 @@ Work an epic's stories to completion, one task at a time.
 Everything this skill records is a typed tool call. It composes no markdown, names no files, and
 never reads back what it or another skill wrote.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Gate Presentation**, **Conversational Output**, **Cross-References** and
 **Implementation Guidelines** from it.
 

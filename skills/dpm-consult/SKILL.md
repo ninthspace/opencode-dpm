@@ -8,7 +8,8 @@ description: A focused consultation with one agent persona, or a small panel. Yo
 A one-to-one conversation with an expert persona, which becomes a panel only when you invite one.
 You lead by default and can hand the lead to an agent when you want them to drive.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Session Startup**, **Library Check**, **Conversational Output**,
 **Gate Presentation** and **Cross-References** from it.
 

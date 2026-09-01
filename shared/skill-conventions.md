@@ -3,9 +3,16 @@
 Procedures used by several dpm skills. A skill that says "follow the shared **X** procedure" means
 the section of that name below.
 
-**Read this file when a skill references it.** dpm ships no session hook, so nothing injects these
-sections — a skill names the file and reads it, which costs one read per run rather than seven
-sections repeated in twenty-two files.
+**Ask for this document when a skill references it** — `dpm_read_shared_document` with
+`name: "skill-conventions"`. dpm ships no session hook, so nothing injects these sections; a skill
+calls for them, which costs one tool call per run rather than seven sections repeated in
+twenty-two files.
+
+**A tool call rather than a file read, and the difference is the point.** A file read of a path
+outside the project is rejected by one host and unreachable on the other, and it fails by returning
+nothing — so a skill would open without its conventions and nothing anywhere would say so. A tool
+call reaches the same bytes through the one boundary both hosts share, and when it cannot, it says
+so out loud.
 
 **What earns a place here.** A section belongs in this file when several skills reference it. One
 referenced by a single skill belongs in that skill; one referenced by none is documentation rather

@@ -1,158 +1,213 @@
 /**
- * Epic 01-02 Story 3 — the shared conventions file, and whether a registered skill can reach it.
+ * Epic 01-02 Story 3, rewritten by epic 02-03 Story 3 — the supporting files, and the rewrite that
+ * used to reach them.
  *
- * Twenty-three skills open by telling the model to read `dpm/shared/skill-conventions.md`. Under
- * Claude Code that resolved because the host laid the plugin out beneath a directory called `dpm`.
- * Under v2 it resolves against the *project* directory, where no such path exists — so left alone,
- * every skill would begin by failing to read its own conventions, and would carry on without them
- * rather than stopping.
+ * **The mechanism this file was written for has been deleted, and the file is kept rather than
+ * removed because what it now records is why.** Twenty-three skills once opened by telling the
+ * model to read `dpm/shared/skill-conventions.md`. Under Claude Code that resolved, because the
+ * host laid the plugin out beneath a directory called `dpm`. Under v2 it resolved against the
+ * *project* directory, where no such path exists — so 01-02 story 3 made the question moot with
+ * `resolveSupportingPaths`, a registration-time substitution of the reference for an absolute path
+ * inside the package.
  *
- * **The answer taken was to make the question moot**: `resolveSupportingPaths` rewrites the
- * reference to an absolute path as the skill is read, so the body the host stores names a file that
- * opens. The specification's fallback was to inline the conventions into all twenty-three bodies;
- * the epic carries a section pricing that, and the second test below is what checks the section is
- * really there — because a decision recorded nowhere is a decision the skill-port epic cannot be
- * rewritten against.
+ * That answer was right for one host and could not be right for two. v1 reads `SKILL.md` verbatim
+ * off disk and never asks the plugin, so there was no hook for the substitution to run in; and on
+ * v2, where it did run, the absolute path it produced was auto-rejected as `external_directory` —
+ * recorded as an open cost on retro 04. It was a transform that made the hosts disagree while
+ * working on neither.
  *
- * **What is checkable here and what is not.** That a path opens is a fact about this filesystem and
- * is checked hard. That the *model*, handed that body, then reads the file is a claim about a host
- * and a model turn, which is why criterion 1 is tagged `manual` — a test asserting it would be
- * asserting its own double. What the tests below do instead is remove every way the path could be
- * wrong: it is absolute, it is inside the package, it exists, and the relative form it replaced is
- * gone from the registered body while still being what a maintainer edits.
+ * So the shared documents moved behind an MCP tool, `read_shared_document`, and the rewrite went.
+ * What this file checks now is the *absence* of a transform, which is a harder thing to check than
+ * a present one: an absence is only an observation when something was watching, and a sweep that
+ * cannot fire is indistinguishable from a codebase that is clean. Every reading below carries the
+ * planted case that makes it fire.
+ *
+ * The go/no-go section on the 01-02 epic stays checked. It is the record of a decision that was
+ * taken deliberately and then superseded deliberately, and both halves are worth a reader finding.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { isAbsolute, join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
-import { SKILLS_DIRECTORY } from '../src/plugin/root.ts';
-import { SHARED_DIRECTORY, SKILL_FILE, discoverSkills, resolveSupportingPaths } from '../src/plugin/skills.ts';
+import { SKILLS_DIRECTORY, packageRoot } from '../src/plugin/root.ts';
+import { SKILL_FILE, discoverSkills } from '../src/plugin/skills.ts';
+import { skillSources } from '../src/plugin/registration.ts';
+import skillsEntry from '../src/plugin/skills-entry.ts';
+import { registerSkills } from './support/host-contexts.js';
 import { packageTree, skillSource } from './support/package-tree.js';
+import { moduleFilesUnder, withoutComments } from './support/sources.js';
 
-const ROOT = join(import.meta.dirname, '..');
+const ROOT = packageRoot();
 
-/** The conventions sentence every skill opens with, as it is written in the sources. */
+/** The sentence every body opened with before this epic, and the form nothing may carry now. */
 const REFERENCE = 'dpm/shared/skill-conventions.md';
 
-/**
- * The relative form, read out of a body the package root has been stripped from.
- *
- * The stripping is not tidiness. A resolved path ends `…/opencode-dpm/shared/skill-conventions.md`,
- * which contains the four characters `dpm/` followed by `shared/`, so a naive search for the
- * relative form finds every substitution it was written to prove absent — the first version of this
- * reading reported twenty-three unresolved references against a body that had none.
- */
-const unresolved = (content, root) => [...content.replaceAll(root, '').matchAll(/\bdpm\/shared\/[\w-]+\.md/g)]
-  .map(([matched]) => matched);
+// --- Criterion 1: the rewrite is gone from src/plugin ---------------------------------------------
 
 /**
- * Every absolute path into the package's shared directory that a body names.
+ * The shapes a registration-time content rewrite takes, whatever it is called.
  *
- * The character class stops at the quoting the prose puts around a path — the bodies wrap these in
- * backticks, and `\S*` swallows the opening one, which makes every `startsWith` below fail against
- * a path that is perfectly correct.
+ * **Not a search for `resolveSupportingPaths` by name.** A function deleted and reintroduced under
+ * another name passes a name search and fails the criterion, and renaming is the likeliest way it
+ * comes back — somebody needs one path fixed and writes four lines rather than reaching for a
+ * function that no longer exists. So the sweep is over the *operation*: a substitution applied to
+ * a skill body, and the reference pattern that would drive one.
  */
-const resolved = (content, root) => [...content.matchAll(/[^\s`'"]*\/shared\/[\w-]+\.md/g)]
-  .map(([matched]) => matched)
-  .filter((path) => path.startsWith(join(root, SHARED_DIRECTORY)));
+const REWRITE = [
+  { pattern: /\bdpm\/shared\//, why: 'the relative reference the rewrite existed to replace' },
+  { pattern: /\bcontent\s*\.\s*replace(All)?\s*\(/, why: 'a substitution applied to a skill body' },
+  { pattern: /\bresolveSupportingPaths\b/, why: 'the deleted function, by name' },
+  { pattern: /\bSHARED_REFERENCE\b/, why: 'the deleted pattern, by name' },
+];
 
-// --- Criterion 1: a registered skill's supporting files resolve from the package location --------
+const breaches = (source) => REWRITE.filter(({ pattern }) => pattern.test(source));
 
-test('every registered skill body names a shared file that opens [integration]', () => {
-  const skills = discoverSkills(ROOT);
+/** Every module under `src/`, with its comments stripped — a paragraph explaining is not a rewrite. */
+const modules = () => moduleFilesUnder(join(ROOT, 'src'))
+  .map((path) => ({ path: path.slice(ROOT.length + 1), code: withoutComments(readFileSync(path, 'utf8')) }));
 
-  // Controls first, because "no skill carries a broken path" is the passing answer over an empty
-  // list too, and this reading has two ways to be empty — no skills, or no references in them.
-  assert.ok(skills.length > 0, 'there are no skills, so the sweep below examined nothing');
+test('no module under src/ rewrites a skill body [unit]', () => {
+  const offenders = modules()
+    .map(({ path, code }) => ({ path, found: breaches(code) }))
+    .filter(({ found }) => found.length > 0)
+    .map(({ path, found }) => `${path}: ${found.map(({ why }) => why).join(', ')}`);
 
-  const references = skills.flatMap((skill) => resolved(skill.content, ROOT)
-    .map((path) => ({ id: skill.name, path })));
+  assert.deepEqual(offenders, [], 'a module still transforms skill content on its way to the host');
 
-  assert.ok(references.length >= skills.length,
-    `${references.length} shared references across ${skills.length} skills, and every skill names `
-    + 'the conventions file, so the reading has stopped seeing them');
+  // The control on that emptiness — and it is the whole of what makes the sweep an observation.
+  // The planted module is the deleted code, near enough to be the thing that would come back.
+  const planted = 'export function fixUp(content, root) {\n'
+    + "  return content.replaceAll('dpm/shared/skill-conventions.md',\n"
+    + "    join(root, 'shared', 'skill-conventions.md'));\n"
+    + '}\n';
 
-  for (const { id, path } of references) {
-    assert.ok(isAbsolute(path), `${id} names ${path}, which the model would resolve against its cwd`);
-    assert.ok(existsSync(path), `${id} names ${path}, and that file is not in the package`);
+  // Both halves of the shape, named rather than counted — a reintroduction under a new name still
+  // has to substitute, and still has to know what it is substituting.
+  assert.deepEqual(breaches(planted).map(({ why }) => why), [
+    'the relative reference the rewrite existed to replace',
+    'a substitution applied to a skill body',
+  ], 'the sweep passed a reintroduction of the rewrite');
+
+  // And the other direction: a module doing ordinary work is not caught. Without this the sweep
+  // could be one that fires on everything, which would fail the assertion above for free.
+  assert.deepEqual(breaches('const name = declared.name ?? directory;\nreturn [{ name, location, content }];'), []);
+
+  // The sweep looked at something. `moduleFilesUnder` walking an empty tree returns an empty list,
+  // and every assertion above holds over it.
+  assert.ok(modules().length > 40, `the sweep read ${modules().length} modules`);
+});
+
+test('the comment that records the deletion is not itself a breach [unit]', () => {
+  // **The half that would silently destroy the record.** Several modules explain that the rewrite
+  // was removed and name it while doing so — `skills.ts`, `registration.ts`, `root.ts`,
+  // `tools/shared.ts`. A sweep over raw source would report those, and the cheapest way to make it
+  // pass would be to delete the explanations: a check that passes by erasing why it exists.
+  const explaining = moduleFilesUnder(join(ROOT, 'src'))
+    .filter((path) => /resolveSupportingPaths/.test(readFileSync(path, 'utf8')))
+    .map((path) => path.slice(ROOT.length + 1));
+
+  assert.ok(explaining.length > 0,
+    'no module records why the rewrite was removed, so the comment-stripping above guards nothing');
+
+  // Each of them is clean once comments are stripped, which is the reading the sweep actually uses.
+  for (const path of explaining) {
+    assert.deepEqual(breaches(withoutComments(readFileSync(join(ROOT, path), 'utf8'))), [], path);
   }
-
-  // And the form they replaced is gone from what the host is handed. Asserted over the whole set
-  // rather than per skill so the failure names every body that still carries one.
-  assert.deepEqual(skills.flatMap((skill) => unresolved(skill.content, ROOT).map(() => skill.name)), [],
-    'a registered body still names the relative form, which resolves against the project directory');
 });
 
-test('the reading can still see an unresolved reference, and a resolved one is not one [unit]', () => {
-  // The control the sweep above rests on, kept separate because it is the assertion that decides
-  // whether that sweep means anything. Both directions: the reading finds the relative form when it
-  // is there, and does not find it in the absolute path that replaced it.
-  assert.deepEqual(unresolved(`see \`${REFERENCE}\` at startup`, ROOT), [REFERENCE]);
-  assert.deepEqual(unresolved(`see \`${join(ROOT, SHARED_DIRECTORY, 'skill-conventions.md')}\``, ROOT), [],
-    'the resolved path is read as an unresolved reference, so the sweep can never pass');
+// --- Criterion 2: what the registrar presents is what is on disk ----------------------------------
 
-  assert.deepEqual(resolved(`see \`${join(ROOT, SHARED_DIRECTORY, 'skill-conventions.md')}\``, ROOT),
-    [join(ROOT, SHARED_DIRECTORY, 'skill-conventions.md')]);
-  assert.deepEqual(resolved(`see \`${REFERENCE}\``, ROOT), [],
-    'the relative form is counted as a resolved reference');
+test('every skill the v2 registrar presents is byte-identical to its file [integration]', () => {
+  const sources = skillSources({});
+
+  assert.equal(sources.length, 23, `${sources.length} skills registered, not the twenty-three on disk`);
+
+  const altered = sources
+    .filter(({ skill }) => skill.content !== readFileSync(join(skill.location, SKILL_FILE), 'utf8'))
+    .map(({ skill }) => skill.name);
+
+  assert.deepEqual(altered, [],
+    'a registered body differs from the file it was read from, so something transformed it');
+
+  // The control: the comparison can come out false, and the planted difference is one character.
+  const [first] = sources;
+
+  assert.notEqual(`${first.skill.content} `,
+    readFileSync(join(first.skill.location, SKILL_FILE), 'utf8'),
+    'the comparison above does not notice a body that gained a character');
 });
 
-test('the substitution refuses a target that is not in the package [unit]', () => {
-  // **A confident absolute path to nothing is worse than the relative path it replaced**, because
-  // the original fails visibly at the first read and the rewrite fails the same way while looking
-  // correct. So the failure is at registration, where the message can name both.
-  assert.throws(
-    () => resolveSupportingPaths('read `dpm/shared/not-a-file.md` first', ROOT),
-    /not-a-file\.md.*not in the package/s,
-    'a reference to a file the package does not hold is rewritten rather than refused',
-  );
-
-  // The control on that throw: the same call over a file that *is* there returns the absolute path
-  // rather than throwing, so the refusal above is about the missing target and not about the shape.
-  assert.equal(
-    resolveSupportingPaths(`read \`${REFERENCE}\` first`, ROOT),
-    `read \`${join(ROOT, SHARED_DIRECTORY, 'skill-conventions.md')}\` first`,
-  );
-});
-
-test('a skill planted in a package resolves its conventions from that package [integration]', (t) => {
+test('a skill planted in a package is registered exactly as written [integration]', (t) => {
+  // Against a tree this repository does not own, so the equality is over text the test chose. The
+  // planted body carries the old reference **on purpose**: discovery must hand it back untouched
+  // rather than resolving it, which is precisely the behaviour that changed.
+  const body = `\nFollow the shared conventions in \`${REFERENCE}\`.\n`;
   const root = packageTree(t,
-    { planted: skillSource('planted', 'a skill', `\nFollow the shared conventions in \`${REFERENCE}\`.\n`) },
+    { 'dpm-planted': skillSource('dpm-planted', 'a skill', body) },
     { 'skill-conventions.md': '# planted conventions\n' });
-
-  const project = mkdtempSync(join(tmpdir(), 'dpm-project-'));
-
-  t.after(() => rmSync(project, { recursive: true, force: true }));
 
   const [skill] = discoverSkills(root);
 
-  // **The negative that motivates the whole story**, asserted rather than described: from a project
-  // directory — which is where the model's file tools work — the reference as written resolves to
-  // nothing. This is what a body left alone would have handed the model.
-  assert.ok(!existsSync(join(project, REFERENCE)),
-    'the project happens to hold a dpm/shared tree, so this test proves nothing');
+  assert.equal(skill.content, readFileSync(join(root, SKILLS_DIRECTORY, 'dpm-planted', SKILL_FILE), 'utf8'));
+  assert.match(skill.content, new RegExp(REFERENCE.replaceAll('/', '\\/')),
+    'discovery resolved the reference, so the rewrite is still running somewhere');
+  assert.ok(!skill.content.includes(root),
+    'the package root was substituted into the body, which is the rewrite under another name');
 
-  // And what it is handed instead: a path that opens, wherever the model reads it from.
-  const [path] = resolved(skill.content, root);
-
-  assert.equal(path, join(root, SHARED_DIRECTORY, 'skill-conventions.md'));
-  assert.equal(readFileSync(path, 'utf8'), '# planted conventions\n',
-    'the registered body names a path, and reading it does not produce the conventions');
-
-  // `location` is the skill's own directory and is left as the host wants it — the substitution
-  // changes the body and nothing else.
-  assert.equal(skill.location, join(root, SKILLS_DIRECTORY, 'planted'));
+  // `location` is the skill's own directory, unchanged — the deletion took the body transform and
+  // nothing else.
+  assert.equal(skill.location, join(root, SKILLS_DIRECTORY, 'dpm-planted'));
 });
 
-// --- Criterion 2: the go/no-go is recorded, before any prose is rewritten ------------------------
+// --- Criterion 3: neither host's route transforms anything ----------------------------------------
+
+test('both host routes hand over the same bytes, and they are the file\'s [integration]', async () => {
+  // **Two entries, one tree, and until this epic they did not agree.** The v2 route ran the body
+  // through a substitution; the v1 route could not, because v1 reads `SKILL.md` off disk and never
+  // asks the plugin. Neither test would have noticed — each compared its own route against its own
+  // expectation. This compares them against each other and against the file, which is the only
+  // reading that can see a divergence between two things that are each internally consistent.
+  const v2 = new Map(skillSources({}).map(({ skill }) => [skill.name, skill.content]));
+  const { sources } = await registerSkills(skillsEntry);
+  const v1 = new Map(sources.map(({ skill }) => [skill.name, skill.content]));
+
+  assert.deepEqual([...v1.keys()].sort(), [...v2.keys()].sort(),
+    'the two entries register different skills');
+
+  const diverged = [...v1].filter(([name, content]) => content !== v2.get(name)).map(([name]) => name);
+
+  assert.deepEqual(diverged, [], 'the two entries hand the host different text for the same skill');
+
+  // And the text they agree on is the file's, not a shared transform applied by both. Two routes
+  // agreeing is not the same as two routes leaving things alone.
+  const altered = skillSources({})
+    .filter(({ skill }) => v1.get(skill.name) !== readFileSync(join(skill.location, SKILL_FILE), 'utf8'))
+    .map(({ skill }) => skill.name);
+
+  assert.deepEqual(altered, [], 'both entries agree on text that is not what is on disk');
+
+  // The control: the comparison can find a divergence. Planted rather than argued, because an
+  // agreement between two empty maps is also an agreement.
+  assert.ok(v1.size === 23 && v2.size === 23, `${v1.size} and ${v2.size} skills, and there are 23`);
+
+  const transformed = new Map([...v2].map(([name, content], index) => [
+    name, index === 0 ? content.replace('#', '# ') : content,
+  ]));
+
+  assert.deepEqual([...v1].filter(([name, content]) => content !== transformed.get(name)).length, 1,
+    'one body altered by one character reads as agreement, so nothing above is being compared');
+});
+
+// --- The 01-02 decision, and its supersession -----------------------------------------------------
 
 test('the go/no-go is recorded on the epic with the fallback and its cost [integration]', () => {
   // **Read from the projection**, for the reason story 2's naming test gives: the projection is
-  // what the person doing the skill-port epic opens, and a section recorded but never published
-  // satisfies a database read while being invisible to its reader.
+  // what a reader opens, and a section recorded but never published satisfies a database read while
+  // being invisible to the person it was written for. Kept unchanged through 02-03: the decision
+  // was superseded, not unmade, and a superseded decision whose record was deleted is a decision
+  // nobody can see was ever taken.
   const projection = readFileSync(join(ROOT, 'docs', 'epics', '01-02-epic-plugin-entry.md'), 'utf8');
 
   assert.match(projection, /Skill supporting files: the go\/no-go/,
@@ -160,30 +215,32 @@ test('the go/no-go is recorded on the epic with the fallback and its cost [integ
   assert.match(projection, /resolveSupportingPaths|resolves the path itself at registration/,
     'the section does not say what was decided');
 
-  // The criterion names two things the negative answer must carry, so both are checked by name
-  // rather than by the section merely existing.
   assert.match(projection, /inlining/i, 'the section does not name the fallback the specification gave');
   assert.match(projection, /15KB/, 'the section names the fallback without stating its cost');
   assert.match(projection, /23|twenty-three/,
     'the cost is stated without the multiplier that makes it a cost');
 });
 
-test('the decision is ahead of the skill prose rather than a note written after it [integration]', () => {
-  // "Before any skill prose is rewritten" is the half that decays, so it is checked against the
-  // sources rather than assumed from the order things happened. Every skill still carries the
-  // relative form: the substitution happens at registration, and what a maintainer edits is
-  // unchanged. When epic 01-03 revisits these bodies this assertion is what will speak up.
+test('no skill source still carries the reference the decision was about [integration]', () => {
+  // **This assertion was the opposite of itself two stories ago**, and the inversion is the record
+  // of what happened. It used to require all twenty-three sources to carry the relative form — the
+  // substitution ran at registration, so what a maintainer edited was unchanged — with a comment
+  // saying epic 01-03 revisiting the bodies is what would speak up. Epic 02-03 story 2 rewrote
+  // them, and this is what the same reading says now.
   const carrying = readdirSync(join(ROOT, SKILLS_DIRECTORY), { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => join(ROOT, SKILLS_DIRECTORY, entry.name, SKILL_FILE))
     .filter((path) => existsSync(path))
-    .filter((path) => readFileSync(path, 'utf8').includes(REFERENCE));
+    .filter((path) => readFileSync(path, 'utf8').includes(REFERENCE))
+    .map((path) => path.slice(ROOT.length + 1));
 
-  assert.equal(carrying.length, 23,
-    `${carrying.length} skill sources name ${REFERENCE}, and twenty-three did when this was decided`);
+  assert.deepEqual(carrying, [],
+    'a skill source still names the shared conventions as a path, so the old route is open');
 
-  // The control, and it is the same one the sweep at the top of this file needs: the reading finds
-  // the string because it is there, not because `includes` was handed something that always matches.
-  assert.ok(!'# a skill with no conventions line\n'.includes(REFERENCE),
-    'the reading matches a body that carries no reference');
+  // Two controls, because an empty list has two uninteresting explanations: nothing was read, and
+  // the reading cannot find the string.
+  assert.equal(readdirSync(join(ROOT, SKILLS_DIRECTORY), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory()).length, 23);
+  assert.ok(`see ${REFERENCE} at startup`.includes(REFERENCE),
+    'the reading cannot find the string it is looking for');
 });

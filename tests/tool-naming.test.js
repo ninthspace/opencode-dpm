@@ -94,35 +94,80 @@ test('the naming is recorded on the epic before any skill prose is rewritten [in
 
 // --- The surface itself, against v0.7.0's own output ---------------------------------------------
 
-test('the advertised tool set and every schema match v0.7.0 exactly [integration]', (t) => {
+/**
+ * Tools this port advertises that v0.7.0 did not, one line each with what added it.
+ *
+ * **This list is the whole of the reshape epic 02-03 made here, and the reason is worth stating
+ * once.** Until story 1 of 02-03 the assertion below was an equality: the ported surface *is*
+ * v0.7.0's, 183 tools, name for name. That was true while the port was only a port, and it stops
+ * being expressible the moment the port adds anything — which ADR 02-01 requires it to do, because
+ * the shared documents have to reach the model through a tool call and no tool of v0.7.0's serves
+ * them.
+ *
+ * The cheap way out was to regenerate `v070-tool-surface.json`. `parity-v070.test.js` forbids
+ * exactly that, and is right to: rewriting the oracle is how any parity finding gets disposed of
+ * without a line of the test being deleted. So the oracle is untouched and the *shape* of the claim
+ * changes instead, to the one actually worth keeping — **v0.7.0's surface is a floor, not a
+ * ceiling**. Every one of its 183 must still be present and byte-identical; anything else present
+ * must be named here.
+ *
+ * That is `suite-integrity.test.js`'s `INHERITED`/`ADDED` shape, deliberately, and for the same
+ * reason: the property being defended is that the surface may not grow *silently*. A tool added
+ * without a line here still fails.
+ */
+const ADDED = [
+  'read_shared_document', // 02-03 story 1 — ADR 02-01, the shared documents through the server
+];
+
+test('every tool v0.7.0 advertised is still advertised, byte for byte [integration]', (t) => {
   const oracle = JSON.parse(readFileSync(ORACLE, 'utf8'));
   const ported = spineTools(openPlanningDatabase(t))
     .map(({ name, description, inputSchema }) => ({ name, description, inputSchema }))
     .sort((a, b) => a.name.localeCompare(b.name));
+  const byName = new Map(ported.map((tool) => [tool.name, tool]));
 
   // Controls first, because a deep-equal of two empty lists is the passing answer here too.
   assert.equal(oracle.length, 183, `the oracle holds ${oracle.length} tools, and v0.7.0 advertised 183`);
   assert.ok(ported.length > 0, 'the registry built nothing to compare');
 
-  // **The set, before the schemas.** Compared as names first so a tool that was added or lost is
-  // reported as that, rather than as a diff of two 168KB structures with one entry out of step.
-  assert.deepEqual(ported.map((tool) => tool.name), oracle.map((tool) => tool.name),
-    'the advertised tool set differs from the one v0.7.0 advertised');
+  // **The set, before the schemas**, in both directions and reported as names — a tool that was
+  // added or lost is reported as that, rather than as a diff of two 168KB structures with one entry
+  // out of step.
+  assert.deepEqual(oracle.map((tool) => tool.name).filter((name) => !byName.has(name)), [],
+    'a tool v0.7.0 advertised is no longer advertised by the port');
+  assert.deepEqual(ported.map((tool) => tool.name)
+    .filter((name) => !oracle.some((tool) => tool.name === name)), ADDED,
+    'the port advertises a tool that v0.7.0 did not and that no story accounts for');
 
   // Then everything: description text and input schema, tool by tool, so a failure names the tool.
-  for (const [index, expected] of oracle.entries()) {
-    assert.deepEqual(ported[index], expected,
+  // **Matched by name rather than by index**, which the equality above could take for granted and
+  // this cannot: an added tool sorting into the middle would otherwise offset every comparison
+  // after it and report 180 failures for one addition.
+  for (const expected of oracle) {
+    assert.deepEqual(byName.get(expected.name), expected,
       `${expected.name} differs from what v0.7.0 advertised`);
   }
 
-  // The control on the comparison, and it is the one that matters: the reading can tell two
-  // surfaces apart. Without it, a `deepEqual` over structures that had both become `undefined`
-  // would report perfect parity.
-  const disturbed = ported.map((tool, index) => (index === 0
-    ? { ...tool, description: `${tool.description} (planted)` }
-    : tool));
+  // The controls on the comparison, and they are what the reshape put most at risk: the reading has
+  // to be able to tell two surfaces apart in **both** directions. A subset check passes trivially
+  // over an empty oracle, and a `deepEqual` over structures that had both become `undefined` would
+  // report perfect parity.
+  const reworded = new Map(byName);
 
-  assert.notDeepEqual(disturbed, oracle, 'a reworded description is not noticed by this comparison');
+  reworded.set(oracle[0].name, { ...oracle[0], description: `${oracle[0].description} (planted)` });
+  assert.notDeepEqual(reworded.get(oracle[0].name), oracle[0],
+    'a reworded description is not noticed by this comparison');
+
+  const lost = new Map(byName);
+
+  lost.delete(oracle[0].name);
+  assert.deepEqual(oracle.map((tool) => tool.name).filter((name) => !lost.has(name)),
+    [oracle[0].name], 'the reading does not notice a tool that is no longer advertised');
+
+  // And the additions list is held to the same standard it holds the surface to: an entry naming a
+  // tool that is not there is a line nobody removed, which would quietly widen the allowance.
+  assert.deepEqual(ADDED.filter((name) => !byName.has(name)), [],
+    'ADDED names a tool the port does not advertise');
 });
 
 test('the oracle is v0.7.0 output rather than a copy of this repository [unit]', () => {

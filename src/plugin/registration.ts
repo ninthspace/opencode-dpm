@@ -67,13 +67,17 @@ export type SkillSource = Parameters<SkillDraft['source']>[0];
  *
  * **`embedded` rather than `directory`, and the difference is not a preference.** A directory
  * source hands v1 a path and lets it read the tree, which would register the skills under their
- * directory names with their bodies exactly as they sit on disk. Both of the things discovery does
- * would be lost: the `dpm-` prefix ADR 01-05 turns on, and the shared-procedure rewrite that makes
- * `dpm/shared/*.md` resolvable from a user's project rather than a path failing at the first read.
- * An embedded source carries the computed skill, so both survive — which is also the answer to the
- * concern FR4 and ENVX2 record, that a host reading `SKILL.md` verbatim off disk leaves
- * `resolveSupportingPaths` nowhere to run. Under this route it runs, and what the host stores is
- * what it produced.
+ * *directory* names — and the `dpm-` prefix ADR 01-05 turns on would be lost, because a host that
+ * reads the tree never sees what discovery computed.
+ *
+ * **The bodies themselves are now identical either way, and that is epic 02-03's doing.** Discovery
+ * used to rewrite `dpm/shared/*.md` into an absolute path as it read each body, so an embedded
+ * source carried something a directory source could not have produced. FR4 and ENVX2 record the
+ * concern that motivated it — a host reading `SKILL.md` verbatim off disk leaves that rewrite
+ * nowhere to run — and the answer taken was to remove the rewrite rather than to require the hook.
+ * The shared documents are behind `read_shared_document`, discovery transforms nothing, and what
+ * the host stores is byte for byte what a maintainer opened. The prefix is the only reason left for
+ * `embedded`, and it is reason enough.
  *
  * **The prefix rides on `name`, and that is FR5 rather than a liberty taken with ADR 01-05.** What
  * v1 keeps of a skill is `{ name, description, location, content }` and nothing else — an `id`

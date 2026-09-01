@@ -175,6 +175,21 @@ export function toolNames(source) {
 }
 
 /**
+ * The one tool every skill body names that is not part of that skill's own surface.
+ *
+ * Epic 02-03 moved the shared conventions behind the MCP boundary, so all twenty-three bodies now
+ * open by calling for them — a path read outside the project is rejected by one host and
+ * unreachable on the other, and it fails by returning nothing. The consequence for the readings
+ * here is that every skill's tool set grew by one, and a test pinning a small skill's surface has
+ * to say whether that one belongs to it.
+ *
+ * **Named here rather than filtered inline at each site**, so the exemption is one fact with one
+ * explanation. A test subtracting it should assert it was there to subtract, or the subtraction
+ * silently starts hiding a skill that stopped calling for its conventions.
+ */
+export const SHARED_DOCUMENT_TOOL = 'read_shared_document';
+
+/**
  * The body under a heading, up to the next heading at the same level or above.
  *
  * Sections are how a skill's steps are addressed — "Step 6b", "Section 5" — so a check on a

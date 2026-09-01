@@ -15,7 +15,8 @@ it hangs off, and that pair is pinned by a composite foreign key. So "what depen
 traversal of edges the project already holds. Nothing here reads a reference out of a document's
 prose, and nothing pairs one artefact with another by matching their names.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Session Startup**, **Library Check**, **Retro Awareness**, **Gate Presentation**,
 **Conversational Output**, **Written Deliverable Length** and **Cross-References** from it.
 

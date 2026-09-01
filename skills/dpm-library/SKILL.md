@@ -10,7 +10,8 @@ architecture note, a domain glossary. Every skill's **Library Check** reads them
 this collection different from a folder of useful files — and what makes its **scope** the only field
 that has to be exactly right.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Conversational Output**, **Gate Presentation**, **Written Deliverable Length** and
 **Cross-References** from it.
 

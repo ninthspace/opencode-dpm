@@ -25,61 +25,13 @@
  * richer than the format invites assertions the format cannot carry.
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { SKILLS_DIRECTORY } from './root.ts';
 
 /** The one file every skill directory has, and the only one this reads. */
 export const SKILL_FILE = 'SKILL.md';
-
-/** Where the shared procedures live, relative to the package root. */
-export const SHARED_DIRECTORY = 'shared';
-
-/**
- * How the skill bodies name a shared procedure file: `dpm/shared/<name>.md`.
- *
- * That path was resolvable under Claude Code, which laid the plugin out beneath a directory called
- * `dpm` and ran the model in it. Under v2 it resolves against nothing: the model's file tools work
- * from the *project* directory, and a user's project has no `dpm/shared/` in it. Twenty-three
- * skills open with "read that file at startup", so left alone every one of them would begin by
- * failing to read its own conventions.
- */
-const SHARED_REFERENCE = /\bdpm\/shared\/([A-Za-z0-9_-]+\.md)\b/g;
-
-/**
- * A skill body with its shared-procedure references made absolute — the supporting-files answer.
- *
- * **The alternative the specification named was inlining the conventions into all twenty-three
- * bodies, and this is cheaper in every direction.** Inlining puts 15KB of identical prose into each
- * skill, turns one file into twenty-three copies that drift, and costs the model context on every
- * invocation whether it needed the conventions or not. Substituting the path costs one regex, keeps
- * the single copy the whole convention system depends on, and leaves the bodies readable as
- * sources: what a maintainer edits still says `dpm/shared/skill-conventions.md`.
- *
- * **The substitution refuses rather than guesses.** A path rewritten to a file that is not there is
- * worse than the original — the original fails visibly at the first read, and a confident absolute
- * path to nothing fails the same way while looking correct. So the target is checked, and a missing
- * one throws at registration where the message can name it.
- *
- * @param content The skill's own text.
- * @param root The package root, as `packageRoot()` returned it.
- * @returns {string}
- */
-export function resolveSupportingPaths(content: string, root: string): string {
-  return content.replaceAll(SHARED_REFERENCE, (matched, file: string) => {
-    const absolute = join(root, SHARED_DIRECTORY, file);
-
-    if (!existsSync(absolute)) {
-      throw new Error(
-        `dpm: a skill names ${matched}, which resolves to ${absolute}, and that file is not in the `
-        + 'package. Registering the skill would advertise a reference the model cannot follow.',
-      );
-    }
-
-    return absolute;
-  });
-}
 
 /**
  * A skill as the host's registry wants it.
@@ -153,7 +105,14 @@ export function discoverSkills(root: string): DiscoveredSkill[] {
         name,
         ...(declared.description === undefined ? {} : { description: declared.description }),
         location,
-        content: resolveSupportingPaths(content, root),
+        // **Verbatim, and that is epic 02-03's whole change here.** This used to hand the host a
+        // rewritten body, with `dpm/shared/<file>.md` substituted for an absolute path into the
+        // package. The rewrite ran on one host and not the other — v1 reads `SKILL.md` off disk and
+        // never asks the plugin — and on the host where it did run, the absolute path it produced
+        // was auto-rejected as `external_directory`. So it was a transform that made the two hosts
+        // disagree while working on neither. The shared documents are behind `read_shared_document`
+        // now, and what the registry holds is what a maintainer opened.
+        content,
       }];
     });
 }

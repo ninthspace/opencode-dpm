@@ -251,30 +251,22 @@ OpenCode evaluates one rule per **action** and **resource**. Rules live in an ar
 Entries in your `opencode.json` are appended to every agent's own rules, which is why they
 override the agent's defaults rather than being overridden by them.
 
-**The one entry to set.** Every skill body opens by reading `shared/skill-conventions.md`
-from the clone, which is somewhere other than the repository you are working in — so the
-host classifies that read as leaving the project. The stock rules are a blanket `allow`
-followed by `{ "action": "external_directory", "resource": "*", "effect": "ask" }`, and the
-later rule wins. Interactively that is a prompt on the first skill of every session;
-non-interactively the request is rejected and the skill proceeds without the conventions it
-was told to read, which is the worse outcome because nothing announces it.
+**Nothing DPM does reads outside the project.** Every skill body opens by asking for the
+shared conventions through `dpm_read_shared_document`, an ordinary DPM tool that reads the
+document out of the installed package in the server's own process. So there is no
+`external_directory` rule to set, and if you carried one over from an earlier version you
+can drop it.
 
-```json
-{
-  "permissions": [
-    { "action": "external_directory",
-      "resource": "/absolute/path/to/opencode-dpm/shared/*",
-      "effect": "allow" }
-  ]
-}
-```
+This used to be the one entry every user had to add. The bodies named
+`shared/skill-conventions.md` as a path in the clone, the host classified that read as
+leaving the project, and the stock rules end with
+`{ "action": "external_directory", "resource": "*", "effect": "ask" }` — so interactively it
+prompted on the first skill of every session, and non-interactively it was rejected and the
+skill carried on without the conventions it had been told to read. That last outcome is the
+one that mattered: nothing announced it. A tool call has no such failure mode, because a
+refused or failed call is one the session sees.
 
-The resource is the *directory* the file sits in with `/*` appended — the host resolves a
-file's parent before it asks — and it is the same clone path you named in `opencode.json`.
-`*` matches any run of characters, so `~/src/*/shared/*` would cover several clones at once
-if you keep them side by side; spell one out if you would rather not widen it.
-
-Beyond that, DPM occupies two actions, and telling them apart is the whole of this section:
+DPM occupies two actions, and telling them apart is the whole of this section:
 
 | What happens | Action | Resource |
 |---|---|---|

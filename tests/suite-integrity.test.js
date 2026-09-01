@@ -168,10 +168,13 @@ const ADDED = [
   'readme-v2.test.js', //              01-04 story 4 — every documented block, classified and run
   'registration-prefix.test.js', //    02-02 story 2 — the name copied not composed, and the constant gone
   'session-scratch.test.js', //        01-04 story 3 — the environment audit, and nothing loose in the tree
+  'shared-document-round-trip.test.js', // 02-03 story 4 — body to reference to tool to text, both routes
+  'shared-document-tool.test.js', //   02-03 story 1 — the bytes, the refusal, and the copy nothing kept
   'skill-identity.test.js', //         02-02 story 1 — the prefix on disk, in both places a skill declares it
   'skill-invocation.test.js', //       01-03 story 3 — the descriptions, and $ARGUMENTS retired
   'skill-pilot.test.js', //            01-03 story 1 — one body ported, and the transition's tripwire
   'skill-port.test.js', //             01-03 story 2 — no Claude Code mechanism, and ralph's recorded gap
+  'skill-shared-references.test.js', // 02-03 story 2 — twenty-four references, and no host named
   'skill-supporting-files.test.js', // 01-02 story 3 — the conventions file, and the recorded go/no-go
   'suite-integrity.test.js', //        story 4 — this file
   'suite-skill-names.test.js', //      02-02 story 3 — the helper, the hand-kept lists, and the cases nothing lost

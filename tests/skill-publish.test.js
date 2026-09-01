@@ -23,7 +23,7 @@ import { start } from '../src/start.ts';
 import { spineTools } from '../src/tools/index.ts';
 import {
   skillSource, prose, section, recorder, recoveries, sweep, bindings,
-  SQL, CONSTRUCTIONS, toolNames,
+  SQL, CONSTRUCTIONS, toolNames, SHARED_DOCUMENT_TOOL as SHARED,
 } from './support/skills.js';
 
 const SKILL = 'publish';
@@ -279,11 +279,22 @@ test('must NOT — the run reports the database\'s contents rather than what it 
   // and the rest are how a report of contents would be built, and naming one would be the drift.
   // The set, not the occurrences — how many times the file says `publish` is an editing detail,
   // and which tools it names is the claim.
+  //
+  // **`read_shared_document` is subtracted, not admitted.** It is what every one of the
+  // twenty-three bodies calls to obtain the shared conventions since epic 02-03 put them behind the
+  // MCP boundary, and it reads a file inside dpm's own package rather than anything the project
+  // holds — so it cannot be how a report of contents gets built, which is the thing this must-NOT
+  // is about. Widening the expected list would have said this skill's surface is two tools.
   assert.deepEqual(
-    toolNames(source),
+    toolNames(source).filter((tool) => tool !== SHARED),
     ['publish'],
     'the skill names a tool other than publish, which is how a report of contents gets built',
   );
+
+  // And the subtraction is over something: a skill that stopped calling for its conventions would
+  // otherwise slip past this line without a word.
+  assert.ok(toolNames(source).includes(SHARED),
+    'the skill no longer calls for the shared conventions');
 });
 
 // --- The binding, in both directions ------------------------------------------------------------

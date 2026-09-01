@@ -16,8 +16,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-import { SERVER_EXECUTABLE, SKILLS_DIRECTORY } from '../../src/plugin/root.ts';
-import { SHARED_DIRECTORY, SKILL_FILE } from '../../src/plugin/skills.ts';
+import { SERVER_EXECUTABLE, SHARED_DIRECTORY, SKILLS_DIRECTORY } from '../../src/plugin/root.ts';
+import { SKILL_FILE } from '../../src/plugin/skills.ts';
 
 /**
  * A package tree with a server executable, and whatever skills and shared files are asked for.

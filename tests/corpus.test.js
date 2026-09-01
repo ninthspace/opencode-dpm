@@ -782,11 +782,19 @@ test('the Disposition rule reaches the corpus through Conversational Output, wit
   assert.match(parent, /fits none of the four is not reported/,
     'the rule\'s body sits outside the section the corpus reaches it through');
 
-  // Every skill reads the file itself at startup, which is what delivers a section none of them
-  // splices by name. Without this the placement claim rests on a reference that is never followed.
+  // Every skill fetches the conventions itself at startup, which is what delivers a section none of
+  // them splices by name. Without this the placement claim rests on a reference that is never
+  // followed.
+  //
+  // **The reference is a tool call now, not a path.** Epic 02-03 moved the shared documents behind
+  // `read_shared_document` — a path outside the project is rejected by one host and unreachable on
+  // the other, and it fails by returning nothing, which would leave every skill here naming a
+  // section it never received. The claim is the same claim; what satisfies it changed.
   for (const name of naming) {
-    assert.match(skillSource(name), /`dpm\/shared\/skill-conventions\.md`/,
-      `${name} names Conversational Output without naming the file it is in`);
+    assert.match(skillSource(name), /`dpm_read_shared_document`/,
+      `${name} names Conversational Output without saying how it obtains the document it is in`);
+    assert.match(skillSource(name), /`name: "skill-conventions"`/,
+      `${name} calls for a shared document without naming the conventions`);
   }
 });
 

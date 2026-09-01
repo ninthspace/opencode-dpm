@@ -17,7 +17,8 @@ like a first pass over unfinished work.
 a loop is armed, and it stays a file because the hook reads it. Everything else this skill used to
 keep on disk is a row.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Session Startup**, **Library Check**, **Gate Presentation**, **Conversational
 Output** and **Written Deliverable Length** from it. It does not use **Retro Awareness**: an
 autonomous run's lessons are dispositioned by `dpm:do` inside the loop, and offering them again here

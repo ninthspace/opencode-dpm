@@ -112,19 +112,28 @@ test('every tool name is a searchable word built from the live schema', (t) => {
 
   assert.deepEqual(unmatched, [], 'a tool is named for something the schema does not hold');
 
-  // The tools taking the exemption are named, one line each. A fourth one appearing here is a
-  // decision, not a detail — the exemption is meant to cover tools that sweep everything, and all
-  // three do: `check_integrity` reads `sqlite_schema`, `search` reads two FTS indexes covering six
-  // tables between them, and `publish` renders every document there is. None is named for an
-  // entity type because none has one.
+  // The tools taking the exemption are named, one line each. A fifth one appearing here is a
+  // decision, not a detail — the exemption is meant to cover tools that sweep everything, and three
+  // of the four do: `check_integrity` reads `sqlite_schema`, `search` reads two FTS indexes
+  // covering six tables between them, and `publish` renders every document there is. None is named
+  // for an entity type because none has one.
   //
   // `publish` is the first to take the exemption while declaring `mutates: true`, and the
   // combination is deliberate rather than an oversight in the rule: what it writes is a working
   // tree, so it belongs to no table in the direction the rule reaches. Its module records why the
   // declaration is what it is.
+  //
+  // **`read_shared_document` is the fourth, added by epic 02-03 story 1, and it qualifies for the
+  // opposite reason to the other three.** They span the schema; this one does not reach it at all.
+  // Its subject is a file in the installed package — `shared/skill-conventions.md`, which ADR 02-01
+  // moved behind a tool call because a file read has no hook to run in under v1 and is rejected as
+  // `external_directory` under v2. So there is no schema word for it, not because the vocabulary is
+  // too narrow but because the thing it names is not in the database. The `sqlite_schema`
+  // declaration is this registry's established marker for *belongs to no table*, which is what
+  // `publish` already uses it for while writing a working tree, and is not a claim about rows.
   assert.deepEqual(
     tools.filter((tool) => !tables.has(tool.table)).map((tool) => tool.name).sort(),
-    ['check_integrity', 'publish', 'search'],
+    ['check_integrity', 'publish', 'read_shared_document', 'search'],
   );
 
   // The control: the vocabulary is not so wide that any name passes. Three plausible names built

@@ -18,7 +18,8 @@ skill is for, and the reason it writes neither.
 **It opens no session.** Every action here is one bounded read and one bounded write; there is no
 step to resume, and a resumable run that cannot be resumed is worse than none.
 
-Follow the shared conventions in `dpm/shared/skill-conventions.md` — read that file at startup.
+Follow the shared conventions — call `dpm_read_shared_document` with `name: "skill-conventions"`
+at startup and read what it returns.
 This skill uses **Conversational Output**, **Gate Presentation** and **Cross-References** from it.
 
 ## Startup
