@@ -24,7 +24,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CALLABLE, section } from './support/skills.js';
 import { packageManifest, pluginSources, withoutComments } from './support/sources.js';
-import { discoverSkills, ID_PREFIX, SKILL_FILE } from '../src/plugin/skills.ts';
+import { discoverSkills, SKILL_FILE } from '../src/plugin/skills.ts';
+import { PREFIX } from './support/skills.js';
 import { start } from '../src/start.ts';
 import { spineTools } from '../src/tools/index.ts';
 
@@ -115,7 +116,7 @@ test('the README recommends permission entries, and every one is a well-formed r
 // --- Every skill the section names is a skill this package registers ------------------------
 
 test('every skill resource the README names resolves to a registered skill [unit]', () => {
-  const ids = discoverSkills(ROOT).map((skill) => skill.id);
+  const ids = discoverSkills(ROOT).map((skill) => skill.name);
 
   assert.ok(ids.length > 20, `only ${ids.length} skills discovered, so matching against them proves little`);
 
@@ -130,8 +131,8 @@ test('every skill resource the README names resolves to a registered skill [unit
   }
 
   // The matcher has to be capable of failing, or the loop above passes on any string at all.
-  assert.equal(ids.some((id) => matches(id, `${ID_PREFIX}not-a-skill`)), false);
-  assert.equal(matches(`${ID_PREFIX}spec`, `${ID_PREFIX}*`), true);
+  assert.equal(ids.some((id) => matches(id, `${PREFIX}not-a-skill`)), false);
+  assert.equal(matches(`${PREFIX}spec`, `${PREFIX}*`), true);
 });
 
 // --- Every tool action the section names is a tool the server registers ----------------------
@@ -209,7 +210,7 @@ test('the removal the README sends you to gate is the one that tool performs [un
 test('must NOT — a skill body is reachable other than through the skill the host gates [unit]', () => {
   // The section tells a reader that a denied skill has no second route to its instructions. Three
   // checkable halves of that, each of which would make it false on its own.
-  const ids = discoverSkills(ROOT).map((skill) => skill.id);
+  const ids = discoverSkills(ROOT).map((skill) => skill.name);
 
   assert.deepEqual(ids, [...new Set(ids)],
     'two skills register under the same id, so one of them is reachable under a name the other '

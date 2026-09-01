@@ -30,15 +30,18 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import * as tools from '../src/plugin/index.ts';
 import { SERVER_NAME } from '../src/plugin/index.ts';
 import skillsEntry from '../src/plugin/skills-entry.ts';
 import { DEFAULT_PROFILE, PROFILES, profileFrom } from '../src/plugin/profile.ts';
-import { SERVER_EXECUTABLE, SKILLS_DIRECTORY, packageRoot } from '../src/plugin/root.ts';
+import {
+  SERVER_EXECUTABLE, SKILLS_DIRECTORY, packageRoot, withinPackage,
+} from '../src/plugin/root.ts';
 import { localServer } from '../src/plugin/server.ts';
-import { ID_PREFIX, SKILL_FILE, discoverSkills, frontMatter } from '../src/plugin/skills.ts';
+import { SKILL_FILE, discoverSkills, frontMatter } from '../src/plugin/skills.ts';
+import { PREFIX } from './support/skills.js';
 import { registerServer, registerSkills } from './support/host-contexts.js';
 import { packageTree, skillSource } from './support/package-tree.js';
 import { runNode } from './support/run-node.js';
@@ -127,8 +130,11 @@ test('must NOT — installation requires a copy, a config edit or a post-install
 
   assert.ok(skills.length > 0, 'there are skills to check');
   for (const skill of skills) {
-    assert.ok(skill.location.startsWith(join(ROOT, SKILLS_DIRECTORY)),
-      `${skill.id} is registered from ${skill.location}, which is outside this package`);
+    // `withinPackage` rather than a prefix match — epic 02-02 story 4. A sibling package named one
+    // character along from this one satisfies `startsWith` and is not this package, which makes the
+    // prefix form accept the single path this assertion exists to reject.
+    assert.ok(withinPackage(join(ROOT, SKILLS_DIRECTORY), skill.location),
+      `${skill.name} is registered from ${skill.location}, which is outside this package`);
   }
 });
 
@@ -185,25 +191,30 @@ test('must NOT — the entry hardcodes the skill list [unit]', async (t) => {
   const { sources } = await registerSkills(skillsEntry);
   const registered = namesOf(sources).sort();
 
-  assert.deepEqual(registered, discoverSkills(ROOT).map((s) => s.id).sort());
+  assert.deepEqual(registered, discoverSkills(ROOT).map((s) => s.name).sort());
   assert.ok(registered.length >= 20, `only ${registered.length} skills registered`);
 
   // **Every registered name carries the prefix, and under v1 the name is where it has to live.**
   // What the host keeps of an embedded skill is `{ name, description?, location, content }` — an
   // `id` alongside them is dropped by its own decode, observed rather than assumed — so `name` is
   // the flat keyspace ADR 01-05 exists to defend and FR5 is the requirement that says so.
-  assert.deepEqual(sources.filter((source) => !source.skill.name.startsWith(ID_PREFIX)), []);
+  //
+  // **The prefix is read from the suite's own constant, not from `src/`, because epic 02-02 story 2
+  // deleted the one in `src/`.** Registration composes nothing now: the directories are named
+  // `dpm-<skill>` and each declares that name, so what this asserts is that the tree's own
+  // namespacing survives the trip through registration intact.
+  assert.deepEqual(sources.filter((source) => !source.skill.name.startsWith(PREFIX)), []);
 
   // The control on that reading, since a filter over an empty set is also empty.
-  assert.equal(`${ID_PREFIX}review`.startsWith(ID_PREFIX), true);
-  assert.equal('review'.startsWith(ID_PREFIX), false);
+  assert.equal(`${PREFIX}review`.startsWith(PREFIX), true);
+  assert.equal('review'.startsWith(PREFIX), false);
 
   // Every source is the embedded variant, which is what carries the computed body rather than
   // letting the host re-read `SKILL.md` and lose the shared-procedure rewrite — FR4, ENVX2.
   assert.deepEqual([...new Set(sources.map((source) => source.type))], ['embedded']);
   for (const source of sources) {
     assert.ok(source.skill.content.length > 0, `${source.skill.name} registered with an empty body`);
-    assert.ok(source.skill.location.startsWith(join(ROOT, SKILLS_DIRECTORY)));
+    assert.ok(withinPackage(join(ROOT, SKILLS_DIRECTORY), source.skill.location));
   }
 });
 
@@ -314,8 +325,8 @@ test('packageRoot refuses a root with no server executable under it [unit]', (t)
 // --- The front-matter reader, shared with the skills the host actually got -----------------------
 
 test('the front matter read is the one the host registered [unit]', () => {
-  assert.deepEqual(frontMatter('---\nname: do\ndescription: work an epic\n---\n\n# Body\n'),
-    { name: 'do', description: 'work an epic' });
+  assert.deepEqual(frontMatter('---\nname: dpm-do\ndescription: work an epic\n---\n\n# Body\n'),
+    { name: 'dpm-do', description: 'work an epic' });
 
   // A file with no front matter registers under its directory name rather than refusing, and a
   // reader that returned fields for one would be reading the body.
@@ -325,8 +336,13 @@ test('the front matter read is the one the host registered [unit]', () => {
 
   assert.equal(skills.length, 23, 'the package holds the twenty-three skills the fork inherited');
   for (const skill of skills) {
-    assert.ok(skill.description, `${skill.id} has no description, so the host cannot advertise it`);
-    assert.equal(skill.id, `${ID_PREFIX}${skill.name}`);
+    assert.ok(skill.description, `${skill.name} has no description, so the host cannot advertise it`);
+
+    // **The name is taken, not built.** It used to be checked against `ID_PREFIX + skill.name`,
+    // which was a restatement of the line that made it. What replaced that constant is the tree, so
+    // what this asks is whether the declared name is the one the directory carries — which is the
+    // only reading that can now disagree with anything.
+    assert.equal(skill.name, basename(skill.location));
     assert.ok(existsSync(join(skill.location, SKILL_FILE)));
   }
 });

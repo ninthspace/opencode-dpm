@@ -27,10 +27,13 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import skillsEntry, { claimedNames, clashNotice } from '../src/plugin/skills-entry.ts';
+import skillsEntry, {
+  claimedNames, clashNotice, displacedSkills, displacementNotice,
+} from '../src/plugin/skills-entry.ts';
 import { skillSources } from '../src/plugin/registration.ts';
-import { SKILLS_DIRECTORY, packageRoot } from '../src/plugin/root.ts';
-import { ID_PREFIX, SHARED_DIRECTORY, discoverSkills, resolveSupportingPaths } from '../src/plugin/skills.ts';
+import { SKILLS_DIRECTORY, packageRoot, withinPackage } from '../src/plugin/root.ts';
+import { SHARED_DIRECTORY, discoverSkills, resolveSupportingPaths } from '../src/plugin/skills.ts';
+import { PREFIX } from './support/skills.js';
 import { registerSkills } from './support/host-contexts.js';
 
 const ROOT = packageRoot();
@@ -65,10 +68,16 @@ async function stderrDuringAsync(call) {
   return written.join('');
 }
 
-/** An embedded source under a given name, which is all the clash check reads. */
-const embedded = (name) => ({
+/**
+ * An embedded source under a given name, which is all the clash check reads.
+ *
+ * `location` is a parameter because the read-back added by epic 02-02 story 4 asks where an entry
+ * resolves to, and a planted source that is always `/nowhere` could only ever be outside the
+ * package — which would make the passing half of that check unwritable.
+ */
+const embedded = (name, location = '/nowhere') => ({
   type: 'embedded',
-  skill: { name, description: 'planted', location: '/nowhere', content: '# planted\n' },
+  skill: { name, description: 'planted', location, content: '# planted\n' },
 });
 
 /**
@@ -95,6 +104,44 @@ async function registerOver(claimed) {
   return { said, sources };
 }
 
+/**
+ * Drive `setup` against a draft that gains `shadowing` **after** dpm has registered.
+ *
+ * This is the half `registerOver` cannot model. dpm's sources go in last, so within dpm's own
+ * transform dpm's entries win every name it claimed and the read-back is quiet by construction —
+ * which is the ordinary case and is also, on its own, a check that cannot fail. What a later
+ * registration looks like from inside the transform is a `list()` that starts returning something
+ * the `source` calls did not put there, so that is what this draft does.
+ *
+ * The shadowing entries are invisible to the *first* `list()`, deliberately: the clash alarm reads
+ * the draft before dpm registers, and a planted source visible then would trip both readings and
+ * leave the test unable to say which one fired.
+ *
+ * @param {readonly object[]} shadowing Sources that claim a name after dpm has claimed it.
+ * @returns {Promise<{ said: string, sources: object[] }>}
+ */
+async function registerBeneath(shadowing) {
+  const sources = [];
+  let registered = false;
+  const context = {
+    options: {},
+    skill: {
+      transform: async (callback) => {
+        await callback({
+          source: (source) => { sources.push(source); registered = true; },
+          list: () => (registered ? [...sources, ...shadowing] : [...sources]),
+        });
+
+        return { dispose: async () => {} };
+      },
+    },
+  };
+
+  const said = await stderrDuringAsync(() => skillsEntry.setup(context));
+
+  return { said, sources };
+}
+
 // --- Criterion 5: twenty-three embedded sources, each inside the installed package ---------------
 
 test('the module registers every skill as an embedded source from inside the package [integration]', async () => {
@@ -110,7 +157,7 @@ test('the module registers every skill as an embedded source from inside the pac
 
   for (const { skill } of sources) {
     assert.ok(skill.content.length > 0, `${skill.name} registered with an empty body`);
-    assert.ok(skill.location.startsWith(join(ROOT, SKILLS_DIRECTORY)),
+    assert.ok(withinPackage(join(ROOT, SKILLS_DIRECTORY), skill.location),
       `${skill.name} is registered from ${skill.location}, which is outside this package`);
     assert.ok(existsSync(skill.location), `${skill.name} names a location that is not on disk`);
     assert.ok(skill.description, `${skill.name} has no description, so the host cannot advertise it`);
@@ -118,7 +165,7 @@ test('the module registers every skill as an embedded source from inside the pac
 
   // And the set is the tree's, so the count above is a reading of the package rather than of a list.
   assert.deepEqual(sources.map((source) => source.skill.name).sort(),
-    discoverSkills(ROOT).map((skill) => skill.id).sort());
+    discoverSkills(ROOT).map((skill) => skill.name).sort());
 });
 
 test('the draft offers what v1 offers, so a registration written against v2 fails here [unit]', async () => {
@@ -154,7 +201,7 @@ test('the draft offers what v1 offers, so a registration written against v2 fail
 
 test('every registered name carries the dpm- prefix, because name is the keyspace [unit]', async () => {
   const sources = skillSources({});
-  const unprefixed = sources.filter((source) => !source.skill.name.startsWith(ID_PREFIX));
+  const unprefixed = sources.filter((source) => !source.skill.name.startsWith(PREFIX));
 
   assert.deepEqual(unprefixed, [],
     'a skill registers under an unprefixed name, so another source registering `do` or `review` '
@@ -163,12 +210,16 @@ test('every registered name carries the dpm- prefix, because name is the keyspac
   // **The control**, since a filter over an empty set is also empty, and since a reading that
   // matched everything would report nothing too.
   assert.ok(sources.length >= 20, `the reading saw ${sources.length} sources, which is not this package`);
-  assert.equal(`${ID_PREFIX}review`.startsWith(ID_PREFIX), true);
-  assert.equal('review'.startsWith(ID_PREFIX), false);
+  assert.equal(`${PREFIX}review`.startsWith(PREFIX), true);
+  assert.equal('review'.startsWith(PREFIX), false);
 
-  // The prefix is the discovered id moved onto `name`, rather than a second construction of it.
+  // **The registered name is the discovered name, copied.** This used to read
+  // `` `${ID_PREFIX}${skill.name}` `` — registration composed the prefix, so the assertion had to
+  // compose it too, and both sides derived from the same constant. Epic 02-02 story 2 deleted the
+  // composition: the prefix is on the tree, discovery reads it, registration copies it. What is
+  // asserted now is that nothing is added or dropped in between.
   assert.deepEqual(sources.map((source) => source.skill.name).sort(),
-    discoverSkills(ROOT).map((skill) => `${ID_PREFIX}${skill.name}`).sort());
+    discoverSkills(ROOT).map((skill) => skill.name).sort());
 
   // And nothing carries an `id`: the host drops it, so a field here would be one this project
   // maintains and no host reads.
@@ -180,15 +231,15 @@ test('every registered name carries the dpm- prefix, because name is the keyspac
 // --- Criterion 7: the alarm, and what it can and cannot see --------------------------------------
 
 test('a clash with an already-claimed name is reported rather than shadowed silently [unit]', async () => {
-  const { said, sources } = await registerOver([embedded(`${ID_PREFIX}do`), embedded('unrelated')]);
+  const { said, sources } = await registerOver([embedded(`${PREFIX}do`), embedded('unrelated')]);
 
   assert.match(said, /already registered/, 'nothing reached stderr, so the alarm is inert');
-  assert.match(said, new RegExp(`${ID_PREFIX}do`), 'the report does not name the clashing skill');
+  assert.match(said, new RegExp(`${PREFIX}do`), 'the report does not name the clashing skill');
   assert.doesNotMatch(said, /unrelated/, 'the report names a skill dpm is not claiming');
 
   // dpm still registers — the host's rule is that the later registration wins, and refusing would
   // leave the user with neither. The report is what makes the outcome visible.
-  assert.equal(sources.filter((source) => source.skill.name === `${ID_PREFIX}do`).length, 2);
+  assert.equal(sources.filter((source) => source.skill.name === `${PREFIX}do`).length, 2);
 });
 
 test('control — no clash, no report [unit]', async () => {
@@ -223,6 +274,130 @@ test('the alarm reads embedded sources and says so rather than implying more [un
   assert.match(clashNotice(['dpm-do']), /a skill was already registered/);
   assert.match(clashNotice(['dpm-do', 'dpm-review']), /2 skills were already registered/);
   assert.match(clashNotice(['dpm-do', 'dpm-review']), /dpm-do, dpm-review/);
+});
+
+// --- Epic 02-02 Story 4: the read-back, and the direction the alarm above cannot see -------------
+
+/**
+ * A skill somebody else registered, under a name and from a package that is not dpm's.
+ *
+ * **Written as a sibling of the real root on purpose.** `${ROOT}-other` shares every character of
+ * `ROOT` and is a different package, so a containment check written as `location.startsWith(root)`
+ * places it inside dpm and reports the displacement this story exists for as a clean pass. Library
+ * lesson 04's shape, and the reason `withinPackage` asks `relative` instead.
+ */
+const foreign = (name) => embedded(name, join(`${ROOT}-other`, SKILLS_DIRECTORY, name));
+
+/** What dpm registers, and the registry that holds exactly that and nothing else. */
+const mine = () => skillSources({});
+
+test('the read-back names every dpm skill whose registered entry is not dpm\'s own [unit]', () => {
+  const sources = mine();
+
+  // The floor first. Every assertion below filters, and a filter over nothing is empty.
+  assert.equal(sources.length, 23, `${sources.length} sources, which is not this package`);
+
+  // The passing half: dpm's own registry, read back, resolves to dpm's own directory throughout.
+  assert.deepEqual(displacedSkills(sources, sources, ROOT), []);
+
+  // And the reporting half, planted. Three names taken by another package after dpm registered —
+  // named, each with the path that won, so a reader can go and look at it.
+  const taken = [`${PREFIX}do`, `${PREFIX}review`, `${PREFIX}spec`];
+  const registry = [...sources, ...taken.map(foreign)];
+
+  assert.deepEqual(displacedSkills(sources, registry, ROOT),
+    taken.map((name) => ({ name, location: join(`${ROOT}-other`, SKILLS_DIRECTORY, name) })));
+
+  // A name registered and then absent is a different failure and gets a different answer, because
+  // "displaced by X" and "gone" send a reader to different places.
+  assert.deepEqual(
+    displacedSkills(sources, sources.filter(({ skill }) => skill.name !== `${PREFIX}do`), ROOT),
+    [{ name: `${PREFIX}do`, location: null }],
+  );
+
+  // Only dpm's names are dpm's business. Another source's skill winning its own name is not a
+  // finding, and a reading that reported it would report every host built-in.
+  assert.deepEqual(displacedSkills(sources, [...sources, embedded('unrelated')], ROOT), []);
+});
+
+test('the check fails on a registry another source has claimed, and passes when it has not [unit]', () => {
+  const sources = mine();
+  const one = sources.filter(({ skill }) => skill.name === `${PREFIX}do`);
+
+  assert.equal(one.length, 1, 'the fixture skill is not in the registration');
+
+  // **The containment check, driven against the sibling-package trap.** This is the assertion the
+  // whole story turns on: the same path under `startsWith` reads as inside dpm.
+  const sibling = join(`${ROOT}-other`, SKILLS_DIRECTORY, `${PREFIX}do`);
+
+  assert.equal(sibling.startsWith(ROOT), true, 'the planted path is not the trap it is meant to be');
+  assert.equal(withinPackage(ROOT, sibling), false);
+  assert.equal(withinPackage(ROOT, one[0].skill.location), true);
+
+  // Given a registry another source has claimed, the check fails; given dpm's own, it passes. Both
+  // over the same one skill, so what differs between the two runs is the registry and nothing else.
+  assert.deepEqual(displacedSkills(one, [...one, foreign(`${PREFIX}do`)], ROOT),
+    [{ name: `${PREFIX}do`, location: sibling }]);
+  assert.deepEqual(displacedSkills(one, one, ROOT), []);
+
+  // Last wins, which is v1's rule and therefore the reading's. dpm's entry arriving after the
+  // foreign one is dpm keeping its name, not dpm losing it.
+  assert.deepEqual(displacedSkills(one, [foreign(`${PREFIX}do`), ...one], ROOT), []);
+
+  // And what it cannot see, said rather than implied: a name behind an unexpanded source.
+  assert.deepEqual(displacedSkills(one, [...one, { type: 'directory', path: '/somewhere' }], ROOT), []);
+});
+
+test('must NOT — a name clash goes unreported in either direction [unit]', async () => {
+  // **Direction one: dpm takes a name somebody already had.** The pre-registration alarm's job, and
+  // asserted here beside the other so the pair is visibly complementary rather than overlapping.
+  const over = await registerOver([embedded(`${PREFIX}do`)]);
+
+  assert.match(over.said, /already registered/);
+  assert.doesNotMatch(over.said, /after registering/,
+    'the read-back fired on a registration dpm won, so it is reporting the wrong direction');
+
+  // **Direction two: somebody takes a name dpm already had.** Invisible to the reading above, which
+  // has already run by the time it happens. This is the control the criterion names — a registry
+  // holding a foreign skill dpm did not put there.
+  const beneath = await registerBeneath([foreign(`${PREFIX}do`)]);
+
+  assert.match(beneath.said, /after registering/, 'nothing reached stderr, so the read-back is inert');
+  assert.match(beneath.said, new RegExp(`${PREFIX}do`), 'the report does not name the taken skill');
+  assert.match(beneath.said, new RegExp(`${ROOT}-other`.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    'the report does not say which package took it');
+
+  // dpm still registers all twenty-three. Refusing would leave the user with neither, and the
+  // report is what makes the outcome visible — the same argument the clash notice makes.
+  assert.equal(beneath.sources.length, 23);
+
+  // **The control on both**, since each assertion above is a match against a stream that a module
+  // writing unconditionally would also satisfy: nothing takes anything, nothing is said.
+  const quiet = await registerBeneath([]);
+
+  assert.equal(quiet.said, '', `a clean registration wrote to stderr:\n${quiet.said}`);
+
+  const unrelated = await registerBeneath([embedded('somebody-elses-skill')]);
+
+  assert.equal(unrelated.said, '', 'a source claiming its own name was reported as taking dpm\'s');
+});
+
+test('the displacement notice names each skill and where it went [unit]', () => {
+  const one = displacementNotice([{ name: `${PREFIX}do`, location: '/opt/other/skills/dpm-do' }]);
+
+  assert.match(one, /a skill dpm registered is/);
+  assert.match(one, /dpm-do \(\/opt\/other\/skills\/dpm-do\)/);
+
+  const two = displacementNotice([
+    { name: `${PREFIX}do`, location: '/opt/other/skills/dpm-do' },
+    { name: `${PREFIX}review`, location: null },
+  ]);
+
+  assert.match(two, /2 skills dpm registered are/);
+
+  // The absent case reads as an absence rather than as a path, because `dpm-review (null)` would
+  // send a reader looking for a directory called null.
+  assert.match(two, /dpm-review \(not in the registry at all\)/);
 });
 
 // --- Criterion 8: the conventions every body opens by reading — FR4, ENVX2 -----------------------

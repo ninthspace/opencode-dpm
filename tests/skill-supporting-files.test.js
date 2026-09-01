@@ -69,7 +69,7 @@ test('every registered skill body names a shared file that opens [integration]',
   assert.ok(skills.length > 0, 'there are no skills, so the sweep below examined nothing');
 
   const references = skills.flatMap((skill) => resolved(skill.content, ROOT)
-    .map((path) => ({ id: skill.id, path })));
+    .map((path) => ({ id: skill.name, path })));
 
   assert.ok(references.length >= skills.length,
     `${references.length} shared references across ${skills.length} skills, and every skill names `
@@ -82,7 +82,7 @@ test('every registered skill body names a shared file that opens [integration]',
 
   // And the form they replaced is gone from what the host is handed. Asserted over the whole set
   // rather than per skill so the failure names every body that still carries one.
-  assert.deepEqual(skills.flatMap((skill) => unresolved(skill.content, ROOT).map(() => skill.id)), [],
+  assert.deepEqual(skills.flatMap((skill) => unresolved(skill.content, ROOT).map(() => skill.name)), [],
     'a registered body still names the relative form, which resolves against the project directory');
 });
 

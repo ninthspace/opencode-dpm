@@ -20,10 +20,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { conventions, frontMatter, skillNames, skillSource } from './support/skills.js';
-import { ID_PREFIX } from '../src/plugin/skills.ts';
 
-/** The sentence every description ends with, built from the id the plugin will actually register. */
-const invocation = (name) => `Invoke with the skill tool, id "${ID_PREFIX}${name}".`;
+/**
+ * The sentence every description ends with, built from the id the plugin will actually register.
+ *
+ * **Nothing is prepended here any more, and the deletion is the point.** This read
+ * `` `${ID_PREFIX}${name}` `` while the prefix was composed at registration and `name` came from a
+ * directory that did not carry it. Epic 02-02 moved the prefix onto the tree, so `name` *is* the
+ * registered id — and the old form would have quietly produced `dpm-dpm-do` and demanded every
+ * description say so.
+ */
+const invocation = (name) => `Invoke with the skill tool, id "${name}".`;
 
 test('every description says how the skill is invoked, with its own registered id [unit]', () => {
   const names = skillNames();

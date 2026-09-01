@@ -35,7 +35,9 @@ import * as tools from '../src/plugin/index.ts';
 import { SERVER_NAME } from '../src/plugin/index.ts';
 import skillsEntry from '../src/plugin/skills-entry.ts';
 import { RUNTIME } from '../src/plugin/server.ts';
-import { SERVER_EXECUTABLE, SKILLS_DIRECTORY, packageRoot } from '../src/plugin/root.ts';
+import {
+  SERVER_EXECUTABLE, SKILLS_DIRECTORY, packageRoot, withinPackage,
+} from '../src/plugin/root.ts';
 import { registerServer, registerSkills } from './support/host-contexts.js';
 
 const ROOT = packageRoot();
@@ -89,16 +91,22 @@ test('both entries register from the same package root [integration]', async () 
   // was actually handed.
   assert.equal(entry.command[1], join(ROOT, SERVER_EXECUTABLE));
 
+  // **`withinPackage`, not `startsWith`** — epic 02-02 story 4. This read `!location.startsWith(…)`,
+  // which places a sibling package one character along inside this one: `${ROOT}-other/skills/x`
+  // starts with `${ROOT}/skills`'s parent and reads as a skill of dpm's. The check being made here
+  // is precisely that a skill did not come from somewhere else, so the one path it must not accept
+  // was the one it accepted.
+  const skills = join(ROOT, SKILLS_DIRECTORY);
   const strays = sources
     .map((source) => source.skill.location)
-    .filter((location) => !location.startsWith(join(ROOT, SKILLS_DIRECTORY)));
+    .filter((location) => !withinPackage(skills, location));
 
   assert.deepEqual(strays, [], 'a skill is registered from outside the tree the server is spawned from');
 
-  // The control on that reading: it can find a stray. Without it an empty list is also what a
-  // check comparing every path against itself returns.
-  assert.equal(join(ROOT, SKILLS_DIRECTORY).startsWith(join(ROOT, SKILLS_DIRECTORY)), true);
-  assert.equal('/elsewhere/skills/do'.startsWith(join(ROOT, SKILLS_DIRECTORY)), false);
+  // The control on that reading: it can find a stray, and it finds the one a prefix match misses.
+  assert.equal(withinPackage(skills, skills), true);
+  assert.equal(withinPackage(skills, join(`${ROOT}-other`, SKILLS_DIRECTORY, 'dpm-do')), false);
+  assert.equal(withinPackage(skills, '/elsewhere/skills/do'), false);
 });
 
 test('the user\'s own registrations survive both entries [integration]', async () => {

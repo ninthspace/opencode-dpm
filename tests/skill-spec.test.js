@@ -35,7 +35,7 @@ import {
   driveStartup, CALLABLE, ungated,
 } from './support/skills.js';
 
-const SKILL = 'spec';
+const SKILL = 'dpm-spec';
 const source = skillSource(SKILL);
 
 /**

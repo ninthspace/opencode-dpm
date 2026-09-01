@@ -37,7 +37,6 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { dump } from '../dump/index.ts';
-import { ID_PREFIX } from '../plugin/skills.ts';
 import { project } from '../projection/index.ts';
 import { hashDump, readMarker, writeMarker } from '../sync/marker.ts';
 import { VERDICT, verdict } from '../sync/verdict.ts';
@@ -96,22 +95,23 @@ export const MERGE_COMMAND = fileURLToPath(new URL(`../../${COMMANDS.merge}`, im
  * exist. A refused commit is exactly the moment a reader follows the instruction literally, which
  * makes it the worst place in the port for one that goes nowhere.
  *
- * **The prefix is imported and the name is written**, which is the split the two halves deserve.
- * `ID_PREFIX` is a registration decision that lives in `src/plugin/skills.ts`, and a second copy of
- * it here would be the shape that goes stale in silence; the skill *name* is a directory under
- * `skills/`, and there is nothing to derive it from that is not itself a guess — deriving it from
+ * **This used to be composed and is now written whole, which is epic 02-02 story 2.** It was
+ * `` `${ID_PREFIX}publish` `` — a prefix imported from `src/plugin/skills.ts` and a name written
+ * here — because registration built the id that way and a second copy of the prefix would have gone
+ * stale in silence. Registration composes nothing now: the skill is a directory called
+ * `dpm-publish` declaring `dpm-publish`, so the id is a single string and splitting it in two would
+ * be describing a composition that no longer happens anywhere.
+ *
+ * There is still nothing to *derive* it from that is not a guess — deriving it from
  * `COMMANDS.publish` would tie a skill id to a binary filename, so renaming the binary would
- * quietly point this at a skill nobody registered.
+ * quietly point this at a skill nobody registered. What keeps it honest is what keeps
+ * {@link PUBLISH_COMMAND} honest: `guard-fix.test.js` asks whether this is a name the plugin
+ * actually discovers, rather than matching the string against the constant it came from.
  *
- * What keeps the written half honest is the same thing that keeps {@link PUBLISH_COMMAND} honest:
- * `guard-fix.test.js` asks the filesystem whether the skill this names is on disk, rather than
- * matching the string it came from.
- *
- * The import points at `src/plugin/` — the one place in `src/` that does, and deliberately so.
- * `skills.ts` has no module-level effects and reaches no further than `node:path`, so a pre-commit
- * hook pays nothing for the edge.
+ * That check is also why the import went. `src/guard/` was the one place in `src/` reaching into
+ * `src/plugin/`, and the edge existed only to carry four characters.
  */
-export const PUBLISH_SKILL = `${ID_PREFIX}publish`;
+export const PUBLISH_SKILL = 'dpm-publish';
 
 /**
  * The phrase that names the skill, and **the only safe thing to match the message against**.

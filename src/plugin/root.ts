@@ -19,13 +19,36 @@
  */
 
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, relative } from 'node:path';
 
 /** The server executable, relative to the package root. Also what proves the root is the root. */
 export const SERVER_EXECUTABLE = join('bin', 'dpm-mcp.ts');
 
 /** Where the skills live, relative to the package root. */
 export const SKILLS_DIRECTORY = 'skills';
+
+/**
+ * Whether a path is inside a root — **asked with `relative`, never with `startsWith`.**
+ *
+ * `path.startsWith(root)` is the reading this repeatedly wants to be, and it is wrong in the
+ * direction that matters: `/opt/dpm-evil/skills/dpm-do` starts with `/opt/dpm`, so a foreign
+ * package installed one character along from this one reads as being inside it. Library lesson 04
+ * names this exact shape — never match on a string another string can contain — and the answer it
+ * gives is the one here: take the relative step and ask whether it climbs out.
+ *
+ * The root itself is inside the root, which is `''` and neither climbs nor is absolute. A path on
+ * another volume comes back absolute from `relative`, which is the Windows case and is refused for
+ * the same reason a `..` is.
+ *
+ * @param root The package root, as `packageRoot` computed it.
+ * @param path The path to place.
+ * @returns {boolean}
+ */
+export function withinPackage(root: string, path: string): boolean {
+  const step = relative(root, path);
+
+  return !step.startsWith('..') && !isAbsolute(step);
+}
 
 /**
  * The package root, or a refusal naming what was looked for and where.

@@ -24,7 +24,7 @@
  *    a new site with no entry fails and an entry for a site that no longer exists fails.
  */
 
-import { conventions, prose, skillNames, skillSource, toolMentions } from './skills.js';
+import { PREFIX, conventions, prose, skillNames, skillSource, toolMentions } from './skills.js';
 
 /** The shared conventions, under a name no skill directory can take. */
 export const SHARED = 'shared/skill-conventions.md';
@@ -211,6 +211,9 @@ export function corpus(names) {
  * disagree with.
  */
 export const CLASSIFICATION = new Map(Object.entries({
+  // **The skill segment is written bare and prefixed on the way in — see `prefixed` below.** The
+  // hundred entries here are a transcription a reader scans by skill, and `dpm-` on every one of
+  // them is a hundred repetitions of the one thing every entry has in common.
   // --- architect --------------------------------------------------------------------------------
   'architect · list_document_section · Input':
     [false, 'enumerates the sections; the `read_document_section` beside it is what opens the prose'],
@@ -457,7 +460,30 @@ export const CLASSIFICATION = new Map(Object.entries({
     [true, 'the roster is loaded for the voices, and the two traits are body columns'],
   [`${SHARED} · list_agent · Perspectives #2`]:
     [false, 'names the same call again only to say what an empty result means'],
-}));
+}).map(([name, judgement]) => [prefixed(name), judgement]));
+
+/**
+ * One classification key with its skill segment brought into line with the tree — epic 02-02.
+ *
+ * The keys are `<file> · <tool> · <step>`, and `<file>` is whatever `corpus()` keyed the body under:
+ * a skill's directory name, or `shared/skill-conventions.md` for the file every body reads. Story 1
+ * renamed the directories to `dpm-<skill>`, so every skill key needed the prefix and the shared one
+ * needed to be left alone.
+ *
+ * **The shared entry is told apart by the slash in its own name, not by comparing it to `SHARED`.**
+ * A key that already carries the prefix is also left as it is, so the function is safe to apply
+ * twice — which matters, because the thing that would otherwise happen here is `dpm-dpm-do`.
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+function prefixed(name) {
+  const [file, ...rest] = name.split(' · ');
+
+  return file.includes('/') || file.startsWith(PREFIX)
+    ? name
+    : [`${PREFIX}${file}`, ...rest].join(' · ');
+}
 
 /** How a site is named in the classification, and in a failure. */
 export function key(file, site) {

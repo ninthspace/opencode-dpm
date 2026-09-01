@@ -52,7 +52,7 @@ const ROOT = join(import.meta.dirname, '..');
  * **Closing the gap fails this test, and that is deliberate** — the same shape story 1's tripwire
  * had. When `ralph` learns a v2 loop mechanism, this constant comes out with it.
  */
-const RECORDED_GAP = { skill: 'ralph', pattern: /`?\.claude\/ralph-loop\.local\.md`?/g, occurrences: 5 };
+const RECORDED_GAP = { skill: 'dpm-ralph', pattern: /`?\.claude\/ralph-loop\.local\.md`?/g, occurrences: 5 };
 
 /** The corpus as `{name, source}`, with the recorded gap subtracted from the one body that has it. */
 function bodies() {

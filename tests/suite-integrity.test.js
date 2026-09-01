@@ -27,11 +27,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   SANCTIONED_DEV_DEPENDENCIES, nodeRuntimeArguments, packageManifest, packageOf, pluginSources,
-  staticImports, sweepSourcesUnder, unsanctionedDependencies, withoutComments,
+  staticImports, sweepSourcesUnder, testFileNames, unsanctionedDependencies, withoutComments,
 } from './support/sources.js';
 import { runNode } from './support/run-node.js';
 
@@ -57,7 +56,7 @@ const everySource = () => [
   ...pluginSources(), ...suiteSources(), ...sweepSourcesUnder(join(ROOT, 'scripts')),
 ];
 
-const testFiles = () => readdirSync(TESTS).filter((name) => name.endsWith('.test.js')).sort();
+const testFiles = () => testFileNames(TESTS);
 
 /**
  * Every static import across the tree that `wanted` accepts, as `"<file> imports <specifier>"`.
@@ -167,12 +166,15 @@ const ADDED = [
   'publish-package.test.js', //        01-05 story 1 — what the packed tarball ships, and what it must not
   'readme-symlink.test.js', //         01-04 story 2, rewritten 02-01 story 5 — the link instruction, run against a clone
   'readme-v2.test.js', //              01-04 story 4 — every documented block, classified and run
+  'registration-prefix.test.js', //    02-02 story 2 — the name copied not composed, and the constant gone
   'session-scratch.test.js', //        01-04 story 3 — the environment audit, and nothing loose in the tree
+  'skill-identity.test.js', //         02-02 story 1 — the prefix on disk, in both places a skill declares it
   'skill-invocation.test.js', //       01-03 story 3 — the descriptions, and $ARGUMENTS retired
   'skill-pilot.test.js', //            01-03 story 1 — one body ported, and the transition's tripwire
   'skill-port.test.js', //             01-03 story 2 — no Claude Code mechanism, and ralph's recorded gap
   'skill-supporting-files.test.js', // 01-02 story 3 — the conventions file, and the recorded go/no-go
   'suite-integrity.test.js', //        story 4 — this file
+  'suite-skill-names.test.js', //      02-02 story 3 — the helper, the hand-kept lists, and the cases nothing lost
   'tool-naming.test.js', //            01-02 story 2 — the v2 rendering, and v0.7.0's own surface
   'typescript-conversion.test.js', //  story 2 — erasable syntax, and node's refusal of the rest
   'v1-integration.test.js', //         02-01 story 5 — one root across both entries, and a command that starts

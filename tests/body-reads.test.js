@@ -33,7 +33,8 @@ import {
 } from './support/body-reads.js';
 
 /** The six the proximity sweep of 2026-08-11 reported clean. Two of them were not. */
-const REPORTED_CLEAN = ['artifact', 'clean', 'consult', 'discover', 'library', 'party'];
+const REPORTED_CLEAN = ['dpm-artifact', 'dpm-clean', 'dpm-consult', 'dpm-discover', 'dpm-library',
+  'dpm-party'];
 
 /** Above what the corpus plausibly holds, for a read that must not be truncated. */
 const BOUND = 500;
@@ -94,7 +95,7 @@ test('the skills the proximity sweep reported clean are classified like every ot
   // and broke another, and because these two are the evidence that the sweep's clean list was wrong.
   // Both are asserted through the whole chain — classified as needing, and given the argument — so
   // reverting either the judgement or the fix fails here.
-  for (const name of ['artifact · list_artifact · Input', 'consult · read_agent · Commands']) {
+  for (const name of ['dpm-artifact · list_artifact · Input', 'dpm-consult · read_agent · Commands']) {
     const entry = entries.find((row) => row.key === name);
 
     assert.ok(entry, `${name} is no longer a site`);
@@ -106,8 +107,8 @@ test('the skills the proximity sweep reported clean are classified like every ot
   // names the argument in most of its blocks and carries one that does not, so a file-scoped check
   // reports every `consult` site as asking. This is retro 38's recorded false pass, asserted as a
   // fact about this corpus rather than as a rule the corpus is assumed to follow.
-  const consult = entries.filter((entry) => entry.file === 'consult');
-  const quiet = consult.find((entry) => entry.key === 'consult · list_agent · Input');
+  const consult = entries.filter((entry) => entry.file === 'dpm-consult');
+  const quiet = consult.find((entry) => entry.key === 'dpm-consult · list_agent · Input');
 
   assert.match(quiet.source, /include_body/, 'the premise has gone: `consult` never names it');
   assert.equal(asks(quiet), false,
@@ -140,15 +141,15 @@ test('must NOT — a site is classified from what its step does, never from a ne
   // Named, because the interesting half is the first: each of these is a step that divides the
   // labour between a list and a read, or names the argument for a different read entirely.
   assert.deepEqual(asksAndDoesNotNeed.map((entry) => entry.key).sort(), [
-    'architect · list_document_section · Input',
-    'brief · list_document_section · Phase 1: Problem recap',
-    'consult · list_agent · Startup',
-    'epics · list_coverage · Step 4: Confirm',
-    'library · list_document_section · 1. Read what is there',
-    'pivot · list_coverage · Where the cascade reaches',
-    'pivot · list_document_section · Phase 2: Amend',
-    'review · list_coverage · Step 1: Read what is under review',
-    'status · list_coverage · Phase 3b: Spec coverage roll-up (only for a spec)',
+    'dpm-architect · list_document_section · Input',
+    'dpm-brief · list_document_section · Phase 1: Problem recap',
+    'dpm-consult · list_agent · Startup',
+    'dpm-epics · list_coverage · Step 4: Confirm',
+    'dpm-library · list_document_section · 1. Read what is there',
+    'dpm-pivot · list_coverage · Where the cascade reaches',
+    'dpm-pivot · list_document_section · Phase 2: Amend',
+    'dpm-review · list_coverage · Step 1: Read what is under review',
+    'dpm-status · list_coverage · Phase 3b: Spec coverage roll-up (only for a spec)',
   ]);
 
   // **And the construction itself, driven against sources written to break it.** `asks` reads the

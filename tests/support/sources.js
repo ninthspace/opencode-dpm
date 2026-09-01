@@ -70,6 +70,25 @@ export const sourceNamesUnder = (directory) => moduleFilesUnder(directory).map(
 );
 
 /**
+ * The suite's test files, by bare name, in a stable order — **the flat read, not the walk above.**
+ *
+ * `suite-integrity.test.js` reconciles this against the 133 v0.7.0 shipped plus the list of what
+ * the port added; `suite-skill-names.test.js` reads each one for the cases it declares. Both had
+ * written the same line, and two copies of *what the suite is* would go on agreeing right up until
+ * one of them learned about a subdirectory and the other did not.
+ *
+ * It is deliberately not `moduleFilesUnder`. That walk recurses, so it reaches `support/` and
+ * `fixtures/`, and both callers are asking about the files `node --test` runs from the top of
+ * `tests/` — a different question that happens to have overlapped while no test file sat deeper.
+ *
+ * @param {string} directory The suite root.
+ * @returns {string[]}
+ */
+export const testFileNames = (directory) => readdirSync(directory)
+  .filter((name) => name.endsWith('.test.js'))
+  .sort();
+
+/**
  * The same walk in the shape the sweeps take: repo-relative name, and text.
  *
  * `auditImports`, `auditEnvironment`, `auditReach` and `auditWrites` all read `{name, text}`, and

@@ -52,11 +52,11 @@ const FLOOR = 23;
  * holding after the skill it describes has changed underneath it.
  */
 const EXEMPT = new Map(Object.entries({
-  artifact: 'each action here is one write — register an entry, or retire one — settled in the',
-  clean: 'It uses **Session Startup** for nothing, being stateless',
-  publish: 'It opens no session. There is nothing to resume',
-  status: 'a report reads the rows and prints, so there is no',
-  templates: 'both actions are one read and one render, and neither carries anything from the',
+  'dpm-artifact': 'each action here is one write — register an entry, or retire one — settled in the',
+  'dpm-clean': 'It uses **Session Startup** for nothing, being stateless',
+  'dpm-publish': 'It opens no session. There is nothing to resume',
+  'dpm-status': 'a report reads the rows and prints, so there is no',
+  'dpm-templates': 'both actions are one read and one render, and neither carries anything from the',
 }));
 
 /**
@@ -151,7 +151,7 @@ test('every skill reaches the resume path at startup, or is exempt with its reas
 test('an exempt skill that records a session fails the check', () => {
   // The three the epic names, asserted individually — a count would pass if a later edit exempted
   // one skill and brought another under the convention.
-  for (const name of ['artifact', 'status', 'templates']) {
+  for (const name of ['dpm-artifact', 'dpm-status', 'dpm-templates']) {
     assert.ok(EXEMPT.has(name), `${name} is neither following the procedure nor recorded as exempt`);
     assert.ok(skillSource(name).includes(EXEMPT.get(name)),
       `${name}'s exemption cites a reason its file no longer gives`);

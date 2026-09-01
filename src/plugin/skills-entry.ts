@@ -42,6 +42,12 @@
  * the defence against it. Reporting the reachable half is worth more than reporting nothing, and
  * claiming the whole would be worth less than either.
  *
+ * **And the alarm has a second half, which reads the registry back rather than reading it first.**
+ * `claimedNames` answers *whose name am I about to take*; `displacedSkills` answers *did I keep
+ * mine*, by finding the winning entry for every name dpm registered and asking whether it resolves
+ * inside this package. The two directions of one failure — dpm silently overwriting somebody, and
+ * dpm being silently overwritten — and neither is visible from the other's reading.
+ *
  * ## The disposal that is not this module's to perform
  *
  * Under v2 `setup` returned a cleanup and the entry disposed what it had registered, because an
@@ -59,6 +65,7 @@
 import type { Plugin } from '@opencode-ai/plugin-v1/v2/promise';
 
 import { type SkillSource, skillSources } from './registration.ts';
+import { packageRoot, withinPackage } from './root.ts';
 
 /**
  * The plugin id, which is distinct from the tools module's by necessity rather than by taste.
@@ -103,11 +110,89 @@ export const clashNotice = (names: readonly string[]): string =>
   + `${names.join(', ')}. Nothing is lost on disk; rename dpm's skill or remove the other source `
   + 'if that is the wrong way round.\n';
 
+/**
+ * One dpm skill whose registry entry is not dpm's, as the read-back found it.
+ *
+ * `location` is `null` where the name is not in the registry at all — registered and then absent,
+ * which is a different failure from registered and then displaced and wants a different sentence.
+ */
+export interface Displaced {
+  readonly name: string;
+  readonly location: string | null;
+}
+
+/**
+ * Every skill dpm registered whose winning entry in the registry is not a path inside dpm.
+ *
+ * **v1 keys skills on `name` and the later registration wins, so the winner is the last entry
+ * carrying the name** — which is the whole reason this is a read-back rather than a second look at
+ * what dpm computed. `claimedNames` above answers "whose name am I about to take"; this answers
+ * "did I keep mine", and the two are different questions with different answers. The prefix makes
+ * the first rare and the second rarer, and rare is not the same as reported.
+ *
+ * **Containment is `withinPackage`, so a package installed alongside this one is outside it.** A
+ * `startsWith` on the root would place `/opt/dpm-other/skills/dpm-do` inside `/opt/dpm` and report
+ * a displacement as a clean pass — the failure mode being looked for, read as its own absence.
+ *
+ * **What it can see is what `claimedNames` can see, and for the same reason.** A `directory` or
+ * `url` source is a path the host has not expanded, so a skill hiding behind one is invisible here;
+ * a name behind such a source could win and this would report nothing. Reporting the readable half
+ * is worth more than reporting nothing, and claiming the whole would be worth less than either.
+ *
+ * @param registered What dpm handed the draft.
+ * @param registry What the draft holds, read back after.
+ * @param root The installed package root.
+ * @returns {Displaced[]} Empty when every dpm name resolves to dpm's own directory.
+ */
+export function displacedSkills(
+  registered: readonly SkillSource[],
+  registry: readonly SkillSource[],
+  root: string,
+): Displaced[] {
+  const mine = claimedNames(registered);
+  const winner = new Map<string, string>();
+
+  for (const source of registry) {
+    if (source.type === 'embedded' && mine.has(source.skill.name)) {
+      winner.set(source.skill.name, source.skill.location);
+    }
+  }
+
+  return [...mine]
+    .filter((name) => {
+      const location = winner.get(name);
+
+      return location === undefined || !withinPackage(root, location);
+    })
+    .sort()
+    .map((name) => ({ name, location: winner.get(name) ?? null }));
+}
+
+/**
+ * What dpm says when a skill it registered is not the one the registry holds under that name.
+ *
+ * **Named, and each with the path that won**, for `clashNotice`'s reason one step further on: a
+ * reader told that `dpm-do` was displaced still cannot act, and a reader told which package it was
+ * displaced by can go and look at it.
+ *
+ * @param displaced The skills whose entries are not dpm's.
+ * @returns {string}
+ */
+export const displacementNotice = (displaced: readonly Displaced[]): string =>
+  `dpm: after registering, ${displaced.length === 1 ? 'a skill dpm registered is' : `${displaced.length} skills dpm registered are`} `
+  + 'not what the host now holds under that name — v1 keys skills on name, so something else has '
+  + `taken ${displaced.length === 1 ? 'it' : 'them'}, and invoking ${displaced.length === 1 ? 'it' : 'them'} will run that instead of dpm's: `
+  + `${displaced.map(({ name, location }) => `${name} (${location ?? 'not in the registry at all'})`).join(', ')}. `
+  + 'Remove the other source, or rename it, if that is the wrong way round.\n';
+
 export default {
   id: PLUGIN_ID,
 
+  // **Both readings are resolved before the transform runs** — ADR 01-07. The host replays
+  // transforms, so a root computed inside one is a root recomputed on every replay.
   async setup(context) {
     const sources = skillSources(context.options);
+    const root = packageRoot();
     const report = (message: string) => { process.stderr.write(message); };
 
     await context.skill.transform((draft) => {
@@ -119,6 +204,16 @@ export default {
       for (const source of sources) draft.source(source);
 
       if (clashes.length > 0) report(clashNotice(clashes));
+
+      // **The other direction, and it is quiet in the ordinary case by construction.** dpm's
+      // sources went in last, so within dpm's own transform dpm's entries win and there is nothing
+      // to say. What this catches is the cases where that reasoning does not hold: a host that keys
+      // and replaces rather than appends, a replay that reorders the transforms, a source the
+      // host's decode dropped so dpm's name is registered to nobody. None of those announce
+      // themselves, and each leaves a user invoking a dpm skill and getting something else.
+      const displaced = displacedSkills(sources, draft.list(), root);
+
+      if (displaced.length > 0) report(displacementNotice(displaced));
     });
   },
 } satisfies Plugin;

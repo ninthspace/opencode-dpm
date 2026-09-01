@@ -22,7 +22,7 @@ import { publish } from '../src/publish/index.ts';
 import {
   describe, guard, DIVERGENCE, DUMP_PATH, PUBLISH_COMMAND, PUBLISH_INVOCATION, PUBLISH_SKILL,
 } from '../src/guard/index.ts';
-import { ID_PREFIX, SKILL_FILE } from '../src/plugin/skills.ts';
+import { SKILL_FILE, discoverSkills } from '../src/plugin/skills.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 
@@ -97,14 +97,19 @@ test('must NOT — the message names a command and nothing asserts the command e
   // it. Asserted by shape, because the absolute prefix differs per machine.
   assert.match(PUBLISH_COMMAND, /[/\\]bin[/\\]dpm-publish\.ts$/);
 
-  // **The same reading for the other half of the sentence.** The skill id is composed rather than
-  // resolved — there is no filesystem operation that turns `dpm-publish` into a directory without
-  // knowing the prefix — so the check runs the composition backwards and asks whether the body is
-  // there. A skill renamed or removed fails here, in the suite, rather than in the terminal of
-  // someone whose commit has just been refused.
-  assert.equal(PUBLISH_SKILL.startsWith(ID_PREFIX), true,
-    `${PUBLISH_SKILL} is not a registered id — the plugin prefixes every skill with ${ID_PREFIX}`);
-  assert.equal(existsSync(join(ROOT, 'skills', PUBLISH_SKILL.slice(ID_PREFIX.length), SKILL_FILE)),
+  // **The same reading for the other half of the sentence.** A skill renamed or removed fails here,
+  // in the suite, rather than in the terminal of someone whose commit has just been refused.
+  //
+  // **This used to run a composition backwards, and epic 02-02 removed the composition.** The id
+  // was built at registration out of a directory that did not carry the prefix, so the only way to
+  // ask the filesystem about it was to strip the prefix off again — `PUBLISH_SKILL.slice(…)` — and
+  // then a separate assertion that the prefix was there to strip. The prefix lives on disk now, so
+  // both collapse into the one question worth asking: **is this a name the plugin actually
+  // registers?** Asked of the discoverer rather than of the filesystem, because a directory the
+  // discoverer skips — one with no `SKILL.md` — is not a skill however much it looks like one.
+  assert.ok(discoverSkills(ROOT).some((skill) => skill.name === PUBLISH_SKILL),
+    `the guard offers the skill ${PUBLISH_SKILL} and the plugin registers no such name`);
+  assert.equal(existsSync(join(ROOT, 'skills', PUBLISH_SKILL, SKILL_FILE)),
     true, `the guard names the skill ${PUBLISH_SKILL} and there is no such skill`);
 
   // The control: the same reading over a path that does not exist is false, so the assertions above

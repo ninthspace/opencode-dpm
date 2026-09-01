@@ -32,7 +32,7 @@ import { skillNames, skillSource, ungated, blocks } from './support/skills.js';
  * this cannot quietly become a list of blocks somebody once waved through.
  */
 const EXEMPT = new Map([
-  ['present ### 5. Record it', {
+  ['dpm-present ### 5. Record it', {
     reason: 'confirmation is delegated to the shared Artifact Publishing procedure, which is '
       + 'separately confirmed and never assumed from the draft having been approved',
     bears_out: (source) => /Follow the shared \*\*Artifact Publishing\*\* procedure/.test(source),
@@ -126,21 +126,21 @@ test('coverage is read off the file, so a blanket rule reaches a section and not
 
 test('an exemption whose premise has lapsed is a complaint, not a pass', () => {
   // One skill, so what the assertions see is the exemption mechanism and nothing else.
-  const only = (source) => new Map([['present', source]]);
-  const present = skillSource('present');
+  const only = (source) => new Map([['dpm-present', source]]);
+  const present = skillSource('dpm-present');
 
   assert.deepEqual(audit(only(present)), [], 'the exemption holds on the file as it stands');
 
   assert.deepEqual(
     audit(only(present.replace('Follow the shared **Artifact Publishing** procedure', 'Publish it'))),
-    ['present ### 5. Record it is exempt for a reason the file no longer bears out'],
+    ['dpm-present ### 5. Record it is exempt for a reason the file no longer bears out'],
   );
 
   // The other direction: an exemption for a block that now gates is a stale entry, and stale is
   // how a list of waved-through blocks starts.
   assert.deepEqual(
     audit(only(present.replace('### 5. Record it', '### 5. Record it\n\nGate with `AskUserQuestion` first.'))),
-    ['present ### 5. Record it is exempt and no longer needs to be'],
+    ['dpm-present ### 5. Record it is exempt and no longer needs to be'],
   );
 });
 

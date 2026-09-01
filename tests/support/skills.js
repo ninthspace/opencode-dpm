@@ -24,11 +24,37 @@ import { SERVER_NAME } from '../../src/plugin/index.ts';
 const SKILLS = join(import.meta.dirname, '..', '..', 'skills');
 
 /**
- * @param {string} name The skill's directory name, which is also its `name:` in the front matter.
+ * The prefix every skill directory carries — epic 02-02 story 1.
+ *
+ * **Written here rather than imported from `src/plugin/skills.ts`, and the direction reverses in
+ * story 2.** `ID_PREFIX` there is a *registration* decision: it composes an id the host is handed
+ * and the tree knows nothing about. What this names is a fact about the tree. Story 2 removes the
+ * registration-time prefixing precisely because the two had drifted into one constant doing two
+ * jobs, so importing it here would re-tie the knot that story exists to cut.
+ */
+export const PREFIX = 'dpm-';
+
+/**
+ * @param {string} name The skill, named either as it sits on disk (`dpm-do`) or bare (`do`).
+ *
+ *   **Both forms are accepted, and that is a decision rather than a convenience.** Forty test files
+ *   name a skill by its bare word — `skillSource('status')` — because until this story that *was*
+ *   the directory. Renaming twenty-three directories and forty call sites in one step is how retro
+ *   03's pilot lost an afternoon: the cost landed in the instruments, not the rename. So the
+ *   instrument absorbs it, and the bare word goes on meaning what a reader means by it.
+ *
+ *   The tolerance is one-directional and cannot mask the failure it looks like it might. A name
+ *   already carrying the prefix is passed through untouched, so `skillSource('dpm-do')` reads
+ *   `skills/dpm-do/` rather than `skills/dpm-dpm-do/`; a name for a skill that is not there still
+ *   throws `ENOENT` naming the path it looked in. What it does *not* do is decide anything about
+ *   what `skillNames()` returns — that reads the tree, so it began yielding the prefixed form on
+ *   the day the directories moved.
  * @returns {string}
  */
 export function skillSource(name) {
-  return readFileSync(join(SKILLS, name, 'SKILL.md'), 'utf8');
+  const directory = name.startsWith(PREFIX) ? name : `${PREFIX}${name}`;
+
+  return readFileSync(join(SKILLS, directory, 'SKILL.md'), 'utf8');
 }
 
 /** The shared conventions, which a skill reaches by naming the file and reading it at startup. */

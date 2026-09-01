@@ -33,7 +33,7 @@ import {
   driveStartup,
 } from './support/skills.js';
 
-const SKILL = 'epics';
+const SKILL = 'dpm-epics';
 const source = skillSource(SKILL);
 
 /**

@@ -75,7 +75,7 @@ export type SkillSource = Parameters<SkillDraft['source']>[0];
  * `resolveSupportingPaths` nowhere to run. Under this route it runs, and what the host stores is
  * what it produced.
  *
- * **The prefix goes on `name`, and that is FR5 rather than a liberty taken with ADR 01-05.** What
+ * **The prefix rides on `name`, and that is FR5 rather than a liberty taken with ADR 01-05.** What
  * v1 keeps of a skill is `{ name, description, location, content }` and nothing else — an `id`
  * passed alongside them is dropped by the host's own decode, which is observed rather than read off
  * a type. So `name` *is* the keyspace here, it is flat, and a later registration of `do` wins. ADR
@@ -85,13 +85,22 @@ export type SkillSource = Parameters<SkillDraft['source']>[0];
  * on the name v1 evaluates, which is FR7, and every skill description already says *invoke with the
  * id `dpm-…`*, which stays true when the name is that string.
  *
+ * **Nothing here composes that prefix, and epic 02-02 story 2 is why.** This function used to read
+ * `skill.id` — a string discovery built by prepending `ID_PREFIX` to a directory called `do` — so
+ * the namespace defence was applied at registration to a tree that did not carry it, and a skill's
+ * identity was half on disk and half in a constant. The directories are named `dpm-<skill>` now and
+ * each declares that same name in its own front matter, so the field is copied rather than
+ * constructed. The string that reaches the host is byte-identical to the one that reached it
+ * before; a criterion pins that, because ADR 01-05 records a registered name as effectively
+ * permanent from the first publish.
+ *
  * @param skill One skill, as discovery found it.
  * @returns {SkillSource}
  */
 const embedded = (skill: DiscoveredSkill): SkillSource => ({
   type: 'embedded',
   skill: {
-    name: skill.id,
+    name: skill.name,
     ...(skill.description === undefined ? {} : { description: skill.description }),
     location: skill.location,
     content: skill.content,

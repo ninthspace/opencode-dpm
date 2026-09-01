@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 import { skillNames, skillSource, section, prose, toolNames } from './support/skills.js';
 
 /** FR7's seven, in the order the requirement names them. */
-const SEVEN = ['architect', 'brief', 'do', 'epics', 'review', 'retro', 'spec'];
+const SEVEN = ['dpm-architect', 'dpm-brief', 'dpm-do', 'dpm-epics', 'dpm-review', 'dpm-retro', 'dpm-spec'];
 
 const RESOLVER = 'resolve_reference';
 
@@ -53,7 +53,13 @@ test('the seven are a written list, not a sweep of the tree', () => {
   const [declaration] = code.filter((line) => /const SEVEN = /.test(line));
 
   assert.ok(declaration, 'the list is declared in this file, so there is something to check');
-  assert.match(declaration, /^const SEVEN = \[(?:\s*'[a-z]+',?)+\];$/,
+  // **The character class carries the hyphen, and that is part of the rename rather than an
+  // afterthought.** It was `[a-z]+`, written when a skill was called `do`; epic 02-02 renamed the
+  // tree to `dpm-do` and this predicate would have gone on being a valid regex that matched
+  // nothing, reporting a correct literal list as derived. Library lesson 04's instruction is to
+  // grep for the predicates filtering on the old form separately from the literal name, and this
+  // is the one it was written about.
+  assert.match(declaration, /^const SEVEN = \[(?:\s*'[a-z-]+',?)+\];$/,
     'the seven are string literals — nothing in that line reads the tree or derives them');
 
   assert.equal(SEVEN.length, 7, 'seven, as FR7 names them');

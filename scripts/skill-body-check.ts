@@ -58,10 +58,17 @@ export const HOST_MECHANISM = [
  * would satisfy the check by hiding what the check exists to catch. The decision was taken
  * deliberately: `ralph` stays registered and the gap stays visible, printed on every run.
  *
- * **Exactly one string in exactly one file.** `ralph` naming any other mechanism fails with the
+ * **Exactly one string in exactly one file.** `dpm-ralph` naming any other mechanism fails with the
  * rest, and a second body claiming an exemption has to claim it here, in the open.
+ *
+ * **`skill` is the directory name, which epic 02-02 story 1 prefixed.** It is compared against what
+ * `bodies` reads off the tree, so the two have to be spelled the same way. This one was `'ralph'`
+ * and would have gone on being a valid string that matched nothing: the exemption would simply stop
+ * being applied, `dpm-ralph`'s five stop-hook references would surface as five breaches, and the
+ * check would refuse a corpus that had not changed. Library lesson 04's rule about renames — grep
+ * for the predicates that filter on the old form, separately from the literal name.
  */
-const RECORDED_GAP = { skill: 'ralph', pattern: /`?\.claude\/ralph-loop\.local\.md`?/g };
+const RECORDED_GAP = { skill: 'dpm-ralph', pattern: /`?\.claude\/ralph-loop\.local\.md`?/g };
 
 /** Every skill directory holding a body, read from the tree so a new one is covered on arrival. */
 function bodies(root: string): { name: string, path: string, source: string }[] {

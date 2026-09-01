@@ -108,7 +108,7 @@ test('the skill registration hands back a registration that removes what it adde
 
   assert.ok(once > 0, 'the first pass registered nothing, so a reload cannot duplicate it');
   assert.deepEqual(host.sources.map((source) => source.skill.name).sort(),
-    discoverSkills(packageRoot()).map((skill) => skill.id).sort());
+    discoverSkills(packageRoot()).map((skill) => skill.name).sort());
 
   // **The duplication is real, and this registry would show it.** Without this the claim that the
   // host must unwind is unfalsifiable: a registry that silently deduped would leave one of
