@@ -25,7 +25,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { SERVER_NAME } from '../src/plugin/index.ts';
+import { SERVER_NAME } from '../src/plugin/registration.ts';
 import { spineTools } from '../src/tools/index.ts';
 import { openPlanningDatabase } from './support/planning-database.js';
 

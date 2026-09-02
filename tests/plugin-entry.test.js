@@ -1,12 +1,17 @@
 /**
  * Epic 01-02 Story 1 — the plugin entries, MCP registration and the profile seam.
  *
- * **Rewritten when epic 02-01 retargeted the plugin at OpenCode v1 alone.** What this file tests is
- * the same nine criteria; what changed underneath is that there is no longer one entry with a
- * `setup` that registers both things. v1 offers its MCP registry through a `config` hook on the
- * callable `server` export and its skill registry through `skill.transform` on the object route,
- * and one module cannot carry both — so `src/plugin/index.ts` holds the first, `skills-entry.ts`
- * holds the second, and the two drivers in `support/host-contexts.js` exercise one route each.
+ * **Rewritten twice, and the nine criteria are unchanged both times.** Epic 02-01 retargeted the
+ * plugin at OpenCode v1 alone, which offers its MCP registry through a `config` hook on the
+ * callable `server` export and its skill registry through `skill.transform` on the object route —
+ * so the single v2 entry became two, one per route. Epic 02-05 story 2 then found that the object
+ * route is unreachable on 1.18.25: it is fed by a `plugins` config key the host strips. The second
+ * entry was deleted and the skills are registered by naming `skills/` under the host's own `skills`
+ * key, which is a directory the host walks itself.
+ *
+ * So what these criteria are asserted against moved twice, and what they assert did not. The skill
+ * half is now read through `registeredSkills()` — `discoverSkills` over the package root, which is
+ * what the host's walk amounts to — rather than through a registration driver.
  *
  * **The registrations are driven against doubles built from a recorded host, and that is what makes
  * seven of the nine criteria checkable here at all.** The other two are tagged `manual` because
@@ -33,16 +38,15 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 
 import * as tools from '../src/plugin/index.ts';
-import { SERVER_NAME } from '../src/plugin/index.ts';
-import skillsEntry from '../src/plugin/skills-entry.ts';
+import { SERVER_NAME } from '../src/plugin/registration.ts';
 import { DEFAULT_PROFILE, PROFILES, profileFrom } from '../src/plugin/profile.ts';
 import {
   SERVER_EXECUTABLE, SKILLS_DIRECTORY, packageRoot, withinPackage,
 } from '../src/plugin/root.ts';
 import { localServer } from '../src/plugin/server.ts';
 import { SKILL_FILE, discoverSkills, frontMatter } from '../src/plugin/skills.ts';
-import { PREFIX } from './support/skills.js';
-import { registerServer, registerSkills } from './support/host-contexts.js';
+import { PREFIX, registeredSkills } from './support/skills.js';
+import { registerServer } from './support/host-contexts.js';
 import { packageTree, skillSource } from './support/package-tree.js';
 import { runNode } from './support/run-node.js';
 import { lifecycleScripts, packageManifest } from './support/sources.js';
@@ -88,26 +92,66 @@ test('registration registers the bundled MCP server as a local command that exis
     `the registered command names ${entry.command[1]}, which is not in this tree`);
 });
 
-test('the manifest declares both entries, and they are the files these tests imported [integration]', () => {
+test('the manifest declares the entry, and it is the file these tests imported [integration]', () => {
   const manifest = packageManifest();
 
   // Observed rather than assumed: what a user's `plugin` array names is resolved and imported, so
-  // `exports` is what a package installed by name resolves through. There are two entries because
-  // v1 offers its two registries through two protocols and one module cannot speak both, so the
-  // user's array holds both — neither conditional, and neither chosen.
+  // `exports` is what a package installed by name resolves through.
+  //
+  // **There used to be two, and epic 02-05 story 2 left one.** `./skills` named the entry that
+  // registered through `skill.transform`, on a route 1.18.25 reaches through a `plugins` config key
+  // it strips before any loader sees it. The skills are named as a *directory* under the host's own
+  // `skills` key now, which is not something a package manifest can export — so the second entry
+  // went, and so did the export that pointed at it.
+  assert.deepEqual(Object.keys(manifest.exports), ['.'],
+    'the manifest declares an entry other than the plugin, and there is only one route into v1');
   assert.equal(manifest.exports['.'], './src/plugin/index.ts',
-    'the manifest names the tools entry, and names a source rather than a build output');
-  assert.equal(manifest.exports['./skills'], './src/plugin/skills-entry.ts',
-    'the manifest names the skills entry');
+    'the manifest names the plugin entry, and names a source rather than a build output');
 
   for (const path of Object.values(manifest.exports)) {
     assert.ok(existsSync(join(ROOT, path)), `${path} is declared and is not in the tree`);
   }
 
-  // The control: these tests imported from somewhere, and it must be the same two files.
-  assert.equal(typeof tools.server, 'function', 'the declared tools entry exports a callable server');
-  assert.equal(typeof skillsEntry.setup, 'function', 'the declared skills entry exports a setup');
-  assert.equal(skillsEntry.id, 'dpm-skills', 'and identifies itself, which is the id the host lists');
+  // The other half a user writes down, which the manifest cannot carry and this can: the directory
+  // the `skills` key points at is in the package, and it holds the corpus.
+  assert.equal(discoverSkills(ROOT).length, 23,
+    `${SKILLS_DIRECTORY}/ does not hold the twenty-three skills the install points the host at`);
+
+  // The control: these tests imported from somewhere, and it must be that file.
+  assert.equal(typeof tools.server, 'function', 'the declared plugin entry exports a callable server');
+});
+
+test('the entry module exports its route and nothing else [unit]', async () => {
+  // **The rule the type graph cannot state and 1185 tests did not catch.** OpenCode 1.18.25 walks
+  // every export of a plugin module and requires each one to be a plugin, so a non-function export
+  // fails the whole module with `Plugin export is not a function`. The host logs one ERROR line and
+  // carries on — no server registered, and nothing in the interface saying so.
+  //
+  // Epic 02-05 story 2 found it by running the CLI against a throwaway project, and isolated it to
+  // one variable with a pair of probes in the same session: a module exporting `server` alone
+  // loaded and its config hook reached the MCP registry; the same module with one string constant
+  // added did not load at all. Before that, `SERVER_NAME` lived here, and every test that exercised
+  // the route reached into the module and called it — which is a question about the module rather
+  // than about the host, and can only ever be answered yes.
+  //
+  // Asserted as the exact set rather than as "no non-function export": the rule the host applies is
+  // about every export, and one a reader can hold whole is worth more than one hedged by kind.
+  // `registration.ts` is where the moved declaration went.
+  assert.deepEqual(
+    Object.keys(await import('../src/plugin/index.ts')).sort(), ['server'],
+    'src/plugin/index.ts exports more than its route, which stops the module loading under 1.18.25',
+  );
+
+  // The control on that reading. `Object.keys` over a module namespace is the kind of reading that
+  // returns an empty array when it has gone wrong — a wrong specifier, a namespace that is not one
+  // — and an empty array compared against an empty expectation passes. So a module known to export
+  // several things is read the same way, and has to come back with them.
+  const sibling = await import('../src/plugin/registration.ts');
+
+  assert.ok(
+    Object.keys(sibling).length >= 2,
+    'the reading returned almost nothing for a module that exports plenty, so it is not reading exports',
+  );
 });
 
 // --- Criterion 4 (must NOT): nothing to copy, hand-edit or run after install --------------------
@@ -163,10 +207,16 @@ test('the registered skill set is computed from the profile selection [unit]', a
   assert.throws(() => profileFrom({ profile: 7 }), /no profile named 7/,
     'the option comes from a user config, so it may not be a string at all');
 
-  // The option reaches the registration rather than only the profile lookup, which is the half a
-  // test of `profileFrom` alone cannot show.
-  await assert.rejects(() => registerSkills(skillsEntry, { profile: 'lte' }), /no profile named "lte"/,
-    'an unknown profile is accepted at registration, so a typo silently registers the default set');
+  // **The half this used to drive is gone, and saying so is the point of leaving the note.** The
+  // last assertion here handed `{ profile: 'lte' }` to the skills entry and required registration
+  // itself to refuse it, because a seam nothing consults is not a seam. Epic 02-05 story 2 deleted
+  // that entry: 1.18.25 strips the config key its route is reached through, so the skills are
+  // registered by pointing the host at `skills/`, and a directory the host walks takes no options.
+  //
+  // The seam is intact where ADR 01-08 puts most of it — the tool surface and refusal text are the
+  // server's, and the server is still a plugin registration — and `full` is the only profile there
+  // has ever been, so nothing observable changed. What FR13's `lite` cannot now do is register
+  // fewer *skills*, and whoever writes it will need a different mechanism for that half.
 });
 
 test('must NOT — the entry hardcodes the skill list [unit]', async (t) => {
@@ -187,52 +237,53 @@ test('must NOT — the entry hardcodes the skill list [unit]', async (t) => {
   assert.deepEqual(discovered.map((s) => s.name).sort(), ['alpha', invented].sort(),
     'a skill that exists only on disk did not reach the registration set');
 
-  // And the real tree registers the real skills, so the reading works on more than a fixture.
-  const { sources } = await registerSkills(skillsEntry);
-  const registered = namesOf(sources).sort();
+  // And the real tree yields the real skills, so the reading works on more than a fixture.
+  const sources = registeredSkills();
+  const registered = sources.map((s) => s.name).sort();
 
   assert.deepEqual(registered, discoverSkills(ROOT).map((s) => s.name).sort());
   assert.ok(registered.length >= 20, `only ${registered.length} skills registered`);
 
-  // **Every registered name carries the prefix, and under v1 the name is where it has to live.**
-  // What the host keeps of an embedded skill is `{ name, description?, location, content }` — an
-  // `id` alongside them is dropped by its own decode, observed rather than assumed — so `name` is
-  // the flat keyspace ADR 01-05 exists to defend and FR5 is the requirement that says so.
+  // **Every name carries the prefix, and under v1 the name is where it has to live.** What the host
+  // keeps of a skill is `{ name, description?, location, content }` — an `id` alongside them is
+  // dropped by its own decode, observed rather than assumed — so `name` is the flat keyspace ADR
+  // 01-05 exists to defend and FR5 is the requirement that says so. Since epic 02-05 story 2 the
+  // host reads that field itself, out of the front matter, which was probed: a directory named
+  // `zzz-dirname` declaring `probe-frontmatter` registered under the declared name.
   //
   // **The prefix is read from the suite's own constant, not from `src/`, because epic 02-02 story 2
-  // deleted the one in `src/`.** Registration composes nothing now: the directories are named
-  // `dpm-<skill>` and each declares that name, so what this asserts is that the tree's own
-  // namespacing survives the trip through registration intact.
-  assert.deepEqual(sources.filter((source) => !source.skill.name.startsWith(PREFIX)), []);
+  // deleted the one in `src/`.** Nothing composes it: the directories are named `dpm-<skill>` and
+  // each declares that name, so what this asserts is that the tree's own namespacing is what the
+  // host will find.
+  assert.deepEqual(sources.filter((source) => !source.name.startsWith(PREFIX)), []);
 
   // The control on that reading, since a filter over an empty set is also empty.
   assert.equal(`${PREFIX}review`.startsWith(PREFIX), true);
   assert.equal('review'.startsWith(PREFIX), false);
 
-  // Every source is the embedded variant, which is what carries the computed body rather than
-  // letting the host re-read `SKILL.md` and lose the shared-procedure rewrite — FR4, ENVX2.
-  assert.deepEqual([...new Set(sources.map((source) => source.type))], ['embedded']);
+  // And each one is a body in this package rather than a stub or a stray.
   for (const source of sources) {
-    assert.ok(source.skill.content.length > 0, `${source.skill.name} registered with an empty body`);
-    assert.ok(withinPackage(join(ROOT, SKILLS_DIRECTORY), source.skill.location));
+    assert.ok(source.content.length > 0, `${source.name} would register with an empty body`);
+    assert.ok(withinPackage(join(ROOT, SKILLS_DIRECTORY), source.location));
   }
 });
 
 // --- Criterion 7: replaying the registrations produces the same registrations --------------------
 
 test('registration replayed against a fresh host registers exactly the same things [unit]', async () => {
-  const first = { config: await registerServer(tools), skills: await registerSkills(skillsEntry) };
-  const second = { config: await registerServer(tools), skills: await registerSkills(skillsEntry) };
+  const first = { config: await registerServer(tools), skills: registeredSkills() };
+  const second = { config: await registerServer(tools), skills: registeredSkills() };
 
   assert.deepEqual(second.config.mcp, first.config.mcp,
     'the server entry differs between the first pass and the replay');
-  assert.deepEqual(second.skills.sources, first.skills.sources,
+  assert.deepEqual(second.skills, first.skills,
     'the skill set differs between the first pass and the replay');
 
-  // ADR 01-07's point: everything a transform reads is resolved before the transform runs, so a
-  // replay observes the same values. Both routes performed exactly one registration each.
-  assert.equal(first.skills.transforms, 1, 'the skills route ran more than one transform');
-  assert.ok(first.skills.sources.length > 0, 'the first pass registered nothing, so the replay is vacuous');
+  // ADR 01-07's point: everything is resolved before anything is handed over, so a replay observes
+  // the same values. The skills half of that used to be about a transform and is now about a
+  // directory read — a weaker mechanism carrying the same guarantee, and `plugin-reload.test.js`
+  // is where the reason is written down.
+  assert.ok(first.skills.length > 0, 'the first pass found nothing, so the replay is vacuous');
 });
 
 // --- Criterion 8 (must NOT): registration writes nothing ----------------------------------------
@@ -253,25 +304,21 @@ test('must NOT — a registration writes to the project on disk [integration]', 
 
   t.after(() => rmSync(elsewhere, { recursive: true, force: true }));
 
+  // The skills half used to run here too, driving the deleted entry's `setup`. It is gone with the
+  // entry, and the claim it made is now discharged by arithmetic rather than by observation: dpm
+  // ships no code that registers a skill, so there is no skill registration that could write.
+  // `discoverSkills` is still driven, because *reading* the tree is the one thing left that touches
+  // the filesystem on that side and a read that wrote would be exactly this test's business.
   writeFileSync(script, `
     import { readdirSync, writeFileSync } from 'node:fs';
     import * as tools from ${JSON.stringify(join(ROOT, 'src', 'plugin', 'index.ts'))};
-    import skills from ${JSON.stringify(join(ROOT, 'src', 'plugin', 'skills-entry.ts'))};
+    import { discoverSkills } from ${JSON.stringify(join(ROOT, 'src', 'plugin', 'skills.ts'))};
 
     const config = {};
-    const sources = [];
 
     await (await tools.server({}, {})).config(config);
-    await skills.setup({
-      options: {},
-      skill: {
-        transform: async (cb) => {
-          await cb({ source: (s) => sources.push(s), list: () => [...sources] });
-          return { dispose: async () => {} };
-        },
-      },
-    });
 
+    const sources = discoverSkills(${JSON.stringify(ROOT)});
     const after = readdirSync(process.cwd()).filter((name) => name !== 'register.mjs');
 
     writeFileSync('control', 'a write in this directory is visible to the reading above');

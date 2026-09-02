@@ -19,7 +19,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { SERVER_NAME } from '../../src/plugin/index.ts';
+import { SERVER_NAME } from '../../src/plugin/registration.ts';
+import { packageRoot } from '../../src/plugin/root.ts';
+import { discoverSkills } from '../../src/plugin/skills.ts';
 
 const SKILLS = join(import.meta.dirname, '..', '..', 'skills');
 
@@ -77,6 +79,29 @@ export function skillNames() {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
+}
+
+/**
+ * Every skill as the host registers it — **the reading that replaced `skillSources()`**.
+ *
+ * Until epic 02-05 story 2 the suite asked `skillSources({})` what the plugin would hand
+ * `skill.transform`. That route is gone: 1.18.25 strips the config key that reaches it, so the
+ * skills are registered by naming `skills/` under the host's own `skills` key and letting it walk
+ * the tree. `discoverSkills` is what the host's walk amounts to — one record per `SKILL.md`, its
+ * `name` and `description` taken from the front matter — so a test that used to read the
+ * registration now reads this instead, and reads the same fields.
+ *
+ * **It is a stand-in for the host and not the host**, which is the distinction epic 02-05 story 2
+ * was taught the hard way: 1185 tests drove the entry modules by hand and none of them asked the
+ * host whether it would accept the module. What keeps this one honest is that the claim it supports
+ * is narrow — *these names, these bodies, off this tree* — and the host was separately observed
+ * registering exactly those names off exactly this directory. The wider claim, that the arrangement
+ * loads at all, is not this function's to make and is not made here.
+ *
+ * @returns {import('../../src/plugin/skills.ts').DiscoveredSkill[]}
+ */
+export function registeredSkills() {
+  return discoverSkills(packageRoot());
 }
 
 /**

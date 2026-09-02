@@ -1,16 +1,23 @@
 /**
- * Epic 02-01 Story 5 — the two entries as one installation.
+ * Epic 02-01 Story 5 — the two halves of the install as one installation.
  *
- * Stories 3 and 4 each verified one entry against the domain it registers into: the config hook
- * sets `mcp.dpm`, the skills entry registers twenty-three embedded sources. Both passed, and the
+ * Stories 3 and 4 each verified one half against the domain it registers into: the config hook
+ * sets `mcp.dpm`, the skills entry registered twenty-three embedded sources. Both passed, and the
  * arrangement was still broken, because **neither story asked a question that spans them**. Two
  * such questions turn out to matter, and they are the two this file is for.
  *
- * **Do the two entries describe the same installation?** They are separate modules loaded from
- * separate lines of a user's `plugin` array, and nothing in either one's own test would notice if
- * they resolved different roots — the server would be spawned from one tree and the skills read
- * from another, each internally consistent. `registration.ts` computes one `packageRoot()` for
- * both, and this is where that stops being an implementation detail and becomes a property.
+ * **Epic 02-05 story 2 changed what the second half is, and left the questions standing.** The
+ * skills entry had no loader under 1.18.25 and was deleted; the skills now reach the host through
+ * its own `skills` config key, pointed at this package's `skills/` directory. So the user writes a
+ * plugin path and a directory path rather than two plugin paths — and everything below is about the
+ * relationship between the two, which is what survived.
+ *
+ * **Do the two halves describe the same installation?** They are two separate lines in a user's
+ * configuration, and nothing in either half's own test would notice if they named different roots —
+ * the server would be spawned from one tree and the skills read from another, each internally
+ * consistent. This is where that stops being an implementation detail and becomes a property, and
+ * it got sharper with the change: two plugin entries resolved one `packageRoot()` between them, and
+ * a hand-written directory path resolves nothing.
  *
  * **Is the command the host is handed one it can actually run?** Story 3 asserted the entry equals
  * what `localServer` builds, which is true of any command whatever, including the one that shipped.
@@ -32,13 +39,13 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import * as tools from '../src/plugin/index.ts';
-import { SERVER_NAME } from '../src/plugin/index.ts';
-import skillsEntry from '../src/plugin/skills-entry.ts';
+import { SERVER_NAME } from '../src/plugin/registration.ts';
 import { RUNTIME } from '../src/plugin/server.ts';
 import {
   SERVER_EXECUTABLE, SKILLS_DIRECTORY, packageRoot, withinPackage,
 } from '../src/plugin/root.ts';
-import { registerServer, registerSkills } from './support/host-contexts.js';
+import { registerServer } from './support/host-contexts.js';
+import { registeredSkills } from './support/skills.js';
 
 const ROOT = packageRoot();
 
@@ -66,12 +73,18 @@ function carriesNodeSqlite(command, environment = {}) {
   }).status === 0;
 }
 
-/** One load of both entries, as a user's two-line `plugin` array produces. */
-async function loadBoth(options = {}) {
+/**
+ * One install, as a user's two config keys produce it.
+ *
+ * **The second half stopped being a plugin load in epic 02-05 story 2.** `skills` is a host config
+ * key naming a directory, so what a user installs is the plugin entry plus a path — and the question
+ * this file exists for is unchanged by that, because it was never about the loading. It is whether
+ * the two things a user writes down describe *one* installation.
+ */
+async function loadBoth() {
   const config = await registerServer(tools, {});
-  const { sources } = await registerSkills(skillsEntry, options);
 
-  return { config, sources };
+  return { config, sources: registeredSkills() };
 }
 
 // --- Criterion: one installation, described twice ------------------------------------------------
@@ -87,8 +100,8 @@ test('both entries register from the same package root [integration]', async () 
 
   // **The same tree, not two trees that agree.** Asserted as a shared prefix rather than by
   // comparing two calls to `packageRoot()`, which would agree with themselves whatever they
-  // returned: the executable and every skill location are read out of the registrations the host
-  // was actually handed.
+  // returned: the executable comes out of the registration the host was actually handed, and every
+  // skill location out of the directory the host is pointed at.
   assert.equal(entry.command[1], join(ROOT, SERVER_EXECUTABLE));
 
   // **`withinPackage`, not `startsWith`** — epic 02-02 story 4. This read `!location.startsWith(…)`,
@@ -96,9 +109,13 @@ test('both entries register from the same package root [integration]', async () 
   // starts with `${ROOT}/skills`'s parent and reads as a skill of dpm's. The check being made here
   // is precisely that a skill did not come from somewhere else, so the one path it must not accept
   // was the one it accepted.
+  //
+  // It matters more now than it did, not less. When both halves were plugin entries they resolved
+  // one `packageRoot()` between them and agreeing was the default; a user writing the `skills` path
+  // by hand can point it at a different clone, and nothing in the host would say so.
   const skills = join(ROOT, SKILLS_DIRECTORY);
   const strays = sources
-    .map((source) => source.skill.location)
+    .map((source) => source.location)
     .filter((location) => !withinPackage(skills, location));
 
   assert.deepEqual(strays, [], 'a skill is registered from outside the tree the server is spawned from');

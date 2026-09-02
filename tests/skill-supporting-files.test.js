@@ -33,11 +33,9 @@ import { join } from 'node:path';
 
 import { SKILLS_DIRECTORY, packageRoot } from '../src/plugin/root.ts';
 import { SKILL_FILE, discoverSkills } from '../src/plugin/skills.ts';
-import { skillSources } from '../src/plugin/registration.ts';
-import skillsEntry from '../src/plugin/skills-entry.ts';
-import { registerSkills } from './support/host-contexts.js';
 import { packageTree, skillSource } from './support/package-tree.js';
-import { moduleFilesUnder, withoutComments } from './support/sources.js';
+import { moduleFilesUnder, pluginSources, withoutComments } from './support/sources.js';
+import { registeredSkills } from './support/skills.js';
 
 const ROOT = packageRoot();
 
@@ -119,14 +117,14 @@ test('the comment that records the deletion is not itself a breach [unit]', () =
 
 // --- Criterion 2: what the registrar presents is what is on disk ----------------------------------
 
-test('every skill the v2 registrar presents is byte-identical to its file [integration]', () => {
-  const sources = skillSources({});
+test('every skill the host is handed is byte-identical to its file [integration]', () => {
+  const sources = registeredSkills();
 
   assert.equal(sources.length, 23, `${sources.length} skills registered, not the twenty-three on disk`);
 
   const altered = sources
-    .filter(({ skill }) => skill.content !== readFileSync(join(skill.location, SKILL_FILE), 'utf8'))
-    .map(({ skill }) => skill.name);
+    .filter((skill) => skill.content !== readFileSync(join(skill.location, SKILL_FILE), 'utf8'))
+    .map(({ name }) => name);
 
   assert.deepEqual(altered, [],
     'a registered body differs from the file it was read from, so something transformed it');
@@ -134,8 +132,8 @@ test('every skill the v2 registrar presents is byte-identical to its file [integ
   // The control: the comparison can come out false, and the planted difference is one character.
   const [first] = sources;
 
-  assert.notEqual(`${first.skill.content} `,
-    readFileSync(join(first.skill.location, SKILL_FILE), 'utf8'),
+  assert.notEqual(`${first.content} `,
+    readFileSync(join(first.location, SKILL_FILE), 'utf8'),
     'the comparison above does not notice a body that gained a character');
 });
 
@@ -161,43 +159,45 @@ test('a skill planted in a package is registered exactly as written [integration
   assert.equal(skill.location, join(root, SKILLS_DIRECTORY, 'dpm-planted'));
 });
 
-// --- Criterion 3: neither host's route transforms anything ----------------------------------------
+// --- Criterion 3: nothing dpm ships stands between a body and the host ----------------------------
 
-test('both host routes hand over the same bytes, and they are the file\'s [integration]', async () => {
-  // **Two entries, one tree, and until this epic they did not agree.** The v2 route ran the body
-  // through a substitution; the v1 route could not, because v1 reads `SKILL.md` off disk and never
-  // asks the plugin. Neither test would have noticed — each compared its own route against its own
-  // expectation. This compares them against each other and against the file, which is the only
-  // reading that can see a divergence between two things that are each internally consistent.
-  const v2 = new Map(skillSources({}).map(({ skill }) => [skill.name, skill.content]));
-  const { sources } = await registerSkills(skillsEntry);
-  const v1 = new Map(sources.map(({ skill }) => [skill.name, skill.content]));
+test('no module hands a skill body to the host, so there is nothing left to transform [unit]', () => {
+  // **This test used to compare two routes and now denies there is one.** Until epic 02-05 story 2
+  // the v2 route ran each body through a substitution and the v1 route could not, and the check
+  // worth having was whether the two agreed with each other and with the file. Both routes are
+  // gone: the object route's config key is stripped by 1.18.25, so dpm registers no skill at all
+  // and the host reads `skills/` itself. The criterion's substance — a maintainer's bytes reach the
+  // model unaltered — is now structural rather than behavioural, and this is what states it.
+  //
+  // The reading is over `src/`, because that is what ships. A transform living in the suite would
+  // be a test's business; one living here would run in a user's session.
+  const registering = pluginSources()
+    .filter(({ text }) => /\bskill\s*\.\s*transform\b|\btype:\s*'embedded'/.test(withoutComments(text)))
+    .map(({ name }) => name);
 
-  assert.deepEqual([...v1.keys()].sort(), [...v2.keys()].sort(),
-    'the two entries register different skills');
+  assert.deepEqual(registering, [],
+    'a module still registers skill sources, so there is a body transform to worry about again');
 
-  const diverged = [...v1].filter(([name, content]) => content !== v2.get(name)).map(([name]) => name);
+  // **Two controls, because an empty list is also what a reading that matches nothing produces.**
+  // The first shows the reading can find what it is looking for; the second shows it swept a corpus.
+  assert.deepEqual(
+    ['ctx.skill.transform(async (draft) => draft.source({ type: \'embedded\' }));']
+      .filter((text) => /\bskill\s*\.\s*transform\b|\btype:\s*'embedded'/.test(withoutComments(text))),
+    ['ctx.skill.transform(async (draft) => draft.source({ type: \'embedded\' }));'],
+    'a planted registration is not reported, so the emptiness above means nothing');
+  assert.ok(pluginSources().length > 20,
+    `the sweep read ${pluginSources().length} modules, which is too few to be the plugin tree`);
 
-  assert.deepEqual(diverged, [], 'the two entries hand the host different text for the same skill');
+  // And the positive half, kept here rather than left to the test above: what discovery reads is
+  // the file, so the bytes a maintainer edits are the bytes the host would find at that path.
+  const sources = registeredSkills();
 
-  // And the text they agree on is the file's, not a shared transform applied by both. Two routes
-  // agreeing is not the same as two routes leaving things alone.
-  const altered = skillSources({})
-    .filter(({ skill }) => v1.get(skill.name) !== readFileSync(join(skill.location, SKILL_FILE), 'utf8'))
-    .map(({ skill }) => skill.name);
-
-  assert.deepEqual(altered, [], 'both entries agree on text that is not what is on disk');
-
-  // The control: the comparison can find a divergence. Planted rather than argued, because an
-  // agreement between two empty maps is also an agreement.
-  assert.ok(v1.size === 23 && v2.size === 23, `${v1.size} and ${v2.size} skills, and there are 23`);
-
-  const transformed = new Map([...v2].map(([name, content], index) => [
-    name, index === 0 ? content.replace('#', '# ') : content,
-  ]));
-
-  assert.deepEqual([...v1].filter(([name, content]) => content !== transformed.get(name)).length, 1,
-    'one body altered by one character reads as agreement, so nothing above is being compared');
+  assert.equal(sources.length, 23, `${sources.length} skills discovered, and there are 23`);
+  assert.deepEqual(
+    sources
+      .filter((skill) => skill.content !== readFileSync(join(skill.location, SKILL_FILE), 'utf8'))
+      .map(({ name }) => name),
+    [], 'a discovered body differs from the file it was read from');
 });
 
 // --- The 01-02 decision, and its supersession -----------------------------------------------------

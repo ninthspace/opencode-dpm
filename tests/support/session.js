@@ -51,6 +51,25 @@ export const wire = (messages) => `${messages.map((message) => JSON.stringify(me
 export const repliesFrom = (stdout) => stdout.split('\n').filter(Boolean).map((line) => JSON.parse(line));
 
 /**
+ * The row a tool answered with, out of the envelope MCP wraps it in.
+ *
+ * A tool returns its row as JSON *text* inside a content block, so a caller that wants a field has
+ * to reach through `result.content[0].text` and parse. It lives here because that reach is the
+ * transport's shape and this module is where the transport's shape is kept, beside `wire` and
+ * `repliesFrom`.
+ *
+ * **Two other files unwrap a reply by hand and are right to.** `tools.test.js` and `reading.test.js`
+ * each compare `content[0].text` against the same reply's `structuredContent`, so the field is
+ * their subject rather than their route to one — putting it behind a helper would hide the thing
+ * under test. They were looked at when this was extracted and deliberately left alone, which is
+ * worth recording: the next reader to find three copies should know two of them are not copies.
+ *
+ * @param {object} reply A `tools/call` reply that succeeded.
+ * @returns {object} The row.
+ */
+export const body = (reply) => JSON.parse(reply.result.content[0].text);
+
+/**
  * `DPM_DATABASE` unset for the child.
  *
  * Inherited from the parent it would redirect the server away from the directory a test is

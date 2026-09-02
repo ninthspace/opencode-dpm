@@ -16,10 +16,11 @@ DPM parses prose.
   clone rebuilds from, automatically, on the first tool call.
 - **Two things to do once per repository**: symlink the pre-commit hook (with an
   **absolute** target), and publish before committing. Both are under *First run*.
-- **DPM is installed from a clone, not with `opencode plugin add`.** Two lines in your
-  `opencode.json` name two entry files in the checkout. *Installation* says why the
-  packaged install is not offered — it is a runtime restriction rather than a preference,
-  and it would give you the skills with none of the tools behind them.
+- **DPM is installed from a clone, not with `opencode plugin add`.** Two keys in your
+  `opencode.json` name the entry file and the skills directory in the checkout.
+  *Installation* says why the packaged install is not offered — it is a runtime restriction
+  rather than a preference, and it would give you the skills with none of the tools behind
+  them.
 - **The pre-commit hook is a symlink into that clone**, so it follows whatever you have
   checked out. A *stale* link refuses and tells you; a *missing* one is silent, and
   `.git/hooks/` is not tracked — so `ls -l .git/hooks/pre-commit` is worth running when
@@ -36,16 +37,29 @@ DPM parses prose.
   it registers one MCP server and twenty-three skills, and there is no other host it runs
   under.
 
-  **It takes two entries, because v1 speaks two plugin protocols and one module cannot
-  carry both.** The callable protocol — a `server` export — is the only one with a handle
-  on the MCP registry; the object protocol — a default `{ id, setup }` — is the only one
-  with a handle on the skill registry. A module exporting both stalls the loader. So DPM
-  ships one entry file for each, and both go in your `plugin` array unconditionally.
-- **Node 24 or later.** DPM uses `node:sqlite` from the standard library and runs its own
-  TypeScript by Node's native type-stripping, so there is no native module, no `node-gyp`,
-  no loader and no build step — but both of those need 24. Below the floor, each of DPM's
-  five executables refuses with a message naming the version you have and the version it
-  needs, rather than failing on an unknown builtin or a syntax error in a type annotation.
+  **It takes two configuration keys, and only one of them is a plugin.** `plugin` loads
+  DPM's entry file, whose `config` hook is the only handle v1 offers on the MCP registry.
+  The skills do not come through a plugin at all: v1's plugin API has no skill hook, and
+  the object protocol that does — a default `{ id, setup }` — is fed by a `plugins` key
+  that v1 strips before any loader sees it. So the skills go in `skills`, a first-class key
+  that points the host at a directory and lets it read the bodies itself.
+- **Node 24 or later, and it must be the `node` OpenCode resolves.** DPM uses `node:sqlite`
+  from the standard library and runs its own TypeScript by Node's native type-stripping, so
+  there is no native module, no `node-gyp`, no loader and no build step — but both of those
+  need 24. Below the floor, each of DPM's five executables refuses with a message naming the
+  version you have and the version it needs, rather than failing on an unknown builtin or a
+  syntax error in a type annotation.
+
+  The server is registered as the bare command `node`, which the host looks up on **its own**
+  `PATH` — not yours, and not a version manager's shell hook. If that `node` is older than 24
+  the server refuses to start, and what you see is one line in the log:
+
+  ```
+  WARN server unavailable key=dpm type=local status=failed
+  ```
+
+  followed by a session with the skills present and no tools behind them. `opencode` started
+  from a shell where `node --version` says 24 or later is the whole of the fix.
 
 > **The plugin API is one the host is still free to change.** Entrypoints may move under
 > it: the two protocols, the shape of `opencode.json`, where a package is cached, and the
@@ -55,8 +69,8 @@ DPM parses prose.
 
 ## Installation
 
-Clone the repository somewhere you are happy to keep it, and name both entry files in your
-`opencode.json`:
+Clone the repository somewhere you are happy to keep it, and name the entry file and the
+skills directory in your `opencode.json`:
 
 ```sh
 git clone https://github.com/ninthspace/opencode-dpm.git ~/src/opencode-dpm
@@ -65,15 +79,26 @@ git clone https://github.com/ninthspace/opencode-dpm.git ~/src/opencode-dpm
 ```json
 {
   "plugin": [
-    "/absolute/path/to/opencode-dpm/src/plugin/index.ts",
-    "/absolute/path/to/opencode-dpm/src/plugin/skills-entry.ts"
+    "/absolute/path/to/opencode-dpm/src/plugin/index.ts"
+  ],
+  "skills": [
+    "/absolute/path/to/opencode-dpm/skills"
   ]
 }
 ```
 
-The first entry registers the MCP server; the second registers the skills. Both are entry
-*files*, not directories, and both paths are absolute. The tools and skills appear the next
-time a session loads plugins; there is nothing to compile, and upgrading is `git pull`.
+`plugin` registers the MCP server and names an entry **file**. `skills` registers the
+twenty-three skills and names a **directory** — the host walks it and reads each
+`SKILL.md` itself, taking each skill's name from its own front matter. Both paths are
+absolute. The tools and skills appear the next time a session starts; there is nothing to
+compile, and upgrading is `git pull`.
+
+**`skills` is last-one-wins, silently.** If a later entry in that array holds a skill
+declaring a name DPM also declares, the later one replaces DPM's and **nothing is
+logged** — no warning, no diagnostic, and the session looks normal. Every DPM skill
+declares a `dpm-`prefixed name precisely so this is unlikely rather than merely unlucky,
+but the ordering is yours: keep DPM's entry last if you list several skill directories,
+or check `opencode debug skill` if a `dpm-*` skill starts behaving like something else.
 
 **`opencode plugin add github:ninthspace/opencode-dpm` is not the install**, and the reason
 is worth a paragraph because the failure it produces is quiet. OpenCode unpacks a plugin
@@ -251,10 +276,25 @@ allow-list and an explanation of what the host's `deny` and `ask` would do if yo
 because the host offers them and a reader who assumes a skill rule covers DPM's writes
 would have configured exactly the wrong half.
 
-OpenCode evaluates one rule per **action** and **resource**. Rules live in an array, the
-**last** one that matches both wins, and a request that matches nothing defaults to `ask`.
-Entries in your `opencode.json` are appended to every agent's own rules, which is why they
-override the agent's defaults rather than being overridden by them.
+**The key is `permission`, singular, and it holds an object.** Each entry is keyed by what
+is being done — `skill`, `bash`, `edit`, or a tool's own name — and its value is either a
+bare action (`"deny"`, which is shorthand for `{ "*": "deny" }`) or an object of
+`pattern: action`. Within one of those objects **insertion order matters**: OpenCode
+evaluates the **last** matching pattern, so broad rules go first and narrow ones last. A
+per-agent `permission` overrides the top-level one rather than being appended to it.
+
+**`permissions` — plural, an array of `{ action, resource, effect }` — is the shape the
+host's next major version takes, and v1 does not merely ignore it.** It refuses the whole
+configuration, and the session does not start:
+
+```
+Error: Configuration is invalid at /path/to/opencode.json
+↳ V2 permissions are not supported by OpenCode V1. Use V1 "permission" rules or run opencode2.
+```
+
+That is the one failure in this file that is loud, and it is worth knowing which shape you
+are looking at before you copy anything: the two are close enough to read as variants of
+each other and only one of them starts.
 
 **Nothing DPM does reads outside the project.** Every skill body opens by asking for the
 shared conventions through `dpm_read_shared_document`, an ordinary DPM tool that reads the
@@ -265,18 +305,25 @@ can drop it.
 This used to be the one entry every user had to add. The bodies named
 `shared/skill-conventions.md` as a path in the clone, the host classified that read as
 leaving the project, and the stock rules end with
-`{ "action": "external_directory", "resource": "*", "effect": "ask" }` — so interactively it
+`"external_directory": { "*": "ask" }` — so interactively it
 prompted on the first skill of every session, and non-interactively it was rejected and the
 skill carried on without the conventions it had been told to read. That last outcome is the
 one that mattered: nothing announced it. A tool call has no such failure mode, because a
 refused or failed call is one the session sees.
 
-DPM occupies two actions, and telling them apart is the whole of this section:
+DPM occupies two keys, and telling them apart is the whole of this section:
 
-| What happens | Action | Resource |
+| What happens | Key | Pattern |
 |---|---|---|
 | A skill is loaded into the conversation | `skill` | the skill's id — `dpm-spec`, `dpm-publish`, … |
 | A DPM tool runs | the tool's own name — `dpm_create_spec`, `dpm_publish`, … | `*` |
+
+**The two fail differently, and the tool half fails quietly.** A denied `skill` refuses at
+the point of use and says so, quoting the rule that stopped it. A denied tool is **removed
+from the model's tool list before the session starts** — there is no refusal to read,
+because there is nothing left to call. `"dpm_*": "deny"` produces a session that reports
+having no DPM tools at all rather than one that is told it may not use them, which is why a
+tool rule is worth getting right the first time rather than debugging from the inside.
 
 **The id a `skill` rule matches against is the `name` in that skill's front matter** — not
 its directory, and not anything DPM composes while registering it. Each of the twenty-three
@@ -291,10 +338,10 @@ DPM work:
 
 ```json
 {
-  "permissions": [
-    { "action": "skill", "resource": "dpm-*", "effect": "allow" },
-    { "action": "dpm_*", "resource": "*", "effect": "allow" }
-  ]
+  "permission": {
+    "skill": { "dpm-*": "allow" },
+    "dpm_*": "allow"
+  }
 }
 ```
 
@@ -303,15 +350,15 @@ the skill. Publish is the only DPM operation that deletes a file:
 
 ```json
 {
-  "permissions": [
-    { "action": "dpm_publish", "resource": "*", "effect": "ask" }
-  ]
+  "permission": {
+    "dpm_publish": "ask"
+  }
 }
 ```
 
 `dpm_publish` is what writes the projection and unlinks the generated files no document
 produces any more, so it is the line the removal actually passes through. The skill rule —
-`{ "action": "skill", "resource": "dpm-publish" }` — governs something else entirely:
+`"skill": { "dpm-publish": "ask" }` — governs something else entirely:
 whether the *procedure* is loaded into the conversation. Gating that gets you a
 confirmation for reading a set of instructions and none at all for the deletion, which is
 the wrong half of the pair and reads like the right one. The `dpm-publish` skill already shows you
@@ -324,9 +371,17 @@ never enter the conversation, and there is no second route to them: each skill r
 under exactly one id, no tool returns skill text, and the package puts no executables on
 your `PATH`. A skill that cross-references a denied one sends the model back through the
 same tool, which refuses again. What it does **not** stop is DPM's tools, which are
-separate actions — so a denied skill is a method nobody can follow, not a repository
+separate keys — so a denied skill is a method nobody can follow, not a repository
 nothing can write to. `ask` is a question rather than a slower deny: answer it and the
 skill loads normally.
+
+The refusal quotes the ruleset that produced it, which is what tells you a `dpm-*` pattern
+matched rather than something broader:
+
+```
+The user has specified a rule which prevents you from using this specific tool call.
+Here are some of the relevant rules [{"permission":"skill","pattern":"dpm-*","action":"deny"}]
+```
 
 ## When something else owns the hook
 
@@ -525,9 +580,10 @@ time; what is new is the host binding, and that is the part still settling.
 **Two specifications are built out here, and the second changed the first one's answer.**
 The fork was written against the OpenCode beta, because that was the release on hand. The
 second specification moved it onto the 1.x line, and the host turned out to differ in ways
-that reached well past the registrar: two entry files rather than one, a clone rather than a
-packaged install, and the shared conventions served by a tool rather than rewritten into
-skill bodies as they were registered. The epics are in `docs/epics/`:
+that reached well past the registrar: the skills registered through a configuration key
+rather than a plugin, a clone rather than a packaged install, and the shared conventions
+served by a tool rather than rewritten into skill bodies as they were registered.
+The epics are in `docs/epics/`:
 
 | Epic | What it delivered |
 |---|---|
@@ -536,7 +592,7 @@ skill bodies as they were registered. The epics are in `docs/epics/`:
 | `01-03-epic-skill-port.md` | All twenty-three skill bodies off Claude Code's tool prefix and slash commands, with the prohibition enforced in CI |
 | `01-04-epic-guard-and-docs.md` | The pre-commit guard at OpenCode's hook path, this README, and permission behaviour |
 | `01-05-epic-publish.md` | What the package ships, and the restrictions it holds to in production |
-| `02-01-epic-v1-registrar.md` | The move to the supported host: two entry files for its two plugin protocols, and the clone install that replaced the packaged one |
+| `02-01-epic-v1-registrar.md` | The move to the supported host: the plugin entry for its MCP registry, and the clone install that replaced the packaged one |
 | `02-02-epic-skill-identity.md` | The `dpm-` prefix moved into each skill's own front matter, which is where both the skill registry and the permission engine read it |
 | `02-03-epic-shared-documents.md` | The shared conventions served by `dpm_read_shared_document`, so no host hook has to rewrite a skill body |
 | `02-04-epic-two-host-docs.md` | This README and the permission guidance, brought onto the one host DPM supports |

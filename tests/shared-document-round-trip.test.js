@@ -28,15 +28,13 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import * as tools from '../src/plugin/index.ts';
-import { SERVER_NAME } from '../src/plugin/index.ts';
-import skillsEntry from '../src/plugin/skills-entry.ts';
-import { skillSources } from '../src/plugin/registration.ts';
+import { SERVER_NAME } from '../src/plugin/registration.ts';
 import { SERVER_EXECUTABLE, SHARED_DIRECTORY, packageRoot } from '../src/plugin/root.ts';
 import { sharedDocumentTools } from '../src/tools/shared.ts';
 import { spineTools } from '../src/tools/index.ts';
-import { registerServer, registerSkills } from './support/host-contexts.js';
+import { registerServer } from './support/host-contexts.js';
 import { openPlanningDatabase } from './support/planning-database.js';
-import { CALLABLE, SHARED_DOCUMENT_TOOL } from './support/skills.js';
+import { CALLABLE, SHARED_DOCUMENT_TOOL, registeredSkills } from './support/skills.js';
 
 const ROOT = packageRoot();
 const SHARED = join(ROOT, SHARED_DIRECTORY);
@@ -54,13 +52,13 @@ const asked = (content) => [...content.matchAll(
 )].map(([, name]) => name);
 
 /** One trip: take what the body asked for, ask the tool, hand back what came out. */
-const trip = ({ skill }) => asked(skill.content)
+const trip = (skill) => asked(skill.content)
   .map((name) => ({ skill: skill.name, name, content: sharedDocumentTools()[0].handler({ name }).content }));
 
 // --- Criterion 1: the trip completes, for all twenty-three ----------------------------------------
 
 test('every body\'s own reference, handed to the tool, returns the document [integration]', () => {
-  const sources = skillSources({});
+  const sources = registeredSkills();
 
   assert.equal(sources.length, 23, `${sources.length} skills registered, not the twenty-three on disk`);
 
@@ -69,7 +67,7 @@ test('every body\'s own reference, handed to the tool, returns the document [int
 
   // Every skill made at least one trip, named rather than counted — a body that asks for nothing
   // is the failure, and a total would hide it behind twenty-two that asked twice.
-  assert.deepEqual(sources.filter(({ skill }) => asked(skill.content).length === 0).map(({ skill }) => skill.name),
+  assert.deepEqual(sources.filter((skill) => asked(skill.content).length === 0).map(({ name }) => name),
     [], 'a registered body asks for no shared document, so it opens without its conventions');
 
   // And every trip came back with the file, compared against the file rather than against a
@@ -83,7 +81,7 @@ test('every body\'s own reference, handed to the tool, returns the document [int
   // The conventions specifically, which is what twenty-three of the twenty-four references are for.
   const reached = trips.filter(({ content }) => content === conventions).map(({ skill }) => skill);
 
-  assert.deepEqual([...new Set(reached)].sort(), sources.map(({ skill }) => skill.name).sort(),
+  assert.deepEqual([...new Set(reached)].sort(), sources.map(({ name }) => name).sort(),
     'a skill completed a trip without reaching the conventions');
 });
 
@@ -91,9 +89,9 @@ test('control — a body asking for a document that is not there fails the trip,
   // **Without this the sweep above is unfalsifiable.** Every trip succeeding is also what a reading
   // that extracted no references and called nothing produces, and the extraction is the fragile
   // half: it matches on prose, and prose gets reworded.
-  const planted = { skill: { name: 'dpm-planted', content: `Call \`${CALLABLE}${SHARED_DOCUMENT_TOOL}\` with \`name: "conventions"\`.` } };
+  const planted = { name: 'dpm-planted', content: `Call \`${CALLABLE}${SHARED_DOCUMENT_TOOL}\` with \`name: "conventions"\`.` };
 
-  assert.deepEqual(asked(planted.skill.content), ['conventions'],
+  assert.deepEqual(asked(planted.content), ['conventions'],
     'the extraction did not read the argument out of the planted body');
   assert.throws(() => trip(planted), /no shared document is called 'conventions'/,
     'a body asking for a document the package does not hold completed its trip anyway');
@@ -105,31 +103,35 @@ test('control — a body asking for a document that is not there fails the trip,
     'the extraction reads an argument beside some other tool as this tool\'s');
 });
 
-// --- Criterion 2: the same trip through both of v1's protocol routes -------------------------------
+// --- Criterion 2: the same trip through both halves of the install --------------------------------
 
-test('the trip is identical through the callable route and the object route [integration]', async (t) => {
-  // The object route: the skills entry, driven against the recorded nine-domain context.
-  const { sources } = await registerSkills(skillsEntry);
+test('the trip is identical through the skills directory and the registered server [integration]', async (t) => {
+  // **This used to say "both of v1's protocol routes", and epic 02-05 story 2 left it one.** The
+  // object route is fed by a config key 1.18.25 strips, so the skills entry was deleted and the
+  // bodies are read by the host itself out of `skills/`. The claim the criterion was written for is
+  // untouched and the stakes went up: the two halves used to be two plugin entries sharing one
+  // `packageRoot()`, and they are now two independent lines in a user's configuration.
+  const sources = registeredSkills();
 
-  // The callable route: the `server` export's config hook, which is the only handle on `config.mcp`
+  // The plugin half: the `server` export's config hook, which is the only handle on `config.mcp`
   // and therefore the only way the shared-document tool reaches a session at all. What it registers
   // is a command, so the reading is what that command would run — the server built from this root.
   const config = await registerServer(tools, {});
   const entry = config.mcp?.[SERVER_NAME];
 
-  assert.ok(entry, 'the callable route registered no server, so no tool of any kind reaches a session');
+  assert.ok(entry, 'the plugin registered no server, so no tool of any kind reaches a session');
   assert.equal(entry.command[1], join(ROOT, SERVER_EXECUTABLE),
-    'the two routes name different trees, so the skills and the shared documents are two installations');
+    'the two halves name different trees, so the skills and the shared documents are two installations');
 
-  // **The trips, side by side.** Bodies from the object route, the tool from the registry the
-  // callable route's command would build. If those two ever resolved different roots this is where
-  // it shows: the bodies would ask for documents the other tree does not hold.
+  // **The trips, side by side.** Bodies from the directory the host walks, the tool from the
+  // registry the registered command would build. If those two ever resolved different roots this is
+  // where it shows: the bodies would ask for documents the other tree does not hold.
   const registered = spineTools(openPlanningDatabase(t))
     .find((tool) => tool.name === SHARED_DOCUMENT_TOOL);
 
   assert.ok(registered, `${SHARED_DOCUMENT_TOOL} is not in the registry the server builds`);
 
-  const byRoute = sources.flatMap(({ skill }) => asked(skill.content).map((name) => ({
+  const byRoute = sources.flatMap((skill) => asked(skill.content).map((name) => ({
     skill: skill.name,
     name,
     object: sharedDocumentTools()[0].handler({ name }).content,
@@ -142,7 +144,7 @@ test('the trip is identical through the callable route and the object route [int
     .filter(({ object, callable }) => object !== callable)
     .map(({ skill, name }) => `${skill} -> ${name}`);
 
-  assert.deepEqual(diverged, [], 'the two routes serve different bytes for the same document');
+  assert.deepEqual(diverged, [], 'the two halves serve different bytes for the same document');
 
   // And the bytes both routes agree on are the file's. Two routes agreeing is not the same as two
   // routes being right, which is the reading epic 02-01 story 5 recorded as the one it lacked.
@@ -150,13 +152,13 @@ test('the trip is identical through the callable route and the object route [int
     .filter(({ name, callable }) => callable !== readFileSync(join(SHARED, `${name}.md`), 'utf8'))
     .map(({ skill, name }) => `${skill} -> ${name}`);
 
-  assert.deepEqual(wrong, [], 'both routes agree on text that is not what is in the package');
+  assert.deepEqual(wrong, [], 'both halves agree on text that is not what is in the package');
 });
 
 test('both documents are reached across the corpus, not just the one twenty-three ask for [integration]', () => {
   // The twenty-fourth reference is one line in one body, and a check that only ever counted trips
   // would report twenty-four successes while `status-model` went unasked and unserved.
-  const wanted = new Set(skillSources({}).flatMap(({ skill }) => asked(skill.content)));
+  const wanted = new Set(registeredSkills().flatMap(({ content }) => asked(content)));
 
   assert.deepEqual([...wanted].sort(), ['skill-conventions', 'status-model'],
     'the corpus asks for a set of documents other than the two the package ships');

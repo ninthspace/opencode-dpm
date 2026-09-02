@@ -156,6 +156,7 @@ const ADDED = [
   'dependency-isolation.test.js', //   01-02 story 4 — the empty production tree, read off the lockfile
   'executables-typescript.test.js', // story 3 — the five binaries under plain node
   'guard-hook-path.test.js', //        01-04 story 1 — the hook fires, and no refusal names a host mechanism
+  'host-independent-artefacts.test.js', // 02-05 story 1 — one database, both hosts' runtimes, and no host named
   'installed-runtime.test.js', //      01-05 story 2, rewritten 02-01 story 5 — the two runtimes, and which one starts the server
   'module-sweep.test.js', //           story 6 — every specifier resolves, and the sweep can fail
   'parity-v070.test.js', //            story 5 — the port against v0.7.0's own dump and allocator
@@ -169,7 +170,7 @@ const ADDED = [
   'readme-v2.test.js', //              01-04 story 4 — every documented block, classified and run
   'registration-prefix.test.js', //    02-02 story 2 — the name copied not composed, and the constant gone
   'session-scratch.test.js', //        01-04 story 3 — the environment audit, and nothing loose in the tree
-  'shared-document-round-trip.test.js', // 02-03 story 4 — body to reference to tool to text, both routes
+  'shared-document-round-trip.test.js', // 02-03 story 4 — body to reference to tool to text, both halves
   'shared-document-tool.test.js', //   02-03 story 1 — the bytes, the refusal, and the copy nothing kept
   'skill-identity.test.js', //         02-02 story 1 — the prefix on disk, in both places a skill declares it
   'skill-invocation.test.js', //       01-03 story 3 — the descriptions, and $ARGUMENTS retired
@@ -177,6 +178,7 @@ const ADDED = [
   'skill-port.test.js', //             01-03 story 2 — no Claude Code mechanism, and ralph's recorded gap
   'skill-shared-references.test.js', // 02-03 story 2 — twenty-four references, and no host named
   'skill-supporting-files.test.js', // 01-02 story 3 — the conventions file, and the recorded go/no-go
+  'skills-registered.test.js', //      02-05 story 2, replacing v1-skills.test.js — the skills config key
   'suite-integrity.test.js', //        story 4 — this file
   'suite-skill-names.test.js', //      02-02 story 3 — the helper, the hand-kept lists, and the cases nothing lost
   'tool-naming.test.js', //            01-02 story 2 — the v2 rendering, and v0.7.0's own surface
@@ -184,9 +186,43 @@ const ADDED = [
   'v1-integration.test.js', //         02-01 story 5 — one root across both entries, and a command that starts
   'v1-registrar.test.js', //           02-01 story 3 — the config hook, and the config files nothing wrote
   'v1-sdk.test.js', //                 02-01 story 1 — the second SDK, and the controls its criteria name
-  'v1-skills.test.js', //              02-01 story 4 — embedded sources, the prefix on `name`, and the clash alarm
   'vendoring.test.js', //              story 1 — the v0.7.0 tree arrived whole
 ];
+
+/**
+ * Files this epic's own work removed, with what replaced each and why.
+ *
+ * **A deletion needs a line as much as an addition does, and for the opposite reason.** `ADDED` is
+ * how a file arrives without a decision; this is how one *leaves* without a decision — a suite that
+ * quietly loses a file loses whatever it was defending, and nothing fails.
+ *
+ * The rule is that nothing here may be in the tree. A name that comes back is either a revert
+ * somebody meant, in which case the line moves back to `ADDED`, or a file recreated in ignorance of
+ * why it went.
+ */
+const REMOVED = {
+  // 02-01 story 4 — embedded sources, the prefix on `name`, and the clash alarm. Its subject was
+  // `skills-entry.ts`, which epic 02-05 story 2 deleted: the object route it registered through is
+  // fed by a `plugins` config key 1.18.25 strips, so there was no host to run it on.
+  // `skills-registered.test.js` carries FR3, FR4 and FR5 over the route that replaced it, and says
+  // in its own docblock what the clash alarm cost.
+  'v1-skills.test.js': 'skills-registered.test.js',
+};
+
+test('every file this epic removed is gone, and its replacement is here', () => {
+  const present = new Set(testFiles());
+
+  for (const [gone, replacement] of Object.entries(REMOVED)) {
+    assert.equal(present.has(gone), false,
+      `${gone} is back — either move its line to ADDED, or find out why it went before keeping it`);
+    assert.equal(present.has(replacement), true,
+      `${gone} was removed and ${replacement} is not here, so what it defended is defended by nothing`);
+  }
+
+  // The control: the reading can see a file that is present, so the absences above are findings
+  // rather than a set that was never populated.
+  assert.equal(present.has('suite-integrity.test.js'), true, 'the reading cannot see this file');
+});
 
 test('every test file v0.7.0 shipped is still in the suite', () => {
   const present = testFiles();
@@ -239,6 +275,66 @@ test('must NOT — a test file is skipped, quarantined, or left out of the run',
   // working directory, so a test file outside the tree it walks is never reached and never fails.
   assert.deepEqual(suiteSources().filter(({ name }) => !name.startsWith('tests/')), [],
     'a suite file sits outside the directory the runner walks');
+});
+
+/**
+ * The files entitled to skip a case at run time, and what each of them gives up when it does.
+ *
+ * **The must-NOT above cannot see these, and that is why the list exists.** Its markers are
+ * anchored on `test.skip(` and on a `{ skip: true }` option, which are the two ways a file is
+ * quarantined by its author. `t.skip()` inside a running case is a third way and a different thing:
+ * the case runs, reads its environment, and stands down because what it needs is not installed.
+ * Epic 02-05 story 1 found these two by taking the suite to a machine with neither host binary
+ * reachable — 1182 passing and 2 skipping, where the same run with the binaries present skips
+ * nothing at all. Neither is the silent binary dependency that story went looking for: each names
+ * ENVX1 as its warrant, states what the skip costs, and leaves a companion control that runs
+ * whatever the machine has. What was missing is any record that there are exactly two.
+ *
+ * So this is the `ADDED` idiom pointed at behaviour rather than at files: a hand-kept list with a
+ * provenance note per entry, asserted as an **exact set** in both directions. A third file that
+ * starts standing down has to be argued for here, and an entry whose file stopped skipping is
+ * reported as stale rather than left standing as permission nobody needs.
+ */
+const CONDITIONAL_SKIPS = {
+  'tests/installed-runtime.test.js':
+    "02-01 story 5 — the v1 CLI's own bun read for node:sqlite. Absent, the reason the bun route "
+    + 'was closed goes unread; the behaviour itself is pinned by the first test on any machine.',
+  'tests/v1-integration.test.js':
+    '02-01 story 5 — the runtime the removed bun branch would have named. Absent, what is lost is '
+    + 'the demonstration against that exact runtime; the reading has its own control beside it.',
+};
+
+test('exactly the recorded files stand a test down when a host binary is missing', () => {
+  // **Matched on the call, on the receiver, and at the start of a statement.** `skip` is a
+  // plausible property name and a plausible string, and the parameter a case receives is `t` here
+  // and `context` elsewhere — so the shape is a member call on one of those names, which is what a
+  // stand-down looks like and what a variable called `skipped` does not.
+  //
+  // The line anchor is the part worth arguing, because this project's last epic was bitten by one:
+  // a `^` against hard-wrapped *prose* is a pattern about the wrapping and can never fire. Source
+  // is the other case. A stand-down is a statement, statements begin lines, and without the anchor
+  // this reading reports the two planted literals below — which it did, on the first run, and that
+  // is how the anchor came to be here rather than by being remembered.
+  const STANDS_DOWN = /^\s*(?:t|ctx|context)\s*\.\s*skip\s*\(/m;
+  const standsDown = (source) => STANDS_DOWN.test(withoutComments(source));
+
+  assert.deepEqual(
+    suiteSources().filter(({ text }) => standsDown(text)).map(({ name }) => name).sort(),
+    Object.keys(CONDITIONAL_SKIPS).sort(),
+    'a test file stands down on a missing binary without a recorded reason, or a recorded one no '
+    + 'longer does and the entry is stale',
+  );
+
+  // The reading, driven both ways in the same test. Without the second the first is satisfied by a
+  // pattern that matches everything, which is the failure this project keeps meeting.
+  for (const planted of ['  t.skip("no binary here");', '  context . skip ("x");']) {
+    assert.equal(standsDown(`\n${planted}\n`), true, `the reading does not recognise ${planted}`);
+  }
+
+  for (const innocent of ['  t.diagnostic("skip nothing");', '  const skipped = list.skip(2);',
+    '  // t.skip is what this names', '  assert.equal(report.skip, 0);']) {
+    assert.equal(standsDown(`\n${innocent}\n`), false, `the reading over-reports on ${innocent}`);
+  }
 });
 
 // --- Criterion 3: the runner ---------------------------------------------------------------------

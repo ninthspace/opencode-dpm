@@ -54,10 +54,37 @@ const ACCOUNT = [
     what: 'the clone command, which is the whole of the install',
   },
   {
-    subject: 'the plugin entries',
+    subject: 'the plugin entry',
     heading: 'Installation',
-    carries: /"plugin":\s*\[[^\]]*index\.ts[^\]]*skills-entry\.ts/,
-    what: 'both entry files, because one of them alone registers half of DPM',
+    carries: /"plugin":\s*\[[^\]]*src\/plugin\/index\.ts/,
+    what: 'the entry file, which is what registers the MCP server',
+  },
+  {
+    // The second half of the install stopped being a plugin entry in epic 02-05 story 2: the route
+    // that carried it is fed by a `plugins` config key 1.18.25 strips. A reader who copies only the
+    // `plugin` array gets the tools and no skills, which is exactly the half-install this list of
+    // subjects exists to prevent — so the key is pinned as its own subject rather than folded into
+    // the one above.
+    subject: 'the skills directory',
+    heading: 'Installation',
+    carries: /"skills":\s*\[[^\]]*\/skills"/,
+    what: 'the skills key, without which the host registers no dpm skill at all',
+  },
+  {
+    subject: 'the ordering hazard',
+    heading: 'Installation',
+    carries: /last-one-wins/,
+    what: 'that a later skills entry replaces DPM\'s silently, which the host does not log',
+  },
+  {
+    // Epic 02-05 story 3. The section shipped OpenCode 2's `permissions` array through four
+    // stories of a v1-only README, and nothing here read it: the fenced blocks were checked for
+    // being non-empty JSON, which the wrong shape is. 1.18.25 refuses the whole configuration on
+    // it, so the singular key is pinned as its own subject.
+    subject: 'the permission key',
+    heading: 'Permissions',
+    carries: /"permission":\s*\{\s*"skill":\s*\{\s*"dpm-\*":\s*"allow"/,
+    what: 'the singular key v1 takes, in place of the `permissions` array v1 refuses outright',
   },
   {
     subject: 'the guard symlink',
@@ -232,9 +259,20 @@ test('control — a planted location sentence is reported by line [unit]', () =>
  * and in `tests/fixtures/v070-dump.sql`, which `parity-v070.test.js` forbids modifying — a
  * whole-tree sweep would be red for reasons that are all right, and the cheapest way to quiet it
  * would be to edit a protected fixture.
+ *
+ * **One line is exempt, the way `XDG_CACHE_HOME` is exempt above: the host's own diagnostic.**
+ * Epic 02-05 story 3 found the Permissions section written in the other host's `permissions`
+ * array, which 1.18.25 refuses outright, and the README now quotes the refusal so a reader can
+ * recognise it. That line names `opencode2` because the host names it, and paraphrasing output a
+ * reader will match character-for-character would be the more expensive mistake. The exemption is
+ * anchored on the diagnostic's own words rather than on a fence, so it covers that line and
+ * nothing else — and the planted control below still lands outside it.
  */
 const OTHER_HOST = [
-  { pattern: /\bopencode2\b/, why: "the second host's binary, which nothing here is run with" },
+  {
+    pattern: /^(?![^\n]*V2 permissions are not supported)[^\n]*\bopencode2\b/m,
+    why: "the second host's binary, which nothing here is run with",
+  },
   { pattern: /\bv2\b/, why: 'a version of the host DPM does not run under' },
   { pattern: /\bOpenCode 2\b/, why: 'the same version spelled out' },
 ];

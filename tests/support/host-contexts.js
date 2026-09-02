@@ -1,50 +1,47 @@
 /**
- * The v1 host, as it was recorded off the running CLI, and the two drivers that exercise it.
+ * The v1 host, as it was recorded off the running CLI, and the driver that exercises it.
  *
- * **This is a recording and not a model.** A probe plugin was loaded by `opencode` 1.18.25 and
- * reported the raw shape of every domain it was handed — own and prototype properties, unfiltered.
- * Nothing here was written from a type declaration, and for the object route there was nothing to
- * write it from: v1's published `PluginModule` type describes the *callable* protocol only, and the
- * nine-domain context below belongs to the v2-shaped API v1 bundles alongside it.
+ * **This is a recording and not a model, and epic 02-05 story 2 found out what that does not
+ * cover.** A probe plugin was loaded by `opencode` 1.18.25 and reported the raw shape of every
+ * domain it was handed — own and prototype properties, unfiltered — so the *shapes* below are the
+ * host's. What no probe here ever asked was whether the host would **accept dpm's modules at all**,
+ * because both drivers reach into a module and call its export themselves. 1185 tests did that and
+ * every one of them passed while neither entry loaded under a real session. Library lesson 05 — ask
+ * the host, not a test's idea of the host — is about exactly this file.
  *
- * ## The two routes, because dpm ships one module for each
+ * ## One route, because there is only one dpm can reach
  *
  * v1 has an MCP registry and a skill registry and offers them through different protocols. The
- * **callable route** — a module exporting `server` — returns `Hooks`, and `Hooks.config` is handed
- * the resolved configuration; that is the only handle on `config.mcp`. The **object route** — a
- * module default-exporting `{ id, setup }` — is handed `V1_CONTEXT` below, whose `skill.transform`
- * is the only handle on the skill registry. A single module carrying both stalls v1's loader, so
- * `src/plugin/index.ts` takes the first and `src/plugin/skills-entry.ts` takes the second.
+ * **callable route** — a module exporting `server`, named under the `plugin` config key — returns
+ * `Hooks`, and `Hooks.config` is handed the resolved configuration; that is the only handle on
+ * `config.mcp`, and `registerServer` drives it.
  *
- * `registerServer` and `registerSkills` drive one route each. They are here rather than in one test
- * file because three suites need them, and a second suite writing its own copy would be a second
- * recording nobody re-took — agreeing on the day it was written and drifting silently after.
+ * The **object route** — a module default-exporting `{ id, setup }`, handed the `V1_CONTEXT` below
+ * whose `skill.transform` is the only handle on the skill registry — is reached through the
+ * `plugins` key, which 1.18.25 strips before any loader sees it. dpm's second entry and the
+ * `registerSkills` driver that exercised it were both deleted in epic 02-05 story 2; the skills are
+ * registered by naming `skills/` under the host's `skills` key instead. `V1_CONTEXT` stays because
+ * several checks still assert over the domain names — chiefly that there is no `mcp` among them,
+ * which is why the server cannot be registered from that route either.
  *
- * ## What the recordings established
+ * ## Re-recording it
  *
- * - The context carries nine domains. There is **no `mcp`** among them, which is why the server
- *   cannot be registered from this route.
- * - The skill draft is `{ list, source }`. There is **no `add`** — that is the v2 API, and code
- *   written against it fails at the call rather than at the type.
- * - `source` takes a tagged union, and what the host stores of an embedded skill is
- *   `{ name, description?, location, content }`. **An `id` passed alongside them is dropped**, which
- *   is why the `dpm-` prefix rides on `name`. FR5 names this; the probe confirmed it.
- *
- * ## Re-recording them
- *
- * Point a v1 project's `plugin` array at a module whose `setup` writes `Object.keys(context)` and
- * each domain's property names to a file, and read the file. Four traps, each of which cost real
- * time once:
+ * Point a v1 project's `plugin` array at a module whose hook writes what it was handed to a file,
+ * and read the file. Traps, each of which cost real time once:
  *
  * - **Clear `XDG_CACHE_HOME` between runs.** v1 caches plugin loading per project, and a stale entry
- *   silently skips the object route: the module evaluates, `setup` is never called, and the report
- *   reads exactly like a host that does not support it. Four consecutive readings were lost to this.
+ *   silently skips a route: the module evaluates, the hook is never called, and the report reads
+ *   exactly like a host that does not support it. Four consecutive readings were lost to this.
  * - Write the report incrementally, appending as each fact is learned. A host that does the work and
  *   then does not exit is indistinguishable from one that hung before starting, unless the partial
  *   reading is already on disk.
  * - `opencode debug skill` and `opencode debug config` answer without an LLM turn, but neither loads
- *   the object route — only a session does. `opencode run` is the trigger; poll the report and kill
- *   the process once it has what you need rather than waiting for the turn to finish.
+ *   a plugin — only a session does. `opencode run` is the trigger; poll the report and kill the
+ *   process once it has what you need rather than waiting for the turn to finish.
+ * - **`opencode serve` is the better instrument for anything the host will answer directly.** It
+ *   stays up, and `/config`, `/mcp` and `/skill` report the resolved configuration, each MCP
+ *   server's connection status and the whole skill registry — which is how story 2 established that
+ *   `mcp.dpm` reaches `connected` and that 23 `dpm-*` skills are registered.
  * - Give each module a distinct plugin `id`. Two claiming one id is a collision v1 resolves by
  *   hanging.
  */
@@ -89,40 +86,4 @@ export async function registerServer(entry, config = {}) {
   await hooks.config(config);
 
   return config;
-}
-
-/**
- * Drive the object route: call `setup` against a context whose `skill.transform` records.
- *
- * The draft offers `list` and `source` and **not** `add`, so a registration written against the v2
- * API fails here rather than passing against a double more generous than the host.
- *
- * @param {{ setup: Function }} entry The module under test, as imported.
- * @param {object} options Whatever the host was configured with.
- * @returns {Promise<{ sources: object[], disposed: number, transforms: number }>}
- */
-export async function registerSkills(entry, options = {}) {
-  const sources = [];
-  const record = { sources, disposed: 0, transforms: 0 };
-
-  const context = {
-    ...V1_CONTEXT,
-    options,
-    skill: {
-      ...V1_CONTEXT.skill,
-      transform: async (callback) => {
-        record.transforms += 1;
-        await callback({
-          source: (source) => { sources.push(source); },
-          list: () => [...sources],
-        });
-
-        return { dispose: async () => { record.disposed += 1; } };
-      },
-    },
-  };
-
-  await entry.setup(context);
-
-  return record;
 }

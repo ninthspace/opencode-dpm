@@ -1,136 +1,83 @@
 /**
- * What the two plugin entries register, computed here so that neither entry computes it.
+ * What the plugin entry registers, computed here so that the entry does not compute it.
  *
- * ## Why there are two entries at all
+ * ## There is one entry, and the skills do not come through a plugin at all
  *
- * OpenCode 1.18.25 has two plugin protocols and dpm needs one thing from each. The **callable
- * route** — a module exporting `server`, which the host calls with its `PluginInput` — returns
- * `Hooks`, and `Hooks.config` is the only handle v1 offers on the MCP registry. The **object
- * route** — a module default-exporting `{ id, setup }` — is handed a nine-domain context, and
- * `skill.transform` is the only handle v1 offers on the skill registry. Neither route has the
- * other's: the v1 SDK's `Config` carries `mcp` and no skill field at all, and the object route's
- * context carries no `mcp` domain.
+ * This file used to open by explaining why there were two, and the explanation was right about the
+ * protocols and wrong about the host. OpenCode 1.18.25 does have two plugin routes. The **callable
+ * route** — a module exporting `server`, reached from the `plugin` config key — returns `Hooks`,
+ * and `Hooks.config` is the only handle it offers on the MCP registry. The **object route** — a
+ * module default-exporting `{ id, setup }` — is handed a nine-domain context whose `skill.transform`
+ * is the only handle on the skill registry.
  *
- * **And one module cannot carry both**, which was probed rather than assumed. A file exporting a
- * callable `server` *and* a default `{ id, setup }` evaluated and then stalled the loader: neither
- * hook ran and the CLI produced no output at all. The control is that the same two hook bodies, in
- * two files, both ran in one session — `config` set `mcp.dpm` and `setup` was called with the nine
- * domains. Two files it is.
+ * **The object route is unreachable under 1.18.25, and that was read off the running host rather
+ * than inferred.** It is fed by the `plugins` config key, and v1's configuration layer strips that
+ * key before any loader sees it:
  *
- * Two other routes to a single entry were tried and closed, both with controls:
+ * ```
+ * WARN configuration compatibility diagnostic path=["plugins"] kind=unsupported
+ *      action="Omitted native setting that cannot be represented in V1"
+ * ```
  *
- * - **The `config` hook cannot bootstrap the second module.** `config.plugin` is writable and the
- *   hook really did append to it — the array's contents before the write are in the probe report —
- *   and the appended module never evaluated. The plugin list is resolved before `config` runs.
- * - **`plugin.add` cannot bootstrap the first.** Its type is `(plugin: { id, effect }) => …` and
- *   what it hands the added plugin is another `PluginContext`, so a plugin added that way gets the
- *   same nine domains and still no MCP registry.
+ * The resolved configuration the host then serves from `/config` carries no `plugins` at all. Named
+ * under `plugin` instead, the same module is refused by the legacy loader — *"must default export an
+ * object with `server()`"* — and reshaping it to satisfy that would not help, because the v1 SDK's
+ * `Hooks` interface has no skill member of any kind. So there is no arrangement of exports by which
+ * a plugin registers a skill on this host. Epic 02-05 story 2 deleted the second entry rather than
+ * keep a module with nowhere to run.
  *
- * ## Why the two computations are here rather than in the entries
+ * **The skills reach the host through the `skills` config key instead** — *"Additional paths or URLs
+ * to discover skills from"* — pointed at this package's `skills/` directory, which the host reads
+ * itself. Verified against 1.18.25 from a project outside this checkout: 23 `dpm-*` skills in the
+ * host's registry, the MCP server `connected`, and no compatibility diagnostic. The control is the
+ * run beside it with the key removed, which registered 0.
  *
- * Both entries resolve the same package root through `packageRoot`, which is what stops the server
- * command and the skill locations disagreeing about where dpm is installed. Keeping the two
- * computations side by side is what makes that shared root visible; splitting them into the entries
- * would leave two files each resolving a root and agreeing by habit.
+ * **ADR 01-05's namespace survives the move, because the host reads the same field the old
+ * registration did.** A probe with a directory named `zzz-dirname` whose front matter declared
+ * `name: probe-frontmatter` registered as `probe-frontmatter`: the front-matter name wins and the
+ * directory name is ignored. What changed is the *failure* mode, and it got quieter — a `SKILL.md`
+ * with no `name` field at all was dropped from the registry entirely, where `discoverSkills` would
+ * have fallen back to the directory name. `skills-registered.test.js` holds both halves.
  *
- * **They are two functions rather than one, though, and the split is deliberate.** Discovering the
- * skills reads twenty-three files and throws when a skill names a shared procedure that is not in
- * the package. Folding that into the tools entry would mean a skill-body problem taking down the
- * MCP registration, which is the one part of dpm that has nothing to do with skills.
+ * FR5 and FR7 are undisturbed by the move for the same reason. What v1 keeps of a skill is
+ * `{ name, description, location, content }`, `name` is the flat keyspace, and the README's
+ * `{"action":"skill","resource":"dpm-*"}` permission rule matches on exactly the string the host now
+ * reads out of the front matter. Every skill description already says *invoke with the id `dpm-…`*,
+ * which stays true. What is lost is the skills half of ADR 01-08's profile seam: a profile selected
+ * a subset at registration time, and a directory the host reads itself takes no options. Only `full`
+ * — every skill in the package — has ever been defined, so nothing observable changes today, and the
+ * seam still governs the tool surface. FR13's `lite` will need a different mechanism for its skill
+ * half, and that is a note for whoever writes it rather than a debt against this epic.
  *
- * **Everything a transform reads is resolved before any transform runs** — ADR 01-07. The host
- * replays transforms on reload, so a transform reading mutable state observes something different
- * on the replay, and the bug appears only after an edit and reads as flakiness. Each entry calls
- * its function once, above its transform.
+ * ## What is left here, and why it is still not in the entry
+ *
+ * One computation, kept out of `index.ts` because that module may export nothing but its route —
+ * see `SERVER_NAME` below, which is the export that proved it.
  */
 
-import type { SkillDraft } from '@opencode-ai/plugin-v1/v2/promise';
-
-import { profileFrom } from './profile.ts';
 import { packageRoot } from './root.ts';
 import { localServer, type LocalServer } from './server.ts';
-import { discoverSkills, type DiscoveredSkill } from './skills.ts';
 
 /**
- * A skill source as v1's registry wants it, taken from the draft rather than named.
+ * The name the MCP server is registered under, which is the second `dpm` in its tool prefix.
  *
- * **The type is read off `SkillDraft['source']` so that it comes from the host SDK the manifest
- * declares.** Naming `SkillV2Source` directly would reach `@opencode-ai/sdk`, and the shape's
- * other home — `@opencode-ai/schema` — is declared in no manifest and resolves only because npm
- * hoists it out of a transitive. Either would be a type this project depends on and does not ask
- * for. `Parameters<…>` gets the same shape through the door that is already open.
+ * **It lives here rather than in `index.ts` because the entry module may export nothing but its
+ * route.** OpenCode 1.18.25 walks a plugin module's exports and treats each one as a plugin, so a
+ * `const` beside the route fails the whole module with `Plugin export is not a function` — and the
+ * failure is a single `ERROR` line in a log nobody reads, after which the host carries on with no
+ * server registered and no tools behind the skills. That is not a deduction from the SDK's types,
+ * which describe `PluginModule = { id?, server, tui? }` and say nothing about the other exports;
+ * it is what the running CLI did in epic 02-05 story 2, isolated to one variable by a pair of
+ * probes: a module exporting `server` alone loaded, and the same module with one string constant
+ * added did not.
  */
-export type SkillSource = Parameters<SkillDraft['source']>[0];
+export const SERVER_NAME = 'dpm';
 
 /**
- * One discovered skill, as an embedded source.
- *
- * **`embedded` rather than `directory`, and the difference is not a preference.** A directory
- * source hands v1 a path and lets it read the tree, which would register the skills under their
- * *directory* names — and the `dpm-` prefix ADR 01-05 turns on would be lost, because a host that
- * reads the tree never sees what discovery computed.
- *
- * **The bodies themselves are now identical either way, and that is epic 02-03's doing.** Discovery
- * used to rewrite `dpm/shared/*.md` into an absolute path as it read each body, so an embedded
- * source carried something a directory source could not have produced. FR4 and ENVX2 record the
- * concern that motivated it — a host reading `SKILL.md` verbatim off disk leaves that rewrite
- * nowhere to run — and the answer taken was to remove the rewrite rather than to require the hook.
- * The shared documents are behind `read_shared_document`, discovery transforms nothing, and what
- * the host stores is byte for byte what a maintainer opened. The prefix is the only reason left for
- * `embedded`, and it is reason enough.
- *
- * **The prefix rides on `name`, and that is FR5 rather than a liberty taken with ADR 01-05.** What
- * v1 keeps of a skill is `{ name, description, location, content }` and nothing else — an `id`
- * passed alongside them is dropped by the host's own decode, which is observed rather than read off
- * a type. So `name` *is* the keyspace here, it is flat, and a later registration of `do` wins. ADR
- * 01-05's decision is unchanged — namespace the skills so another source's `review` or `status`
- * cannot silently take dpm's place — and only the field carrying it moves. It lands where the rest
- * of the project already points: the README's `{"action":"skill","resource":"dpm-*"}` rule matches
- * on the name v1 evaluates, which is FR7, and every skill description already says *invoke with the
- * id `dpm-…`*, which stays true when the name is that string.
- *
- * **Nothing here composes that prefix, and epic 02-02 story 2 is why.** This function used to read
- * `skill.id` — a string discovery built by prepending `ID_PREFIX` to a directory called `do` — so
- * the namespace defence was applied at registration to a tree that did not carry it, and a skill's
- * identity was half on disk and half in a constant. The directories are named `dpm-<skill>` now and
- * each declares that same name in its own front matter, so the field is copied rather than
- * constructed. The string that reaches the host is byte-identical to the one that reached it
- * before; a criterion pins that, because ADR 01-05 records a registered name as effectively
- * permanent from the first publish.
- *
- * @param skill One skill, as discovery found it.
- * @returns {SkillSource}
- */
-const embedded = (skill: DiscoveredSkill): SkillSource => ({
-  type: 'embedded',
-  skill: {
-    name: skill.name,
-    ...(skill.description === undefined ? {} : { description: skill.description }),
-    location: skill.location,
-    content: skill.content,
-  },
-});
-
-/**
- * The MCP server entry the tools entry sets into `config.mcp` — FR2.
+ * The MCP server entry the plugin sets into `config.mcp` — FR2.
  *
  * @returns {LocalServer}
  */
 export function serverEntry(): LocalServer {
   return localServer(packageRoot());
-}
-
-/**
- * The skill sources the skills entry hands to `skill.transform` — FR3.
- *
- * @param options Whatever the host was configured with. Selects the profile; an unknown name is
- *   refused by name rather than treated as the default.
- * @returns {readonly SkillSource[]}
- */
-export function skillSources(
-  options: Readonly<Record<string, unknown>> = {},
-): readonly SkillSource[] {
-  const root = packageRoot();
-
-  return profileFrom(options).skills(discoverSkills(root)).map(embedded);
 }

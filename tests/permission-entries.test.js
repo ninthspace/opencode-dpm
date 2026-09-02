@@ -16,20 +16,39 @@
  * The glob semantics below are the host's, transcribed from its matcher: escape the pattern, `*`
  * becomes `.*`, `?` becomes `.`, anchored at both ends. That transcription is the one thing here
  * taken on trust, and it is narrow enough to be read against the source in a minute.
+ *
+ * ## Epic 02-05 story 3 — this file read the wrong shape, and so did the README
+ *
+ * Everything above was written against `permissions`: an **array** of `{ action, resource, effect }`
+ * objects. That is OpenCode 2's shape. v1 takes `permission` — **singular, an object** keyed by
+ * `skill`, `bash`, `edit` or a tool's own name, whose value is either a bare action or an object of
+ * `pattern: action`. And v1 does not ignore the array: it refuses the whole configuration, so a
+ * reader who pasted the recommended block got a host that would not start.
+ *
+ * **Nothing caught it, and the reason is worth keeping.** This file read the section's fenced JSON
+ * with `JSON.parse(block).permissions ?? []` — and `?? []` over a block that has no such key is an
+ * empty list, which every loop below passes over. `readme-v2.test.js` checked the same blocks for
+ * being non-empty JSON, which the wrong shape is. Four tests and a rule, all green, over a
+ * recommendation that could not load. The `?? []` is now `?? {}` on the key that has to be there,
+ * and the well-formedness test asserts the plural key is **absent**, which is the assertion whose
+ * absence let this stand.
+ *
+ * The vocabulary below is v1's throughout — `key`, `pattern`, and `effect` for what the host's own
+ * documentation calls the action (`"allow"`, `"ask"`, `"deny"`). Keeping v2's `action`/`resource`
+ * while reading v1's object is how the two shapes got confused in the first place.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { CALLABLE, PREFIX, frontMatter, section, skillSource, sweep } from './support/skills.js';
 import { packageManifest, pluginSources, withoutComments } from './support/sources.js';
+import { README, configBlocks, refusedBlocks } from './support/readme.js';
 import { discoverSkills, SKILL_FILE } from '../src/plugin/skills.ts';
 import { start } from '../src/start.ts';
 import { spineTools } from '../src/tools/index.ts';
 
 const ROOT = join(import.meta.dirname, '..');
-const README = readFileSync(join(ROOT, 'README.md'), 'utf8');
 
 /** The section under test, addressed by its heading rather than by a line range. */
 const permissions = () => section(README, 'Permissions');
@@ -37,8 +56,8 @@ const permissions = () => section(README, 'Permissions');
 /**
  * The host's resource matcher, transcribed.
  *
- * @param {string} value The concrete id or action a request carries.
- * @param {string} pattern The rule's `resource` or `action`, which may hold `*` and `?`.
+ * @param {string} value The concrete id or tool name a request carries.
+ * @param {string} pattern The rule's key or pattern, which may hold `*` and `?`.
  * @returns {boolean}
  */
 const matches = (value, pattern) => new RegExp(`^${pattern
@@ -53,13 +72,20 @@ const matches = (value, pattern) => new RegExp(`^${pattern
  * file checks. A list would make the opposite true — the entry nobody thought about is exactly the
  * one that would go unlisted.
  *
+ * **A bare action is expanded, because the host expands it.** `"dpm_publish": "ask"` is v1's
+ * shorthand for `{ "*": "ask" }`, and reading it as a rule with no pattern would leave the
+ * shorthand form of every recommendation unchecked by the two partitions below.
+ *
  * @param {string} [source] Overridden by the controls, which drive the same reader over a planted
  *   block to show it reports what is in front of it.
- * @returns {Array<{action: string, resource: string, effect: string}>}
+ * @returns {Array<{key: string, pattern: string, effect: string}>}
  */
 function documented(source = permissions()) {
-  return [...source.matchAll(/```json\n([\s\S]*?)```/g)]
-    .flatMap(([, block]) => JSON.parse(block).permissions ?? []);
+  return configBlocks(source)
+    .flatMap((parsed) => Object.entries(parsed.permission ?? {}))
+    .flatMap(([key, value]) => (typeof value === 'string'
+      ? [{ key, pattern: '*', effect: value }]
+      : Object.entries(value).map(([pattern, effect]) => ({ key, pattern, effect }))));
 }
 
 /**
@@ -99,33 +125,49 @@ test('the README recommends permission entries, and every one is a well-formed r
   assert.ok(rules.length >= 3, `only ${rules.length} documented rules — the reader found nothing`);
 
   for (const rule of rules) {
-    assert.deepEqual(Object.keys(rule).sort(), ['action', 'effect', 'resource'],
+    assert.deepEqual(Object.keys(rule).sort(), ['effect', 'key', 'pattern'],
       `a documented rule has the wrong keys: ${JSON.stringify(rule)}`);
     assert.ok(['allow', 'deny', 'ask'].includes(rule.effect),
       `a documented rule declares effect "${rule.effect}", which the host does not accept`);
   }
 
+  // **The assertion whose absence let the section ship OpenCode 2's shape through four stories of a
+  // v1-only README.** Every loop in this file is satisfied by a block written in the other shape,
+  // because there are then no rules in it to be wrong — so the shape itself has to be asserted, and
+  // it has to be asserted as an absence rather than inferred from the rules being found.
+  assert.deepEqual(refusedBlocks(permissions()), [],
+    'the section recommends a `permissions` array, which is the other host\'s shape — v1 refuses '
+    + 'the whole configuration on it and the session does not start');
+
   // And the reader is a reader: over a planted block it reports what the block says, including an
   // effect the host would refuse. Without this, "every rule is well-formed" is also what an
   // extractor that silently found nothing would report.
-  assert.deepEqual(documented('```json\n{"permissions":[{"action":"a","resource":"b","effect":"maybe"}]}\n```'),
-    [{ action: 'a', resource: 'b', effect: 'maybe' }]);
+  assert.deepEqual(documented('```json\n{"permission":{"a":{"b":"maybe"},"c":"deny"}}\n```'),
+    [{ key: 'a', pattern: 'b', effect: 'maybe' }, { key: 'c', pattern: '*', effect: 'deny' }]);
+
+  // The control on the absence above, driven rather than argued: the same reading over a block in
+  // the shape that is refused reports it, and reports no rules at all — which is the pair of facts
+  // that made the old reading silent.
+  const wrong = '```json\n{"permissions":[{"action":"skill","resource":"dpm-*","effect":"allow"}]}\n```';
+
+  assert.equal(refusedBlocks(wrong).length, 1, 'the reading does not see the plural key in a block that uses it');
+  assert.deepEqual(documented(wrong), [], 'a block in the refused shape yields rules, so this is not the trap it was');
 });
 
 // --- Every skill the section names is a skill this package registers ------------------------
 
-test('every skill resource the README names resolves to a registered skill [unit]', () => {
+test('every skill pattern the README names resolves to a registered skill [unit]', () => {
   const ids = discoverSkills(ROOT).map((skill) => skill.name);
 
   assert.ok(ids.length > 20, `only ${ids.length} skills discovered, so matching against them proves little`);
 
-  const named = documented().filter((rule) => rule.action === 'skill').map((rule) => rule.resource);
+  const named = documented().filter((rule) => rule.key === 'skill').map((rule) => rule.pattern);
 
-  assert.ok(named.length > 0, 'the section names no skill resource at all');
+  assert.ok(named.length > 0, 'the section names no skill pattern at all');
 
-  for (const resource of named) {
-    assert.ok(ids.some((id) => matches(id, resource)),
-      `the README recommends a rule for skill resource "${resource}", which matches no skill this `
+  for (const pattern of named) {
+    assert.ok(ids.some((id) => matches(id, pattern)),
+      `the README recommends a rule for skill pattern "${pattern}", which matches no skill this `
       + 'package registers — a rule that never fires, and nothing would report it but this');
   }
 
@@ -162,12 +204,12 @@ test('every skill the package registers is covered by a rule the README recommen
   assert.equal(ids.length, 23, `${ids.length} skills discovered, and the recommendation is for 23`);
 
   const allowed = documented()
-    .filter((rule) => rule.action === 'skill' && rule.effect === 'allow')
-    .map((rule) => rule.resource);
+    .filter((rule) => rule.key === 'skill' && rule.effect === 'allow')
+    .map((rule) => rule.pattern);
 
-  assert.ok(allowed.length > 0, 'the README recommends no allow rule for the skill action at all');
+  assert.ok(allowed.length > 0, 'the README recommends no allow rule under the skill key at all');
 
-  const uncovered = ids.filter((id) => !allowed.some((resource) => matches(id, resource)));
+  const uncovered = ids.filter((id) => !allowed.some((pattern) => matches(id, pattern)));
 
   assert.deepEqual(uncovered, [],
     'a skill this package registers is matched by no rule the README recommends — a reader who '
@@ -288,9 +330,9 @@ test('control — the paragraph this replaced is reported, by line [unit]', () =
 // --- Every tool action the section names is a tool the server registers ----------------------
 
 /**
- * The actions the section names that belong to the **host** rather than to dpm.
+ * The permission keys the section names that belong to the **host** rather than to dpm.
  *
- * **Empty, and it was not.** It held `external_directory` — OpenCode's own action, gating a read
+ * **Empty, and it was not.** It held `external_directory` — one of v1's own keys, gating a read
  * that leaves the project — because every skill body opened by reading the conventions file out of
  * the package directory, which is outside whatever repository the session is running in. The README
  * had to recommend a rule for an action no dpm tool would ever be registered under, so this file's
@@ -310,48 +352,47 @@ test('control — the paragraph this replaced is reported, by line [unit]', () =
  */
 const HOST_ACTIONS = [];
 
-test('every tool action the README names resolves to a registered tool [unit]', () => {
+test('every tool key the README names resolves to a registered tool [unit]', () => {
   const actions = registeredActions();
 
   assert.ok(actions.length > 100, `only ${actions.length} tools registered — the server did not build`);
 
-  const named = documented().filter((rule) => rule.action !== 'skill').map((rule) => rule.action);
+  const named = documented().filter((rule) => rule.key !== 'skill').map((rule) => rule.key);
 
-  assert.ok(named.length > 0, 'the section names no tool action at all');
+  assert.ok(named.length > 0, 'the section names no tool key at all');
 
-  const host = named.filter((action) => HOST_ACTIONS.includes(action));
+  const host = named.filter((key) => HOST_ACTIONS.includes(key));
 
   assert.deepEqual([...new Set(host)].sort(), [...HOST_ACTIONS].sort(),
-    'the section names a host action this file has not classified, or has stopped naming one it had');
+    'the section names a host key this file has not classified, or has stopped naming one it had');
 
   // **The control the empty list needs.** With nothing to find, the assertion above is satisfied by
   // a reader that cannot find anything — which is the state a broken block parser would leave it
-  // in, silently, for as long as no host action is recommended. Driven over a planted block naming
-  // the action that used to be there.
-  const planted = '```json\n{"permissions":[{"action":"external_directory","resource":"*",'
-    + '"effect":"allow"}]}\n```';
+  // in, silently, for as long as no host key is recommended. Driven over a planted block naming
+  // the key that used to be there.
+  const planted = '```json\n{"permission":{"external_directory":{"*":"allow"}}}\n```';
 
-  assert.deepEqual(documented(planted).map((rule) => rule.action), ['external_directory'],
-    'the reader does not see a host action in a block that names one');
+  assert.deepEqual(documented(planted).map((rule) => rule.key), ['external_directory'],
+    'the reader does not see a host key in a block that names one');
 
   // And the recommendation really is gone from the README rather than moved out of a JSON block —
-  // the prose above it explains the removal and names the action while doing so, which a check on
+  // the prose above it explains the removal and names the key while doing so, which a check on
   // the raw text would report as the thing it is describing.
-  assert.deepEqual(documented().map((rule) => rule.action).filter((action) => action === 'external_directory'),
+  assert.deepEqual(documented().map((rule) => rule.key).filter((key) => key === 'external_directory'),
     [], 'the README still recommends an external_directory rule for a read dpm no longer performs');
 
-  for (const action of named.filter((candidate) => !HOST_ACTIONS.includes(candidate))) {
-    assert.ok(action.startsWith(CALLABLE),
-      `the README recommends a rule for action "${action}", which is neither "skill", a dpm tool, `
+  for (const key of named.filter((candidate) => !HOST_ACTIONS.includes(candidate))) {
+    assert.ok(key.startsWith(CALLABLE),
+      `the README recommends a rule under key "${key}", which is neither "skill", a dpm tool, `
       + `nor one of the host's own (${HOST_ACTIONS.join(', ')})`);
-    assert.ok(actions.some((registered) => matches(registered, action)),
-      `the README recommends a rule for action "${action}", which matches no registered tool`);
+    assert.ok(actions.some((registered) => matches(registered, key)),
+      `the README recommends a rule under key "${key}", which matches no registered tool`);
   }
 
   assert.equal(actions.some((registered) => matches(registered, `${CALLABLE}not_a_tool`)), false);
 
-  // The partition has to be capable of rejecting, or naming one host action opened the door to any
-  // string at all: a near-miss on the host action falls through to the dpm check and fails there.
+  // The partition has to be capable of rejecting, or naming one host key opened the door to any
+  // string at all: a near-miss on the host key falls through to the dpm check and fails there.
   assert.equal(HOST_ACTIONS.includes('externl_directory'), false);
 });
 

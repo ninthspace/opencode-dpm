@@ -24,11 +24,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 
-import { PREFIX, skillNames } from './support/skills.js';
+import { PREFIX, registeredSkills, skillNames, skillSource } from './support/skills.js';
 import { sweepSourcesUnder, withoutComments } from './support/sources.js';
 import { packageTree, skillSource as plantedSkill } from './support/package-tree.js';
-import { discoverSkills } from '../src/plugin/skills.ts';
-import { skillSources } from '../src/plugin/registration.ts';
+import { discoverSkills, frontMatter } from '../src/plugin/skills.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 const PLUGIN = join(ROOT, 'src', 'plugin');
@@ -54,30 +53,45 @@ const declarations = (directory) => sweepSourcesUnder(directory)
 
 // --- Criterion 1: the name comes off the front matter, uncomposed ---------------------------------
 
-test('registration registers each skill under the name its front matter declares [unit]', () => {
-  const sources = skillSources({});
-  const discovered = discoverSkills(ROOT);
+test('registration registers each skill under the name its front matter declares [unit]', (t) => {
+  const discovered = registeredSkills();
 
   assert.equal(discovered.length, CORPUS, `${discovered.length} skills were discovered`);
-  assert.equal(sources.length, CORPUS, `${sources.length} skills were registered`);
 
-  // **Pairwise, not as two sorted lists.** Two lists that agree as sets would also agree if
-  // registration paired every name with the wrong body — and a skill registered under a
-  // neighbour's name is exactly the failure a composition bug produces.
+  // **Against the front matter re-read from disk, not against `discoverSkills` a second time.**
+  // The registration this test was written for is gone — epic 02-05 story 2 — and the host now
+  // walks `skills/` itself, taking each name off the body's own front matter. Comparing the walk
+  // to the walk would be a tautology, so the oracle is the file: whatever the host reads, it reads
+  // *there*, and this asserts that what is there says what the walk reports.
+  //
+  // **Pairwise, not as two sorted lists.** Two lists that agree as sets would also agree if the
+  // walk paired every name with the wrong body — and a skill carrying a neighbour's name is
+  // exactly the failure a composition bug produces.
   for (const skill of discovered) {
-    const registered = sources.filter((source) => source.skill.name === skill.name);
+    const declared = frontMatter(skillSource(skill.name)).name;
 
-    assert.equal(registered.length, 1, `${skill.name} registered ${registered.length} times`);
-    assert.equal(registered[0].skill.location, skill.location,
-      `${skill.name} registered against a body that is not its own`);
+    assert.equal(declared, skill.name,
+      `${skill.name} is registered under a name its own front matter does not declare`);
+    assert.equal(skill.location, join(ROOT, 'skills', skill.name),
+      `${skill.name} is registered against a body that is not its own`);
   }
+
+  // **The control, and it is the one the host made necessary.** A `SKILL.md` with no `name` is not
+  // a skill under a directory name any more — it is dropped from the host's registry outright, with
+  // one WARN nobody reads. `discoverSkills` still falls back to the directory, so the fallback is
+  // now a *divergence* from the host rather than a safety net, and the assertion above is what
+  // stops a body losing its `name` quietly.
+  const nameless = discoverSkills(packageTree(t, { 'dpm-orphan': '---\ndescription: x\n---\n' }));
+
+  assert.ok(nameless.some(({ name }) => name === 'dpm-orphan'),
+    'discovery no longer falls back to the directory name, so the reading above proves nothing new');
 });
 
 test('the registered name is the declared name, added to and stripped of nothing [unit]', () => {
   // The composition, if one had survived, is what this catches: `dpm-dpm-do` and `do` both fail a
   // strict equality against the declared name, and neither would fail a `startsWith(PREFIX)`.
-  const wrong = skillSources({})
-    .map(({ skill }) => skill.name)
+  const wrong = registeredSkills()
+    .map(({ name }) => name)
     .filter((name) => !skillNames().includes(name));
 
   assert.deepEqual(wrong, [],
@@ -99,7 +113,7 @@ test('every registered name is the one ADR 01-05 made permanent at the first pub
   ];
 
   assert.equal(published.length, CORPUS, 'the transcribed list is not the corpus');
-  assert.deepEqual(skillSources({}).map(({ skill }) => skill.name).sort(), published,
+  assert.deepEqual(registeredSkills().map(({ name }) => name).sort(), published,
     'the set of registered names changed, and ADR 01-05 records a registered name as permanent');
 });
 

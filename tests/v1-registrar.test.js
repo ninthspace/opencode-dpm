@@ -13,13 +13,18 @@
  * - v1 calls the named `server` export with its `PluginInput` and awaits the `Hooks` it returns.
  *   `Hooks.config` is handed the resolved configuration, and `config.mcp` is the only handle v1's
  *   plugin API offers on the MCP registry.
- * - A module exporting a callable `server` **and** a default `{ id, setup }` evaluates and then
- *   stalls the loader — neither hook runs. The control is that the same two hook bodies in two
- *   files both ran in one session. So the absence of a default export here is load-bearing, and the
- *   last test in this file is what holds it.
- * - The `config` hook cannot bootstrap the second module: `config.plugin` is writable, the hook was
+ * - A default export diverts the loader to the object route, which refuses the module unless the
+ *   default carries a `server()` of its own. So the absence of a default export here is
+ *   load-bearing, and the last test in this file is what holds it.
+ * - The `config` hook cannot bootstrap a second module: `config.plugin` is writable, the hook was
  *   observed writing to it, and the appended module never evaluated. The plugin list is resolved
  *   first.
+ *
+ * **The third re-scope is epic 02-05 story 2, and it removed the dilemma rather than resolving it.**
+ * The skills entry this file used to check alongside the registrar had no loader under 1.18.25 at
+ * all — its route is fed by a `plugins` config key the host strips — so it was deleted, and the
+ * skills are registered by pointing the host's own `skills` key at `skills/`. FR2 is still
+ * discharged exactly as written, by the one entry that remains.
  */
 
 import { test } from 'node:test';
@@ -30,12 +35,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import * as tools from '../src/plugin/index.ts';
-import { SERVER_NAME } from '../src/plugin/index.ts';
-import skillsEntry from '../src/plugin/skills-entry.ts';
+import { SERVER_NAME } from '../src/plugin/registration.ts';
 import { serverEntry } from '../src/plugin/registration.ts';
 import { localServer } from '../src/plugin/server.ts';
 import { packageRoot } from '../src/plugin/root.ts';
-import { registerServer, registerSkills } from './support/host-contexts.js';
+import { registerServer } from './support/host-contexts.js';
 import { pluginSources, withoutComments } from './support/sources.js';
 
 // --- Criterion 1: the config hook registers the packaged server -----------------------------------
@@ -155,11 +159,11 @@ test('must NOT — the plugin writes to the user\'s OpenCode configuration [inte
 
   const before = fingerprint(configured);
 
-  // Both routes, because the claim is about the plugin and not about one module of it. Setting
-  // `config.mcp` mutates the object v1 passed in for exactly that purpose; ENVX4's claim is about
-  // the file, and the file is what is hashed.
+  // Setting `config.mcp` mutates the object v1 passed in for exactly that purpose; ENVX4's claim is
+  // about the file, and the file is what is hashed. There used to be a second load here, for the
+  // skills entry epic 02-05 story 2 deleted — and the claim got easier to hold rather than harder,
+  // because the half that is left is a directory the host reads and dpm never opens.
   await registerServer(tools);
-  await registerSkills(skillsEntry);
 
   assert.deepEqual(fingerprint(configured), before,
     'a plugin load changed a configuration file — registration is a description handed to the '
@@ -175,29 +179,28 @@ test('must NOT — the plugin writes to the user\'s OpenCode configuration [inte
 
 // --- The shape v1 needs, which is the constraint that put the routes in two files -----------------
 
-test('the tools module exports a callable server and no default [unit]', async () => {
-  // **A default export here stalls v1's loader** — observed, with the two-file arrangement as the
-  // control — so this is the assertion that keeps the two routes apart. Read off the module
-  // namespace rather than through `import entry from …`, which is a *static* error when there is no
-  // default: the file would fail to parse instead of failing this assertion, and a suite cannot
-  // report on a module it could not load.
-  assert.equal(tools.default, undefined, 'the tools module has a default export, which stalls v1 at load');
+test('the tools module exports a callable server and no default [unit]', () => {
+  // **A default export here diverts v1's loader to the object route**, which then refuses the module
+  // outright unless the default carries a `server()` of its own — so this is the assertion that
+  // keeps dpm on the route it wants. Read off the module namespace rather than through
+  // `import entry from …`, which is a *static* error when there is no default: the file would fail
+  // to parse instead of failing this assertion, and a suite cannot report on a module it could not
+  // load.
+  assert.equal(tools.default, undefined, 'the tools module has a default export, which changes its route');
   assert.equal(typeof tools.server, 'function', 'v1 calls the named `server` export, and there is none');
 
   // The control on that reading, since `undefined` is also what a namespace with nothing in it
-  // returns: this module does export things, and one of them is not `default`.
-  assert.ok(Object.keys(tools).length >= 2, 'the namespace is empty, so the reading above proves nothing');
-  assert.equal(skillsEntry, (await import('../src/plugin/skills-entry.ts')).default,
-    'the other module\'s default is what a default import resolves to');
+  // returns: this module does export something, and it is not `default`.
+  //
+  // **It used to require two, and epic 02-05 story 2 made that false.** `SERVER_NAME` was the
+  // second export, and it was the reason the module did not load under a real 1.18.25 host — which
+  // walks every export and refuses the module on the first that is not a plugin. So the floor is
+  // one, and the *ceiling* is one too; `plugin-entry.test.js` asserts the exact set, and this stays
+  // a control on the `default` reading rather than becoming a second copy of that rule.
+  assert.deepEqual(Object.keys(tools), ['server'],
+    'the namespace is empty or holds something besides the route, either of which breaks the reading above');
 
-  // And the other module is the mirror image: a default object, no callable `server`.
-  assert.equal(typeof skillsEntry, 'object');
-  assert.notEqual(typeof skillsEntry, 'function');
-  assert.equal(typeof skillsEntry.setup, 'function');
-
-  // Two modules load into one host, and v1 keys its plugin registry by id. Two claiming one id is a
-  // collision the host resolves by hanging, so the ids differ — and `SERVER_NAME` is a third
-  // namespace again, naming the MCP server rather than either plugin.
-  assert.notEqual(skillsEntry.id, SERVER_NAME);
-  assert.match(skillsEntry.id, /^dpm-/, 'the skills module\'s id does not identify it as dpm\'s');
+  // And the name the server is registered under is not the plugin's own — one module now, but the
+  // two namespaces are still two, and a rename that collapsed them would rename every tool.
+  assert.equal(SERVER_NAME, 'dpm');
 });

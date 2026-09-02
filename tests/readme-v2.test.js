@@ -29,9 +29,11 @@ import { initRepository } from './support/git.js';
 import { CLONE_PLACEHOLDER, DOCUMENTED_CLONE, follow } from './support/dpm-clone.js';
 import { ownedDirectory } from './support/scratch.js';
 import { COMMANDS } from '../src/guard/index.ts';
+import { SERVER_NAME } from '../src/plugin/registration.ts';
+import { skillNames } from './support/skills.js';
+import { README, configBlocks, refusedBlocks } from './support/readme.js';
 
 const ROOT = join(import.meta.dirname, '..');
-const README = readFileSync(join(ROOT, 'README.md'), 'utf8');
 
 /** The placeholder the README uses for the checkout DPM is loaded from. */
 const PLACEHOLDER = CLONE_PLACEHOLDER;
@@ -80,6 +82,68 @@ const RULES = [
       const parsed = JSON.parse(body);
 
       assert.ok(Object.keys(parsed).length > 0, `a documented JSON block is empty: ${body}`);
+    },
+  },
+  {
+    // Epic 02-05 story 2. The block quotes what the host logs when the `node` it resolves is older
+    // than DPM's floor, which is a failure a reader has to be able to recognise: the session comes
+    // up with the skills present, no tools behind them, and this one line in a log.
+    what: 'the log line a stale runtime produces',
+    matches: ({ body }) => body.includes('server unavailable'),
+    run: false,
+    why: 'it is output to recognise rather than a command to run, and producing it needs a host',
+    check: (body) => {
+      assert.match(body, new RegExp(`key=${SERVER_NAME}\\b`),
+        'the quoted log line names a server other than the one DPM registers');
+      assert.match(body, /status=failed/,
+        'the quoted line does not show the failure it is there to help a reader recognise');
+    },
+  },
+  {
+    // Epic 02-05 story 3. The Permissions section shipped OpenCode 2's `permissions` array, and
+    // 1.18.25 does not ignore it — it refuses the whole configuration and the session never starts.
+    // The block quotes that refusal so a reader who has copied the wrong shape can recognise it.
+    what: 'the configuration error a v2 permissions array produces',
+    matches: ({ body }) => body.includes('V2 permissions are not supported'),
+    run: false,
+    why: 'it is output to recognise rather than a command to run, and producing it needs a host',
+    check: (body) => {
+      assert.match(body, /Configuration is invalid/,
+        'the quoted error does not show that the configuration was refused outright');
+
+      // **The load-bearing half**: the block warns off a shape, and the README's own JSON must not
+      // then use it. A quoted warning beside an example that contradicts it is worse than neither.
+      // Over the whole document rather than the Permissions section, which is the scope
+      // `permission-entries.test.js` takes — the refused shape is no better in *Installation*.
+      assert.deepEqual(refusedBlocks(), [],
+        'the README warns that `permissions` is refused and then documents a block that uses it');
+      assert.ok(configBlocks().some((parsed) => 'permission' in parsed),
+        'the README warns off the plural key without documenting the singular one that works');
+    },
+  },
+  {
+    // Epic 02-05 story 3, driven against a running 1.18.25: with `"skill": { "dpm-*": "deny" }` the
+    // skill tool refuses and prints the rule, and without it the same call returns the body.
+    what: 'the refusal a denied skill produces',
+    matches: ({ body }) => body.includes('prevents you from using this specific tool call'),
+    run: false,
+    why: 'it is output to recognise rather than a command to run, and producing it needs a host',
+    check: (body) => {
+      const [, quoted] = body.match(/(\[.*\])/s) ?? [];
+
+      assert.ok(quoted, 'the quoted refusal no longer carries the ruleset that is the point of it');
+
+      const rules = JSON.parse(quoted);
+
+      assert.ok(rules.some((rule) => rule.permission === 'skill' && rule.action === 'deny'),
+        'the quoted ruleset holds no skill deny, so it does not show what stopped the call');
+
+      // The pattern in the quoted rule has to be one that matches DPM's skills, or the example is
+      // showing a reader a rule that would silently match nothing.
+      const [{ pattern }] = rules.filter((rule) => rule.permission === 'skill');
+
+      assert.ok(skillNames().every((name) => name.startsWith(pattern.replace(/\*$/, ''))),
+        `the quoted rule's pattern ${pattern} does not cover the skills this package registers`);
     },
   },
   {
@@ -220,6 +284,13 @@ test('every fenced block in the README is accounted for by a rule [unit]', () =>
   assert.deepEqual(RULES.filter((rule) => rule.run === false).map(({ what }) => what), [
     'the clone command',
     'a configuration block',
+    // 02-05 story 2. The fifth entry, and the first that is not a command at all — it is a log line
+    // a reader has to recognise, so "nothing runs it" is a category rather than a concession.
+    'the log line a stale runtime produces',
+    // 02-05 story 3, the same category: two more readings a reader has to recognise. Both were
+    // taken off a running 1.18.25 rather than composed, and neither can be produced without a host.
+    'the configuration error a v2 permissions array produces',
+    'the refusal a denied skill produces',
     'the pre-commit framework entry',
     'a guard fix naming one of the executables',
   ], 'the set of documented commands nothing runs has changed');
