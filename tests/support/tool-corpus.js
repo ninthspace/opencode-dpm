@@ -57,9 +57,10 @@ export const WITNESS = {
   taxonomy: 'Latite',
   agent: 'Charnockite',
   test_approach: 'tonalite',
-  // Not a word but a rendered line: Story 2 is held back by an edge of a **project-added** kind,
-  // so this string appears only if the template read `gates_work` off the vocabulary instead of
-  // matching the name `blocks`. Story 1's own field renders `—`, so the line is unambiguous.
+  // Not a word but a rendered line: Story 2 is held back by Story 1 over an edge of a
+  // **project-added** kind, so this string appears only if the template read `gates_work` off the
+  // vocabulary instead of matching the name `blocks`. Story 1's own field renders `—`, so the line
+  // is unambiguous — and it names the blocker, which is the direction quick 01 settled.
   dependency_kind: '**Blocked by**: Story 1',
   dependency: 'norite',
 };
@@ -152,11 +153,16 @@ export function toolCorpus(call) {
 
   // Two edges of the **added** kind, and they are witnessed differently on purpose. The
   // document-level edge renders its kind by name, which shows the row reached the page. The
-  // story-level one renders only its target, under `**Blocked by**` — and it renders there at all
+  // story-level one renders only its blocker, under `**Blocked by**` — and it renders there at all
   // only if the template asked `dependency_kind.gates_work` rather than matching the name
   // `blocks`, which is what FR24's extensibility means for a template and what this pair asserts.
+  //
+  // **Source blocks target**, so story 1 is the blocker and the witness lands on story 2's field.
+  // The row ran the other way round until quick 01 and the witness still matched, because the
+  // template read the source end and printed the target: an inverted row and an inverted reading
+  // produce the same line, which is why this one is written in the direction `readiness.ts` states.
   call.create_dependency({
-    kind: 'norite', source_story_id: second.id, target_story_id: story.id,
+    kind: 'norite', source_story_id: story.id, target_story_id: second.id,
   });
   call.create_dependency({
     kind: 'norite', source_document_id: epic.id, target_document_id: spec.id,

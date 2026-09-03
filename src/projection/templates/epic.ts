@@ -8,9 +8,16 @@
  * promotion to a retro, so a story's lesson renders on the epic whether or not a retro has
  * collected it.
  *
- * A story's blocking edges come from `dependency` with `source_story_id` set, which is the other
- * half of the pair `common.js` renders for documents. Both ends of that table are exclusive, so a
- * story edge and a document edge are the same table read two ways rather than two kinds of row.
+ * A story's blocking edges come from `dependency` with `target_story_id` set — the edges *into* the
+ * story, because an edge reads source-blocks-target and `**Blocked by**` names the far end of the
+ * ones pointing at it. Both ends of that table are exclusive, so a story edge and a document edge
+ * are the same table read two ways rather than two kinds of row.
+ *
+ * **It read `source_story_id` until quick 01, and named the stories each story held up under a
+ * heading saying the opposite.** The rows were right and the readiness query was right; only the
+ * file lied, which is the same shape as the paragraph below and the reason both are recorded here.
+ * A story blocked by a whole epic rendered as nothing at all, because that pairing —
+ * `source_document_id` with `target_story_id` — has no representation at the source end.
  *
  * **Which of those edges block is read from `dependency_kind.gates_work`, never from the name of
  * a kind.** This filtered on `kind === 'blocks'` until Epic 47-05 Story 6, which is the same
@@ -40,27 +47,31 @@ import { document, sections } from './common.ts';
 const storyLabel = (story: Row) => `Story ${story.number}`;
 
 /**
- * The far end of a dependency edge, named so a reader can find it.
+ * The blocking end of a dependency edge, named so a reader can find it.
+ *
+ * That is the *source* end: these edges were selected by their target being this story, so what
+ * holds it up is what the edge points from.
  *
  * A story in another epic is qualified with that epic's identifier — `47-03 Story 2` — because
  * `Story 2` alone is ambiguous the moment the edge leaves the epic, and cross-epic story blocking
- * is one of the two directions `010-dependency.sql` says occurs in real epics.
+ * is one of the two directions `010-dependency.sql` says occurs in real epics. A whole epic at that
+ * end renders as its identifier alone, which is the other of the two.
  */
-function edgeTarget(db: DatabaseSync, edge: Row, identifiers: Map<string, string>, epicId: string) {
-  if (edge.target_document_id !== null) {
-    return identifiers.get(edge.target_document_id) ?? edge.target_document_id;
+function edgeSource(db: DatabaseSync, edge: Row, identifiers: Map<string, string>, epicId: string) {
+  if (edge.source_document_id !== null) {
+    return identifiers.get(edge.source_document_id) ?? edge.source_document_id;
   }
 
-  const target = db.prepare('SELECT number, epic_id FROM story WHERE id = ?')
-    .get(edge.target_story_id) as Row | undefined;
+  const source = db.prepare('SELECT number, epic_id FROM story WHERE id = ?')
+    .get(edge.source_story_id) as Row | undefined;
 
-  if (!target) return edge.target_story_id;
+  if (!source) return edge.source_story_id;
 
-  const label = `Story ${target.number}`;
+  const label = `Story ${source.number}`;
 
-  if (target.epic_id === epicId) return label;
+  if (source.epic_id === epicId) return label;
 
-  return `${identifiers.get(target.epic_id) ?? target.epic_id} ${label}`;
+  return `${identifiers.get(source.epic_id) ?? source.epic_id} ${label}`;
 }
 
 /**
@@ -89,9 +100,9 @@ function story(
   epicId: string,
   gating: Set<string>,
 ) {
-  const blockedBy = row.dependencies
+  const blockedBy = row.blockers
     .filter((edge: Row) => gating.has(edge.kind))
-    .map((edge: Row) => edgeTarget(db, edge, identifiers, epicId));
+    .map((edge: Row) => edgeSource(db, edge, identifiers, epicId));
 
   return [
     heading(2, `${storyLabel(row)} — ${ref(row.title)}`),

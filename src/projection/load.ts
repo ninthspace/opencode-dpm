@@ -106,10 +106,23 @@ export const COLLECTIONS: Record<string, Descriptor> = {
 
   // Cross-cutting joins. Both ends of a dependency are nullable and exclusive, so the two
   // descriptors are one table read two ways rather than two tables.
+  //
+  // **They read it from opposite ends, and that is the whole of what each renders.** An edge reads
+  // source-blocks-target, as `dependency/readiness.ts` says, so a document's *outgoing* edges are
+  // what it holds up and a story's *incoming* edges are what hold it up. `common.ts` renders the
+  // first under `## Dependencies` with the kind and an arrow, which is direction-honest either way
+  // round; `epic.ts` renders the second under `**Blocked by**`, which is not — a label naming a
+  // direction has to be read from the end it names. Quick 01 is what happens when it is not:
+  // `storyDependencies` was `source_story_id` and every story in every epic file named the stories
+  // it blocked under a heading saying the reverse.
+  //
+  // Parenting on `target_story_id` also picks up the pairing the source-keyed read could not see
+  // at all — `source_document_id` with `target_story_id`, a story waiting on a whole epic, which
+  // `readiness.ts` names as one of the two ways a story is held.
   artifactLinks: { table: 'artifact_document', parent: 'document_id', order: ['artifact_id'] },
   delivers: { table: 'document_milestone', parent: 'document_id', order: ['milestone_id'] },
   dependencies: { table: 'dependency', parent: 'source_document_id', order: ['kind', 'id'] },
-  storyDependencies: { table: 'dependency', parent: 'source_story_id', order: ['kind', 'id'] },
+  storyBlockers: { table: 'dependency', parent: 'target_story_id', order: ['kind', 'id'] },
 };
 
 /**
@@ -252,7 +265,7 @@ export function storiesOf(db: DatabaseSync, epicId: string) {
       approaches: collection(db, 'storyCriterionApproaches', criterion.id).map((row) => row.tag),
     })),
     observations: collection(db, 'storyObservations', story.id),
-    dependencies: collection(db, 'storyDependencies', story.id),
+    blockers: collection(db, 'storyBlockers', story.id),
   }));
 }
 

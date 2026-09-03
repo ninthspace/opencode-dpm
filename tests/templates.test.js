@@ -382,7 +382,28 @@ test('a parentage cycle fails the render rather than hanging it', (t) => {
   assert.equal(names.get(built.spec.id), '01');
 });
 
-test('a story blocked by a story in another epic names that epic', (t) => {
+// --- The direction of a blocking edge (quick 01) ----------------------------------------------
+
+/**
+ * Every story's `**Blocked by**` line in a rendered epic, by story number.
+ *
+ * Read out of the bytes rather than off the tree, because the bytes are what was wrong: the tree
+ * held the right rows throughout, and a check that asked the loader what it loaded would have
+ * agreed with the loader about the end it was reading from.
+ *
+ * The lazy span stops at the first `**Blocked by**` after each heading, which is the story's own —
+ * the field is emitted once per story, immediately under `**Status**`.
+ */
+function blockedByLines(text) {
+  return new Map([...text.matchAll(/^## Story (\d+) —[\s\S]*?^\*\*Blocked by\*\*: (.*?) *$/gm)]
+    .map(([, number, names]) => [Number(number), names]));
+}
+
+/** The rendered epic the corpus builds, by the path it publishes to. */
+const projectedEpic = (db, path = 'docs/epics/01-01-epic-projection.md') => project(db, { write: false })
+  .written.find((file) => file.path === path);
+
+test('a story blocked by a story in another epic names that epic [unit]', (t) => {
   const { db, call } = surface(t);
   const built = fullCorpus(db, call);
 
@@ -392,18 +413,94 @@ test('a story blocked by a story in another epic names that epic', (t) => {
   const otherStory = call.create_story({
     epic_id: other.id, number: 4, title: 'Renumber the loser', position: 0,
   });
-  const mine = db.prepare("SELECT id FROM story WHERE number = 1 AND epic_id = ?").get(built.epic.id);
+  const mine = db.prepare('SELECT id FROM story WHERE number = 1 AND epic_id = ?').get(built.epic.id);
 
+  // **Source blocks target**, so the story in the other epic is the source: it is the one holding
+  // story 1 up, and story 1 is where its name has to appear. This edge ran the other way round
+  // until quick 01, when the assertion below still passed — the template read the source end and
+  // printed the target, so an inverted row and an inverted reading agreed on the answer.
   call.create_dependency({
-    kind: 'blocks', source_story_id: mine.id, target_story_id: otherStory.id,
+    kind: 'blocks', source_story_id: otherStory.id, target_story_id: mine.id,
   });
-
-  const epic = project(db, { write: false }).written
-    .find((file) => file.path === 'docs/epics/01-01-epic-projection.md');
 
   // `Story 4` alone would be ambiguous the moment the edge leaves the epic, and cross-epic story
   // blocking is one of the two directions `010-dependency.sql` says occurs in real epics.
-  assert.match(epic.text, /\*\*Blocked by\*\*: 01-02 Story 4/);
+  assert.equal(blockedByLines(projectedEpic(db).text).get(1), '01-02 Story 4');
+});
+
+test('must NOT — a story names what it blocks under `**Blocked by**` [integration]', (t) => {
+  const { db, call } = surface(t);
+  const built = fullCorpus(db, call);
+
+  const other = call.create_epic({
+    parent_id: built.spec.id, slug: 'merge', title: 'Merge and renumber',
+  });
+  const otherStory = call.create_story({
+    epic_id: other.id, number: 4, title: 'Renumber the loser', position: 0,
+  });
+  const mine = db.prepare('SELECT id FROM story WHERE number = 1 AND epic_id = ?').get(built.epic.id);
+
+  call.create_dependency({
+    kind: 'blocks', source_story_id: otherStory.id, target_story_id: mine.id,
+  });
+
+  // **Its own test rather than a second assertion on the one above**, because the two fail
+  // together and the first one shadows this: a run that stopped at "story 1 says `Story 2`" never
+  // reached the half asking what story 4 said, and a must-NOT nothing executed is not a control.
+  // Against the pre-quick template this line held `01-01 Story 1` — the blocker's file naming the
+  // work it releases under a heading that says the reverse.
+  assert.equal(
+    blockedByLines(projectedEpic(db, 'docs/epics/01-02-epic-merge.md').text).get(4),
+    '—',
+  );
+
+  // The corpus's own sibling edge, over a story that blocks and is not blocked. The cross-epic
+  // case above could pass on a template that simply failed to resolve a foreign epic.
+  assert.equal(blockedByLines(projectedEpic(db).text).get(1), '01-02 Story 4');
+  assert.equal(blockedByLines(projectedEpic(db).text).get(2), 'Story 1');
+});
+
+test("a story's Blocked by line agrees with the readiness query [integration]", (t) => {
+  const { db, call } = surface(t);
+  const built = fullCorpus(db, call);
+
+  const lines = blockedByLines(projectedEpic(db).text);
+
+  // **The oracle is the tool surface, not a second walk of the same table.** `ready` is
+  // `readyClause`, which is where the direction is stated and believed; recomputing the edges here
+  // would be the template's own reading written twice and agreeing with itself. Every story in the
+  // corpus is pending and no blocker is complete, so ready is exactly "nothing holds it".
+  const ready = new Set(call.list_story({ epic_id: built.epic.id, ready: true }).items
+    .map((row) => row.number));
+
+  assert.ok(ready.size > 0 && ready.size < lines.size,
+    `the corpus must hold both a ready story and a held one for this to say anything; `
+    + `${ready.size} of ${lines.size} are ready`);
+
+  for (const [number, names] of lines) {
+    assert.equal(names === '—', ready.has(number),
+      `Story ${number} renders \`${names}\` and the readiness query `
+      + `${ready.has(number) ? 'does not hold it' : 'holds it'}`);
+  }
+});
+
+test('a story blocked by a whole epic names that epic [unit]', (t) => {
+  const { db, call } = surface(t);
+  const built = fullCorpus(db, call);
+
+  const other = call.create_epic({
+    parent_id: built.spec.id, slug: 'merge', title: 'Merge and renumber',
+  });
+  const mine = db.prepare('SELECT id FROM story WHERE number = 1 AND epic_id = ?').get(built.epic.id);
+
+  // `source_document_id` with `target_story_id` — a story waiting on a whole epic, which
+  // `readiness.ts` names as one of the two ways a story is held and which the source-keyed read
+  // could not reach at all: the row has no `source_story_id` to be found by.
+  call.create_dependency({
+    kind: 'blocks', source_document_id: other.id, target_story_id: mine.id,
+  });
+
+  assert.equal(blockedByLines(projectedEpic(db).text).get(1), '01-02');
 });
 
 // --- Determinism and fidelity, over the whole set --------------------------------------------

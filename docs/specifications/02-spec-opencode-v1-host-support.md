@@ -71,7 +71,7 @@ The MCP server remains the tool surface under v1. Registration goes through v1's
 
 ### FR3 (must)
 
-Skills registered from the package, not copied. The v1 registrar makes the package's skills directory discoverable to the host, and each skill resolves with its `location` inside the installed package so directory-based skills keep their supporting files. ADR 01-05's first half — registered rather than copied — holds unchanged under v1; only the mechanism that implements it differs.
+Skills registered from the package, not copied. The package's skills directory is made discoverable to the host by the `skills` configuration key the user sets at install, and each skill resolves with its `location` inside the installed package so directory-based skills keep their supporting files. ADR 01-05's first half — registered rather than copied — holds unchanged under v1; only the mechanism that implements it differs. There is no v1 skills registrar: v1's plugin `Hooks` has no skill member and its configuration layer strips the `plugins` key a second entry would have needed, so the mechanism is a documented configuration entry rather than code dpm runs.
 
 - Discovery over the directory the v1 registrar contributes finds exactly twenty-three `SKILL.md` files, all resolving under the installed package. `[unit]`
 - Under a running v1 host, the skill listing returns dpm's skills with `location` inside the installed package. `[manual]`
@@ -104,7 +104,7 @@ Both hosts documented. README install, first run, guard symlink and "when the gu
 
 ### FR7 (should)
 
-Permission guidance matches what each host evaluates. v1's permission engine evaluates the `skill` action against the unprefixed front-matter name, so the `dpm-*` rule the README currently recommends matches nothing there. The recommended entries are stated per host, against what that host actually matches on.
+Permission guidance matches what each host evaluates. v1's permission engine evaluates the `skill` key against the front-matter `name` — which carries the `dpm-` prefix, so a `dpm-*` pattern matches every dpm skill and nothing else. The recommended entries are stated per host, against what that host actually matches on.
 
 - The permission rule the README recommends matches all twenty-three skill identities on both hosts — one `dpm-*` form once the skills carry their own prefix. Control: a planted rule matching none, reported as a failure rather than passing over an empty match set, which is the shape that passes by doing nothing. `[unit]`
 - Under a running v1 host, a `deny` rule written as the README recommends blocks a dpm skill, and the same session without the rule runs it. The two directions are each other's control: a block that would have happened anyway proves nothing. `[manual]`
@@ -215,7 +215,7 @@ Production: copying skill files into the user's project tree must not be require
 
 ### ENVX4 (must)
 
-Production: the plugin must not write to the user's OpenCode configuration. Checkable by the configuration files being byte-identical across a plugin load. Registration is a description handed to the host, not an edit to the user's file. The install command is excluded from this: `plugin add` writing to the global configuration is the host's write and the user's choice, not the plugin's.
+Production: the plugin must not write to the user's OpenCode configuration. Checkable by no write to those files being attributable to dpm across a plugin load — not by the files being byte-identical, because 1.18.25 inserts a `"$schema"` member into `opencode.json` on load and a byte comparison cannot tell that write from one of dpm's. Registration is a description handed to the host, not an edit to the user's file. The host's own writes are excluded from this, whether they arrive on load or from `plugin add` writing to the global configuration: those are the host's write and the user's choice, not the plugin's.
 
 ## Architecture Decisions
 

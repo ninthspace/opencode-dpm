@@ -114,8 +114,13 @@ export function fullCorpus(db, call) {
     });
   }
 
+  // **Source blocks target**, so story 1 is the blocker and story 2 is the one held. The row was
+  // the other way round until quick 01 — story 2 as source, with the variable named `blocked` for
+  // the end that was doing the blocking — which is exactly the confusion the epic template was
+  // rendering. Written in the readable direction here so a fixture nobody re-derives cannot teach
+  // the wrong one back.
   call.create_dependency({
-    kind: 'blocks', source_story_id: blocked.id, target_story_id: story.id,
+    kind: 'blocks', source_story_id: story.id, target_story_id: blocked.id,
   });
 
   db.prepare(`INSERT INTO story_criterion_approach (story_criterion_id, tag)
