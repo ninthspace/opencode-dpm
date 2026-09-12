@@ -25,7 +25,7 @@ Resolve the document these decisions belong to, in this order.
    read it with the tool for its kind. A reference goes through
    `dpm_resolve_reference` first, which returns the row it names or refuses; a
    ULID is already the id and needs no resolving.
-2. Otherwise `dpm_list_product_brief`, and offer the results with `AskUserQuestion`. Fall back
+2. Otherwise `dpm_list_product_brief`, and offer the results with the `question` tool. Fall back
    to `dpm_list_problem_brief`, then `dpm_list_spec`, then `dpm_list_discussion`.
    **Ask which one; never take the most recent.**
 3. If none exist, ask the user to describe the system, and say that the decisions will need a
@@ -87,7 +87,7 @@ finding rather than a failure.
 
 ## Process
 
-Work through the phases **one at a time**, one gate per turn, each with `AskUserQuestion`.
+Work through the phases **one at a time**, one gate per turn, each with the `question` tool.
 
 ### Phase 1: Context
 

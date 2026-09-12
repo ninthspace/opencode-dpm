@@ -22,7 +22,7 @@ This skill uses **Gate Presentation**, **Conversational Output**, **Cross-Refere
    the row it names or refuses; a ULID is already the id and needs no resolving.
 2. Otherwise `dpm_list_epic` with `ready: true`. That is the epics still `pending` with no
    blocker short of `complete` — a query over the edges, not a status anyone maintains. One result
-   is auto-selected; several go to `AskUserQuestion` showing each title.
+   is auto-selected; several go to the `question` tool showing each title.
 3. An empty result means every epic is complete, retired, or waiting on something — **three
    answers, and saying the wrong one is how a project loses track of what it decided to stop**. Say
    which, from `dpm_list_epic` unfiltered and `dpm_list_dependency` on the ones still
@@ -135,7 +135,7 @@ by what.
 ## Per-task workflow
 
 For each task, in order. **Termination**: an unresolvable external blocker or a criterion that
-cannot be evaluated goes to `AskUserQuestion`, then the task is skipped and the loop continues.
+cannot be evaluated goes to the `question` tool, then the task is skipped and the loop continues.
 
 ### 1. Load context
 
@@ -202,7 +202,7 @@ A criterion whose `polarity` is `must_not` is met when the rejected thing is **a
 needs a control: something that would have caught it had it been present. A must-NOT with no control
 has not been verified, it has been asserted.
 
-Unmet criteria go to `AskUserQuestion` — keep working, or complete anyway.
+Unmet criteria go to the `question` tool — keep working, or complete anyway.
 
 **Recording the verification.** When a story's criteria are met, for each criterion call
 `dpm_list_coverage` with its `story_criterion_id` and, for each row, `dpm_update_coverage`
@@ -263,7 +263,7 @@ epics whose `status` is `complete` and can only ever see an empty set without th
 
 Two cases are not a count and are not this run's to decide. Where any story is `superseded` or
 `withdrawn`, whether the retired work was part of what the epic promised is a judgement the rows do
-not answer — put it to `AskUserQuestion` and leave the status until it is answered. Where any story is
+not answer — put it to the `question` tool and leave the status until it is answered. Where any story is
 still `pending`, the epic is unfinished: `dpm_list_dependency` on that story says
 what holds it, and that is the report rather than a status.
 

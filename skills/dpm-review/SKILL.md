@@ -25,7 +25,7 @@ Resolve what is being reviewed, in this order.
    `dpm_read_epic` on it. A reference goes through
    `dpm_resolve_reference` first, which returns the row it names or refuses; a
    ULID is already the id and needs no resolving.
-2. Otherwise `dpm_list_epic` and offer the results with `AskUserQuestion`, showing each title.
+2. Otherwise `dpm_list_epic` and offer the results with the `question` tool, showing each title.
    **Ask which one; never take the most recent.**
 3. If there are none, say so and stop — there is nothing to review.
 

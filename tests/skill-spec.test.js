@@ -303,7 +303,7 @@ test('the facilitation survives: scope gates, the testing strategy is produced, 
 /**
  * `spec` is where this defect was found, so its own file keeps the check as well as the corpus.
  *
- * `spec` gates at **section** granularity — *"Gate each section with `AskUserQuestion`"* — and its
+ * `spec` gates at **section** granularity — *"Gate each section with the `question` tool"* — and its
  * `####` steps sit inside sections rather than being them, so that rule reaches none of the six.
  * Steps 6a and 6d record nothing and are gateless on purpose; 3a, 6b and 6c write, and each carries
  * its own gate. `skills-gates.test.js` holds the property and its controls, this holds the file.

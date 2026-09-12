@@ -181,12 +181,24 @@ const RULES = [
     },
   },
   {
-    what: 'the two shell functions',
+    // **It was two functions until the versioning question was asked of them.** `dpm-relink` wrapped
+    // `ln -sf`, and the case it existed for — a link into an older clone — needs two clones of
+    // different ages to arise. The documented install produces one, upgraded with `git pull` in
+    // place, so a consumer following the instructions could not reach the state it recovered from.
+    // `-f` now appears only among the four cases in *When something else owns the hook*, which is
+    // the section that establishes which of them overwriting is right for.
+    what: 'the shell function',
     matches: ({ body }) => body.includes('dpm-link()'),
     // Defining a function exits zero whatever is inside it, so the block is followed by the call a
     // reader would make. Without that this rule would assert that a function body parses.
-    substitute: (body) => `${body}\ndpm-link\ndpm-relink\n`,
-    // **`sh` rejects these before running a line of them.** POSIX allows only alphanumerics and
+    substitute: (body) => `${body}\ndpm-link\n`,
+    // **The same `git config core.hooksPath` exit the install-and-check block declares**, arriving
+    // here only once `dpm-relink` stopped following it: the function ends on that query, so the
+    // block's status is now the query's, and unset — exit 1 — is the answer a reader wants. It was
+    // masked while a second call ending in `ls -l` came after it.
+    exits: [0, 1],
+    why: 'the function it calls ends on a query whose empty result is the good outcome',
+    // **`sh` rejects this before running a line of it.** POSIX allows only alphanumerics and
     // underscore in a function name, so a hyphen is a syntax error there — `dash` and `sh` refuse
     // it, `bash` and `zsh` accept it. This block is addressed to a reader's `.bashrc` or `.zshrc`,
     // which the README now says, so it is run under the shell it is written for. Running it under

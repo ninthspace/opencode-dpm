@@ -50,6 +50,17 @@ Every skill's run is one `session` row, and nothing else on disk records where i
 As each step closes, `dpm_update_session` moves `phase` on and carries the accumulated
 `state` — a blob the skill defines and dpm does not interpret.
 
+**Two things about that call are refused rather than corrected, and both are easy to get wrong.**
+`id` is its only required parameter — the session's own id, the one step 2 or step 3 established —
+and a call that carries `phase` and `state` without it is rejected outright. And **`state` is a
+string**: a JSON document you serialise yourself, not an object handed to the tool. "A blob" in
+the parameter's own description reads like an object and is not one. Both hold for
+`dpm_create_session` as well, which requires the same `id` and takes `state` the same way.
+
+Either mistake comes back as `MCP error -32602: Invalid params`, naming neither the missing
+parameter nor the wrong type — so a run that guesses here spends a round trip per guess, and the
+guess is not the sort that gets better on the second attempt.
+
 **What `state` holds is the per-skill part, and it is the part worth stating.** It is the run's
 memory: what a step settled goes in as it is settled, because a step summarised only in the
 conversation is one that has to be re-facilitated after a compaction. **It does not hold anything
@@ -95,16 +106,25 @@ either way.
 
 ## Gate Presentation
 
-`AskUserQuestion` carries the *gate*, not the *content*. The preview panel that renders it is sized
-for short prompts and short option labels, and long content is truncated there.
+The host's tool is **`question`**, and every gate in every skill goes through it. It carries the
+*gate*, not the *content*: the panel that renders it is sized for short prompts and short option
+labels, and long content is truncated there.
 
 Render documents, drafts, alternatives, tables and lists of proposed changes in the message body
-**before** the `AskUserQuestion` call. The question itself carries only the decision — "Approve" /
+**before** the `question` call. The question itself carries only the decision — "Approve" /
 "Request changes" / "Stop", or "Choose A / B / C". If what the user needs to read runs past a
 sentence or two, it belongs in the message body.
 
-Option `preview` fields are for small presentational comparisons — a wording choice, a short
-layout variant. They are transient and easy to miss, so nothing the user needs to keep goes there.
+**The shape it takes, because getting it wrong costs a round trip each time.** `questions` is an
+array, and each entry requires `question` (the whole question), `header` (a very short label, 30
+characters at most) and `options`, each option requiring both a `label` of a few words and a
+`description` saying what choosing it means. `multiple: true` allows more than one answer and is
+the only optional field. A "Type your own answer" option is added for you, so do not write an
+"Other" — and where you recommend one, put it first and end its label with "(Recommended)".
+
+**There is no `preview` field on an option.** A skill that wrote one would have it dropped in
+silence, so a comparison the user needs to see — two wordings, two layouts — goes in the message
+body with everything else, which is where the room is.
 
 ## Perspectives
 

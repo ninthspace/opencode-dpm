@@ -24,7 +24,7 @@ Resolve the source in this order.
    read that document. A reference goes through `dpm_resolve_reference` first,
    which returns the row it names or refuses; a ULID is already the id and needs no resolving.
 2. If the request is a description, use it as the source.
-3. Otherwise `dpm_list_spec` — offer the results with `AskUserQuestion`, showing each title.
+3. Otherwise `dpm_list_spec` — offer the results with the `question` tool, showing each title.
 4. If there are none, ask the user what work they want broken down.
 
 **A spec is the expected source**, and the only one that makes Steps 3d and 4 possible: a
@@ -67,7 +67,7 @@ category:
 Steps 1 and 2 run once. Steps 3, 3b, 3c and 3d then run **per epic**, and each epic's rows are
 complete before the next one starts. Step 4 closes the run across all of them.
 
-Gate each step with `AskUserQuestion`, converging in one or two rounds. Where the user cannot decide
+Gate each step with the `question` tool, converging in one or two rounds. Where the user cannot decide
 after one clarification round, present a recommended structure and record the decision as
 provisional in the session `state`; it can be revised before execution begins.
 
@@ -165,7 +165,7 @@ Where the story goes beyond what the spec rejects and touches authentication, se
 handling, data mutation, or an external system, **propose** one or two further rejections for the
 user to accept, modify or refuse. Proposed, never assumed.
 
-**Gate the story's criteria with `AskUserQuestion` before writing any of them**, and carry the
+**Gate the story's criteria with the `question` tool before writing any of them**, and carry the
 proposed rejections into that same gate — accept, modify and refuse are the dispositions it offers,
 and a proposal with nowhere to be answered is one the run records on the user's behalf. Step 3's own
 gate closes the step; this one is per story, because that is the unit the criteria belong to and the

@@ -99,7 +99,7 @@ test('an ungated proposing write is reported by skill and heading', () => {
       + 'with `dpm_create_requirement`.\n'],
     ['gated', '## Process\n\nNo rule here either.\n\n'
       + '### Step 1: Decide the other thing\n\nPresent them, **propose** one, gate with '
-      + '`AskUserQuestion`, then record with `dpm_create_requirement`.\n'],
+      + 'the `question` tool, then record with `dpm_create_requirement`.\n'],
   ]);
 
   assert.deepEqual(audit(planted), ['invented ### Step 1: Decide the thing proposes and writes with no gate'],
@@ -109,7 +109,7 @@ test('an ungated proposing write is reported by skill and heading', () => {
 test('coverage is read off the file, so a blanket rule reaches a section and not a sub-block', () => {
   const body = 'Present the draft, **propose** the rows, then write them with '
     + '`dpm_create_requirement`.';
-  const ruled = `## Process\n\nGate each section with \`AskUserQuestion\`.\n\n### Section 1: A section\n\n${body}\n`;
+  const ruled = `## Process\n\nGate each section with the \`question\` tool.\n\n### Section 1: A section\n\n${body}\n`;
 
   assert.deepEqual(ungated(ruled), [], 'a ### block is reached by the preamble rule');
 
@@ -117,10 +117,10 @@ test('coverage is read off the file, so a blanket rule reaches a section and not
     [{ heading: 'Step 1a: A sub-block', depth: 4 }],
     'and a #### block beneath it is not');
 
-  const unruled = ruled.replace('Gate each section with `AskUserQuestion`.', 'Work through the sections in order.');
+  const unruled = ruled.replace('Gate each section with the `question` tool.', 'Work through the sections in order.');
   assert.equal(ungated(unruled).length, 1, 'a skill with no blanket rule leaves its sections uncovered');
 
-  assert.deepEqual(ungated(`${ruled.trimEnd()} Then gate with \`AskUserQuestion\`.\n`), [],
+  assert.deepEqual(ungated(`${ruled.trimEnd()} Then gate with the \`question\` tool.\n`), [],
     'and a block that gates itself needs no rule above it');
 });
 
@@ -139,7 +139,7 @@ test('an exemption whose premise has lapsed is a complaint, not a pass', () => {
   // The other direction: an exemption for a block that now gates is a stale entry, and stale is
   // how a list of waved-through blocks starts.
   assert.deepEqual(
-    audit(only(present.replace('### 5. Record it', '### 5. Record it\n\nGate with `AskUserQuestion` first.'))),
+    audit(only(present.replace('### 5. Record it', '### 5. Record it\n\nGate with the `question` tool first.'))),
     ['dpm-present ### 5. Record it is exempt and no longer needs to be'],
   );
 });

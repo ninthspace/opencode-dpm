@@ -22,7 +22,7 @@ The request may carry a scope hint — `auth`, or `src/billing`.
 
 **A hint changes weight, not membership.** Every dimension is swept on every run; the hint says
 where to look hardest. Where it matches more than one plausible reading of the tree — `auth` as
-`src/auth/` and as `tests/auth/` — disambiguate with `AskUserQuestion` before orienting, offering
+`src/auth/` and as `tests/auth/` — disambiguate with the `question` tool before orienting, offering
 the candidates and a sweep-everything fallback. Once per run.
 
 A scoped audit and a full sweep are the same kind of document. The narrowing lives in the `title`
@@ -93,7 +93,7 @@ a polyglot repository runs all of their toolchains in Step 2:
 | `Cargo.toml` | Rust |
 | `go.mod` | Go |
 
-Then one `AskUserQuestion`: focus somewhere specific, or sweep evenly. The answer is a weight, not a
+Then one `question` call: focus somewhere specific, or sweep evenly. The answer is a weight, not a
 filter, and it is the last chance to shape the sweep before it starts.
 
 ### Step 2: Sweep

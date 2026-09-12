@@ -25,7 +25,7 @@ Resolve the starting context in this order.
 2. If the request is a description, use it as the starting context.
 3. Otherwise offer what the project already holds, product briefs first because they carry vision,
    value and constraints already argued over:
-   - `dpm_list_product_brief` — offer the results with `AskUserQuestion`, showing each title.
+   - `dpm_list_product_brief` — offer the results with the `question` tool, showing each title.
    - If there are none, `dpm_list_problem_brief` and offer the most recent.
 4. If neither returns anything, ask the user to describe what they want to build.
 
@@ -90,10 +90,10 @@ conventions — and propose requirements that build on what is there.
 
 ## Process
 
-Gate each section with `AskUserQuestion`. Approving one moves to the next; Section 7's approval
+Gate each section with the `question` tool. Approving one moves to the next; Section 7's approval
 ends the run. Each section converges in one or two rounds.
 
-**A step that records rows carries its own gate**, also with `AskUserQuestion`, because the rule
+**A step that records rows carries its own gate**, also with the `question` tool, because the rule
 above reaches sections and a step inside a section is not one. Work through such a step one item at
 a time, one gate per turn. A rendered proposal is not an approved one, and a turn that ends on one
 has recorded nothing and asked nothing.
@@ -178,7 +178,7 @@ checkable form. That is a refinement round, not a rejection of the concern.
 and **blocks this step**. Never dropped, never silently reclassified, never recorded without its
 class.
 
-**Gate the entries before recording them**, with `AskUserQuestion`. An entry refused above comes
+**Gate the entries before recording them**, with the `question` tool. An entry refused above comes
 back through the same gate in its checkable form.
 
 Record each as `dpm_create_requirement` with `class: 'environmental_requirement'` for something that
@@ -237,7 +237,7 @@ where it does — is the false pass it exists to stop.
 For each must-have functional requirement **and each non-functional requirement**, propose
 acceptance criteria and an approach for each. Work through them one at a time, one gate per turn:
 present one requirement's criteria, approaches and must-not clauses together, then ask with
-`AskUserQuestion` before taking up the next.
+the `question` tool before taking up the next.
 
 **Default to automation.** Boundary-crossing is `integration`, isolated logic is `unit`, a
 user-visible workflow is `feature`. Propose `manual` only where automation is genuinely infeasible,
@@ -264,7 +264,7 @@ carries two of them.
 
 Identify the seams between components — contracts, event shapes, data flows — from the decisions
 recorded in Section 4. These are where integration coverage belongs. Present, refine, gate with
-`AskUserQuestion`, then record with `dpm_create_document_section`.
+the `question` tool, then record with `dpm_create_document_section`.
 
 #### Step 6d: Reconcile the tags against the constraints
 

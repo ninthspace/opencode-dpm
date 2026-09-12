@@ -33,6 +33,14 @@ paths:
 }
 ```
 
+**Absolute, and `~` is not a shortcut for it here.** The `plugin` key takes the string as
+written: a path beginning `~/` names no file, the entry never loads, and **nothing is
+logged** — at any level, with no error and no warning. What makes it worth its own
+paragraph is that the other key does not behave this way. `skills` expands `~` quite
+happily, so the two are written side by side, they look alike, and only one of them
+silently does nothing. The clone command above puts the repository at `~/src/opencode-dpm`;
+what belongs in the file is that path spelled out in full.
+
 Restart `opencode`. That is the install — there is nothing to compile, and upgrading is
 `git pull` in the clone.
 
@@ -63,6 +71,14 @@ opencode debug skill
 The first should print `✓ dpm connected`; the second should list twenty-three `dpm-`
 skills. Then do the two things under [First run](#first-run) in each repository DPM will
 keep planning artefacts in.
+
+**Run both, because each answers for one key and a half-install is one of them passing.**
+`opencode mcp list` reports what `plugin` did and `opencode debug skill` reports what
+`skills` did, and neither knows anything about the other's half. Twenty-three skills and no
+server is the `~` above — every skill in the menu, nothing behind any of them. A connected
+server and no `dpm-` skill is the replacement hazard below. Both look like a working
+install from inside a session until the moment you need the half that is missing, and this
+pair is what separates them.
 
 **Why two keys, and only one of them a plugin.** `plugin` loads DPM's entry file, whose
 `config` hook is the only handle v1 offers on the MCP registry. The skills do not come
@@ -359,20 +375,19 @@ Here are some of the relevant rules [{"permission":"skill","pattern":"dpm-*","ac
 
 ## Keeping the hook healthy
 
-**When you keep more than one clone, check what you are linked to.** Upgrading the clone
-you linked against is `git pull`, which rewrites it in place and leaves the link working.
-Two clones is the case to watch — a release checkout and a working one, say — because then
-there are two DPMs of different ages, and a link into the older one is a current database
-checked by an older guard. It refuses rather than reporting on a schema it only partly
-understands, which is how you find out. Re-linking is the same command with `-f` added:
+**Upgrading DPM does not disturb the link, and there is no re-linking step.** The symlink
+names a path rather than a version, so `git pull` in the clone rewrites the target in place
+and every repository linked against it runs the new guard at its next commit. Nothing here
+selects a version — a clone install has none to select — so the guard and the MCP server
+are the same directory and cannot be of different ages. Restart `opencode` after pulling,
+which is the one thing `git pull` does not do for you: a running session holds the server
+it started with.
 
-```sh
-ln -sf ~/src/opencode-dpm/hooks/pre-commit .git/hooks/pre-commit
-```
-
-**`-f` deletes what it replaces, without asking and without a copy.** That is what you want
-when it is DPM's own stale link and never what you want otherwise — so `ls -l` first and
-confirm the target is an older DPM, rather than making this the command you always run.
+**Two clones is the only thing that undoes that, and it is deliberate rather than
+accidental.** [Developing DPM itself](#developing-dpm-itself) is where a second checkout
+has a reason to exist. A link into the one you did not pull is a current database checked
+by an older guard, and [When the guard is out of date](#when-the-guard-is-out-of-date) is
+what that looks like from the commit that meets it.
 
 **A stale link announces itself; a missing one never does.** A link into an older release
 produces a refusal that names the release it ran from, so you find out at the next commit.
@@ -392,8 +407,8 @@ correctly configured repository is one you would learn to skip. It also stays qu
 repository, in a linked worktree, and where `core.hooksPath` has moved the hooks directory —
 three states where `.git/hooks/` is not the question.
 
-Two shell functions for your `.bashrc` or `.zshrc`, if the rest is a check you would rather
-not remember. **They are bash and zsh, not POSIX `sh`** — a hyphen is not allowed in a
+A shell function for your `.bashrc` or `.zshrc`, if the rest is a check you would rather
+not remember. **It is bash and zsh, not POSIX `sh`** — a hyphen is not allowed in a
 function name there, so `sh` rejects `dpm-link` before it runs anything:
 
 ```sh
@@ -404,20 +419,18 @@ dpm-link() {
     ls -l .git/hooks/pre-commit
     git config core.hooksPath
 }
-
-dpm-relink() {
-    ln -sf "$DPM_CLONE/hooks/pre-commit" .git/hooks/pre-commit
-    ls -l .git/hooks/pre-commit
-}
 ```
 
 `DPM_CLONE` is the same path you named in `opencode.json`, written once so the two cannot
 drift apart. `dpm-link` is step 1 with both checks attached, so `File exists` still stops
 you and sends you to [When something else owns the
-hook](#when-something-else-owns-the-hook) rather than being forced past. `dpm-relink` is
-the upgrade command, kept separate precisely so that `-f` is something you reach for
-deliberately — it prints what it made, which is the confirmation the target really was an
-older DPM. Both run from the repository root.
+hook](#when-something-else-owns-the-hook) rather than being forced past. Run it from the
+repository root, once in each repository DPM keeps artefacts in — `.git/hooks/` is not
+tracked, so a re-clone or a fresh `git init` is a repository that needs it again.
+
+**There is deliberately no companion that adds `-f`.** Overwriting a hook is not part of
+installing one: it belongs to the cases in the next section, each of which is a different
+thing to have found at that path, and only one of which overwriting is right for.
 
 ## When something else owns the hook
 
@@ -432,6 +445,11 @@ overwriting is correct — the install command from step 1, with `-f`:
 ```sh
 ln -sf ~/src/opencode-dpm/hooks/pre-commit .git/hooks/pre-commit
 ```
+
+**`-f` deletes what it replaces, without asking and without a copy.** That is what you want
+when it is DPM's own stale link and never what you want otherwise, which is why it lives
+here among the four cases rather than in a command kept to hand: `ls -l` first, and confirm
+the target really is an older DPM.
 
 **`git config core.hooksPath` printed a path.** Something — husky, lefthook, or the
 `pre-commit` framework — has moved the hooks directory, and git now looks *only* there.
@@ -542,9 +560,17 @@ an older clone. `git pull` in the clone you linked against rewrites it in place 
 link keeps working — what leaves two DPMs of different ages is a *second* clone, with the
 link pointing into the one you did not pull.
 
-The fix is to re-make the link against the clone you are actually running: the `ln -s` from
-step 1. The refusal names the directory it ran from, which is the old one's, so the path
-you are replacing is in the message.
+The fix is to re-make the link against the clone you are actually running. There is a link
+there already, so this is step 1's command with `-f` — the same one the stale-link case
+under [When something else owns the hook](#when-something-else-owns-the-hook) gives, and
+the warning attached to it there applies here too:
+
+```sh
+ln -sf ~/src/opencode-dpm/hooks/pre-commit .git/hooks/pre-commit
+```
+
+The refusal names the directory it ran from, which is the old one's, so the path you are
+replacing is in the message.
 
 It refuses rather than carrying on for the reason the migrator leaves a newer database
 alone. This guard's picture of the schema is missing whatever the release added, so what

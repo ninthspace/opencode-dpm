@@ -34,10 +34,10 @@ const README = readFileSync(join(ROOT, 'README.md'), 'utf8');
 /**
  * Every `ln -s` line the README gives, in order.
  *
- * The `-f` variants are included: they are the same instruction with overwrite added, and a
- * rewrite that fixed the path in one place and not the other is exactly what this reads for. The
- * two inside the shell functions are indented and carry `$DPM_CLONE`, so they are matched here and
- * excluded below by what they name rather than by where they sit.
+ * The `-f` variant is included: it is the same instruction with overwrite added, and a rewrite that
+ * fixed the path in one place and not the other is exactly what this reads for. The one inside the
+ * shell function is indented and carries `$DPM_CLONE`, so it is matched here and excluded below by
+ * what it names rather than by where it sits.
  */
 const instructions = () => [...README.matchAll(/^\s*(ln -sf? .*\.git\/hooks\/pre-commit)\s*$/gm)]
   .map(([, command]) => command.trim());
@@ -52,14 +52,18 @@ test('every documented symlink instruction resolves to an existing file [integra
 
   // **Named before they are run.** An empty match list satisfies a loop that asserts nothing, and
   // the regex above is over prose this epic rewrote.
+  // **Still three, but not the same three.** The upgrade re-link went with `dpm-relink`: both
+  // recovered from a link into an older clone, which needs two checkouts of different ages, and the
+  // documented install produces one clone upgraded in place. What replaced it is an `ln -sf` in
+  // *When the guard is out of date* — a reader who has just been refused a commit should find the
+  // command where they landed rather than a page away.
   assert.equal(commands.length, 3,
     `the README gives ${commands.length} runnable link instructions, and the reading expects three`);
 
-  // And the ones deliberately left out are the two inside the shell functions, named rather than
-  // counted — so a command that fell out of the filter for some other reason is reported as itself.
+  // And the one deliberately left out is inside the shell function, named rather than counted — so
+  // a command that fell out of the filter for some other reason is reported as itself.
   assert.deepEqual(instructions().filter((command) => !commands.includes(command)), [
     'ln -s "$DPM_CLONE/hooks/pre-commit" .git/hooks/pre-commit',
-    'ln -sf "$DPM_CLONE/hooks/pre-commit" .git/hooks/pre-commit',
   ], 'the README gives a link instruction this reading neither runs nor accounts for');
 
   for (const command of commands) {

@@ -59,7 +59,7 @@ it most directly. A greenfield project has none, which is a finding rather than 
 
 ## Process
 
-Work through the phases **one at a time**, one gate per turn, each with `AskUserQuestion`.
+Work through the phases **one at a time**, one gate per turn, each with the `question` tool.
 
 ### Phase 1: Why
 

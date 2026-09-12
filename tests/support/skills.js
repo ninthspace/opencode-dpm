@@ -294,13 +294,18 @@ const PROPOSES = /\bpropose\b|\bdraft\b|\bfacilitate\b|\bsuggest\b|work through|
 /**
  * A block names the mechanism that holds the turn open.
  *
- * **`AskUserQuestion` and nothing looser.** Matching the bare word *gate* was tried and is worse
+ * **The `question` tool and nothing looser.** Matching the bare word *gate* was tried and is worse
  * than no check: it is satisfied by a sentence *about* gating, so a block can lose its actual gate
  * while a neighbouring clause explaining the gating rule keeps it passing. And soft prose — "present
  * and refine", "confirm before writing" — is the shape the defect takes, so accepting it as
  * evidence of a gate accepts the thing being checked for.
+ *
+ * **It read `AskUserQuestion` until this host was checked.** That is Claude Code's name for the
+ * tool; OpenCode's is `question`, and the skills had been telling the model to call something that
+ * does not exist here. The pattern is anchored on the backticked token so a block saying *question*
+ * in ordinary prose — and every one of them does — is not mistaken for a block that gates.
  */
-const GATES = /AskUserQuestion/;
+const GATES = /`question`/;
 
 /** Startup and bookkeeping blocks, which write and are never a proposal to approve. */
 const BOOKKEEPING = /^(Session|Roster|Library|Retro awareness|Prior decisions|Constraint inheritance|Test runner|Commands|Resolving it|Codebase grounding)$/;
@@ -333,7 +338,7 @@ export function blocks(source) {
  * already written, recorded the answer on the user's behalf. Coverage is read off the file in three
  * clauses rather than from a list of blocks judged once:
  *
- * 1. the block **gates itself** — it names `AskUserQuestion`;
+ * 1. the block **gates itself** — it names the `question` tool;
  * 2. a `###`-or-shallower block is reached by a **blanket rule in the skill's `## Process`
  *    preamble**, which is where a skill states that every section, step or phase gates;
  * 3. a `####` block is reached by no blanket rule, because a rule written about sections, steps or

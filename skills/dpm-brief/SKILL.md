@@ -26,7 +26,7 @@ Resolve the problem this brief builds on, in this order.
    `dpm_resolve_reference` first, which returns the row it names or refuses; a
    ULID is already the id and needs no resolving.
 2. If the request is a description, use it as the starting context.
-3. Otherwise `dpm_list_problem_brief` and offer the results with `AskUserQuestion`, showing
+3. Otherwise `dpm_list_problem_brief` and offer the results with the `question` tool, showing
    each title. **Ask which one; never take the most recent.** Recency answers a different question,
    and the two diverge the moment a project has more than one line of work.
 4. If there are none, ask the user to describe the product.
@@ -66,7 +66,7 @@ Follow the shared **Retro Awareness** procedure. If incorporated:
 
 ## Process
 
-Work through the phases **one at a time**, one gate per turn, each with `AskUserQuestion`.
+Work through the phases **one at a time**, one gate per turn, each with the `question` tool.
 
 ### Phase 1: Problem recap
 

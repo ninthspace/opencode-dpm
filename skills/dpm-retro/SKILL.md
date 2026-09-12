@@ -36,7 +36,7 @@ For synthesis, resolve the subject:
    `dpm_read_epic` or `dpm_read_quick` on it. A reference goes
    through `dpm_resolve_reference` first, which returns the row it names or
    refuses; a ULID is already the id and needs no resolving.
-2. Otherwise `dpm_list_epic` and `dpm_list_quick`, and offer them with `AskUserQuestion`,
+2. Otherwise `dpm_list_epic` and `dpm_list_quick`, and offer them with the `question` tool,
    showing each title and status. **Ask which one; never take the most recent.**
 3. If there are none, say so and stop.
 
@@ -224,7 +224,7 @@ Three outcomes, and only one of them is actionable:
 ### Step T2: Confirm and waive
 
 Present the waivable epics with the one-line reason each reads clean, and support waiving some of
-them rather than all. **Then gate with `AskUserQuestion` — which epics to waive — and write only
+them rather than all. **Then gate with the `question` tool — which epics to waive — and write only
 what it returns.** Then `dpm_update_epic` with `retro_waived_at` and
 `retro_waived_reason` together.
 
