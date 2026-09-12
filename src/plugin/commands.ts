@@ -36,6 +36,14 @@ export type SkillCommand = {
 /**
  * The prompt that replaces a pasted skill body.
  *
+ * **It names the tool's parameter, because the alternative was observed failing.** The host's skill
+ * tool takes exactly one argument — `p.Struct({ name: p.String })` — and dpm's own descriptions
+ * said `id` for twenty-three releases, so a model following them called it with `{ id: 'dpm-spec' }`
+ * and got `SchemaError(Missing key at ["name"])`. The descriptions are fixed, but the template is
+ * the sentence the model is reading at the moment it makes the call, and a template that says only
+ * *load the skill* leaves the argument to be inferred from whatever else is in the prompt. So this
+ * spells it, and `skill-invocation.test.js` holds both halves to the same word.
+ *
  * **`$ARGUMENTS` is how the user's request reaches the skill, and it is the only way it can.** A
  * `SKILL.md` in this package is a static file — the port's skills say "the request is the change
  * description" rather than interpolating a placeholder, because v1 reads the file off disk and
@@ -50,7 +58,7 @@ export type SkillCommand = {
  * @param name The skill's declared name, which is also the command's.
  * @returns {string}
  */
-export const templateFor = (name: string): string => `Load the ${name} skill with the skill tool, then follow it.\n\n$ARGUMENTS\n`;
+export const templateFor = (name: string): string => `Call the skill tool with name "${name}", then follow what it returns.\n\n$ARGUMENTS\n`;
 
 /**
  * One command per skill in the package, keyed by the name the skill declares.

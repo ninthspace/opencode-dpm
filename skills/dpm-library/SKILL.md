@@ -1,6 +1,6 @@
 ---
 name: dpm-library
-description: Curate a project reference library. Takes in an external document, derives what every other skill needs in order to find it, and records its scope as rows the Library Check filters on. Also consolidates accumulated amendments back into a clean document. Invoke with the skill tool, id "dpm-library".
+description: Curate a project reference library. Takes in an external document, derives what every other skill needs in order to find it, and records its scope as rows the Library Check filters on. Also consolidates accumulated amendments back into a clean document. Invoke with the skill tool, name "dpm-library".
 ---
 
 # Project Reference Library

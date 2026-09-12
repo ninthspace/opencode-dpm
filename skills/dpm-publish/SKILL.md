@@ -1,6 +1,6 @@
 ---
 name: dpm-publish
-description: Regenerate the markdown projection and the committed dump from the database, so what is on disk matches what the planning database holds. Names every file that would be removed and asks before removing it. Invoke with the skill tool, id "dpm-publish".
+description: Regenerate the markdown projection and the committed dump from the database, so what is on disk matches what the planning database holds. Names every file that would be removed and asks before removing it. Invoke with the skill tool, name "dpm-publish".
 ---
 
 # Publish

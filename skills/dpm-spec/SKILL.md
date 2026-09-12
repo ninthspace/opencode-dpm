@@ -1,6 +1,6 @@
 ---
 name: dpm-spec
-description: Build a structured requirements and architecture specification through facilitated conversation. Takes a problem brief, a product brief or a user description as input and records requirements with their class and priority, architecture decisions, scope boundaries, and a testing strategy as typed rows. Invoke with the skill tool, id "dpm-spec".
+description: Build a structured requirements and architecture specification through facilitated conversation. Takes a problem brief, a product brief or a user description as input and records requirements with their class and priority, architecture decisions, scope boundaries, and a testing strategy as typed rows. Invoke with the skill tool, name "dpm-spec".
 ---
 
 # Requirements & Architecture Specification

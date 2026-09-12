@@ -1,6 +1,6 @@
 ---
 name: dpm-templates
-description: Template discoverability. Lists every document kind this project can hold, with where its file lands and how it is numbered, and renders an example of any of them so the format can be read before anything is written. Invoke with the skill tool, id "dpm-templates".
+description: Template discoverability. Lists every document kind this project can hold, with where its file lands and how it is numbered, and renders an example of any of them so the format can be read before anything is written. Invoke with the skill tool, name "dpm-templates".
 ---
 
 # Template Discoverability

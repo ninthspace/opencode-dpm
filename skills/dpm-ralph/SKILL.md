@@ -1,6 +1,6 @@
 ---
 name: dpm-ralph
-description: Launch an autonomous loop that wraps dpm-do across epics, or works a spec from scratch. Probes the stop hook, resolves what the run will work from the rows, assembles the prompt and confirms before arming. Invoke with the skill tool, id "dpm-ralph".
+description: Launch an autonomous loop that wraps dpm-do across epics, or works a spec from scratch. Probes the stop hook, resolves what the run will work from the rows, assembles the prompt and confirms before arming. Invoke with the skill tool, name "dpm-ralph".
 ---
 
 # Autonomous Multi-Epic Execution

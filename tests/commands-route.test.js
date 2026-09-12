@@ -169,3 +169,24 @@ test('control — the command block is built from the tree and can come out wron
   assert.notEqual(templateFor('dpm-do'), templateFor('dpm-spec'));
   assert.equal(templateFor('dpm-do'), templateFor('dpm-do'));
 });
+
+test('the template names the skill tool\'s own argument, which is `name` [unit]', () => {
+  // **The wrapper is the sentence the model reads at the moment it calls the tool**, and the tool
+  // takes exactly one key: `p.Struct({ name: p.String })`. dpm's descriptions said `id` until a
+  // `/dpm-spec` run failed on `SchemaError(Missing key at ["name"])` — see `skill-invocation`'s
+  // `REFUSED` for why nothing caught it. Asserted here as well as there because these are two
+  // different sentences reaching the same tool, and fixing one is how the other goes stale.
+  const template = templateFor('dpm-spec');
+
+  assert.match(template, /name "dpm-spec"/,
+    'the template does not name the argument, so the model infers it from the description');
+  assert.doesNotMatch(template, /\bid "dpm-spec"/,
+    'the template names `id`, which the skill tool has no key for');
+
+  // The corpus, not one example: a builder that named the argument for one skill and not another
+  // would pass the reading above.
+  for (const [name, command] of Object.entries(skillCommands())) {
+    assert.match(command.template, new RegExp(`name "${name}"`),
+      `${name}'s template does not pass its own name as \`name\``);
+  }
+});

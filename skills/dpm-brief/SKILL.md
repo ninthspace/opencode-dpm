@@ -1,6 +1,6 @@
 ---
 name: dpm-brief
-description: Facilitated product ideation. Takes a problem brief as input, explores solution approaches, and records vision, value propositions, key features, differentiation and user journeys as a product brief. Invoke with the skill tool, id "dpm-brief".
+description: Facilitated product ideation. Takes a problem brief as input, explores solution approaches, and records vision, value propositions, key features, differentiation and user journeys as a product brief. Invoke with the skill tool, name "dpm-brief".
 ---
 
 # Facilitated Product Ideation

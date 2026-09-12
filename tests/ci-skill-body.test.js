@@ -34,7 +34,7 @@ const CHECK = join(ROOT, 'scripts', 'skill-body-check.ts');
 /** A body with nothing wrong with it, plus whatever line the case is about. */
 const body = (name, extra = '') => `---
 name: ${name}
-description: A skill. Invoke with the skill tool, id "dpm-${name}".
+description: A skill. Invoke with the skill tool, name "dpm-${name}".
 ---
 
 # ${name.replace(/^./, (c) => c.toUpperCase())}

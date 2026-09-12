@@ -1,6 +1,6 @@
 ---
 name: dpm-architect
-description: Facilitated architecture exploration. Takes a brief, spec or discussion as input, identifies the architectural decisions the product actually needs, explores options and trade-offs for each, and records them as ADRs with typed options and axes. Invoke with the skill tool, id "dpm-architect".
+description: Facilitated architecture exploration. Takes a brief, spec or discussion as input, identifies the architectural decisions the product actually needs, explores options and trade-offs for each, and records them as ADRs with typed options and axes. Invoke with the skill tool, name "dpm-architect".
 ---
 
 # Facilitated Architecture Exploration

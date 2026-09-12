@@ -1,6 +1,6 @@
 ---
 name: dpm-status
-description: Project status reconnaissance. Reports what exists, what is in flight and what needs attention from queries over the planning rows and read-only git history, with an optional spec coverage roll-up and an optional shareable full-picture page. Writes nothing. Invoke with the skill tool, id "dpm-status".
+description: Project status reconnaissance. Reports what exists, what is in flight and what needs attention from queries over the planning rows and read-only git history, with an optional spec coverage roll-up and an optional shareable full-picture page. Writes nothing. Invoke with the skill tool, name "dpm-status".
 ---
 
 # Project Status

@@ -30,7 +30,26 @@ import { conventions, frontMatter, skillNames, skillSource } from './support/ski
  * registered id — and the old form would have quietly produced `dpm-dpm-do` and demanded every
  * description say so.
  */
-const invocation = (name) => `Invoke with the skill tool, id "${name}".`;
+const invocation = (name) => `Invoke with the skill tool, name "${name}".`;
+
+/**
+ * The word the sentence must not use, and the whole reason this file now checks a word at all.
+ *
+ * **`id` was wrong for the host dpm actually runs on, and nothing could tell.** OpenCode's skill
+ * tool takes one argument — `p.Struct({ name: p.String.annotate({ description: 'The name of the
+ * skill from available_skills' }) })` — and every description ended by naming `id`. The description
+ * is what the host puts in the system prompt, so a model reading twenty-three of them called the
+ * tool with `{ id: 'dpm-spec' }` and got `SchemaError(Missing key at ["name"])`.
+ *
+ * It survived because nothing exercised it: until the command wrappers landed, the host resolved
+ * each skill into a command whose template was the body, so the skill tool was never called and the
+ * wrong word was never read by anything. The wrappers made the tool the only route in, and the
+ * first `/dpm-spec` after them failed on it.
+ *
+ * Checked as a must-NOT beside the positive reading, because the positive one is satisfied by a
+ * description that says the right thing *and* the wrong thing in the same sentence.
+ */
+const REFUSED = /skill tool,\s*id\b/;
 
 test('every description says how the skill is invoked, with its own registered id [unit]', () => {
   const names = skillNames();
@@ -53,6 +72,26 @@ test('every description says how the skill is invoked, with its own registered i
   assert.equal(invocation('spec').endsWith(invocation('epics')), false);
   assert.equal(`A skill. ${invocation('do')}`.endsWith(invocation('do')), true);
   assert.equal('A skill that does things.'.endsWith(invocation('do')), false);
+});
+
+test('must NOT — no description tells the model to pass `id` to the skill tool [unit]', () => {
+  // **The argument name is the host's, and dpm had it wrong.** See `REFUSED` above for how it
+  // survived twenty-three releases. The sweep is over the corpus rather than a list, so a skill
+  // added by copying an old description fails here rather than in someone's session.
+  for (const name of skillNames()) {
+    const { description } = frontMatter(skillSource(name));
+
+    assert.doesNotMatch(description, REFUSED,
+      `${name}'s description names 'id', which the skill tool has no key for — it takes 'name', `
+      + 'and a model following this gets SchemaError(Missing key at ["name"])');
+  }
+
+  // Driven both ways, because a regex that matches nothing passes the loop above over any corpus.
+  assert.match('A skill. Invoke with the skill tool, id "dpm-spec".', REFUSED);
+  assert.doesNotMatch('A skill. Invoke with the skill tool, name "dpm-spec".', REFUSED);
+
+  // And the two readings agree: the sentence the corpus is held to is not one this refuses.
+  assert.doesNotMatch(invocation('dpm-spec'), REFUSED);
 });
 
 test('no body names $ARGUMENTS, the substitution v2 does not perform [unit]', () => {

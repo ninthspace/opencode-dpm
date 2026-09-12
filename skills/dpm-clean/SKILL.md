@@ -1,6 +1,6 @@
 ---
 name: dpm-clean
-description: Remove leftover session rows on demand. Lists every session with its skill, phase and age, marks the stale ones and this session's own, and deletes only the rows the user names. Invoke with the skill tool, id "dpm-clean".
+description: Remove leftover session rows on demand. Lists every session with its skill, phase and age, marks the stale ones and this session's own, and deletes only the rows the user names. Invoke with the skill tool, name "dpm-clean".
 ---
 
 # Clean Session State

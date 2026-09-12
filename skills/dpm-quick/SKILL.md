@@ -1,6 +1,6 @@
 ---
 name: dpm-quick
-description: Lightweight execution for a small, well-defined change. Classifies the input as a fix or a change, diagnoses root cause before proposing anything on the fix path, confirms a written record, executes, and closes that same record by deciding each criterion met or not. Invoke with the skill tool, id "dpm-quick".
+description: Lightweight execution for a small, well-defined change. Classifies the input as a fix or a change, diagnoses root cause before proposing anything on the fix path, confirms a written record, executes, and closes that same record by deciding each criterion met or not. Invoke with the skill tool, name "dpm-quick".
 ---
 
 # Quick Execution

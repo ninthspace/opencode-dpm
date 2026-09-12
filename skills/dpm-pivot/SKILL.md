@@ -1,6 +1,6 @@
 ---
 name: dpm-pivot
-description: Course correction. Amend a planning artefact through its update tools, then walk the documents that hang off it and gate every downstream change on its own. Invoke with the skill tool, id "dpm-pivot".
+description: Course correction. Amend a planning artefact through its update tools, then walk the documents that hang off it and gate every downstream change on its own. Invoke with the skill tool, name "dpm-pivot".
 ---
 
 # Course Correction

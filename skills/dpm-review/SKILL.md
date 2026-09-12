@@ -1,6 +1,6 @@
 ---
 name: dpm-review
-description: Adversarial review of an epic or one of its stories, using the agent roster. Each persona examines the work through their professional lens; findings carry a severity and a category as typed references, and remediation becomes tasks on the epic. Invoke with the skill tool, id "dpm-review".
+description: Adversarial review of an epic or one of its stories, using the agent roster. Each persona examines the work through their professional lens; findings carry a severity and a category as typed references, and remediation becomes tasks on the epic. Invoke with the skill tool, name "dpm-review".
 ---
 
 # Adversarial Review

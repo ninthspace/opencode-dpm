@@ -27,6 +27,19 @@
  * and what replaced them is a criterion rather than a scaffold: `skill-port.test.js` refuses any
  * body naming a Claude Code mechanism at all, which is strictly the stronger claim.
  *
+ * **What this file records and no longer enforces: the invocation argument.** The pattern section
+ * was established against `opencode.ai/v2/docs/skills` and prescribed
+ * `Invoke with the skill tool, id "dpm-spec"`. dpm ships on v1, whose skill tool takes
+ * `p.Struct({ name: p.String })` and refuses anything else — so twenty-three descriptions told a
+ * model to pass a key the tool has no slot for, and the first `/dpm-spec` after the command
+ * wrappers landed died on `SchemaError(Missing key at ["name"])`. Nothing caught it for twenty-three
+ * releases because nothing called the tool: the host turned each skill into a command whose template
+ * was the body, so the sentence was advertised and never exercised.
+ *
+ * The row stays as written. It is an accurate record of a v2 decision, and rewriting it would make
+ * the port look like it had always known. What changed is this file's reading of it, which no longer
+ * pins the argument — `skill-invocation.test.js` owns that over the live corpus, both directions.
+ *
  * **Nor the pilot's own `/dpm:` sweep.** It read one body and carried its own planted breaches,
  * which was the right scope while one body was ported. `skill-port.test.js` now runs that reading
  * over all twenty-three plus both shared files, with a wider pattern set and its own controls, so
@@ -69,8 +82,20 @@ test('the rewrite pattern is on the epic, carrying the naming rule and the invoc
     'the section does not say what the tool prefix was and what it becomes');
   assert.match(projection, /built-in `skill` tool with the registration's \*\*exact, case-sensitive id\*\*/,
     'the section does not record how a v2 skill is actually invoked');
-  assert.match(projection, /Invoke with the skill tool, id "dpm-spec"/,
-    'the section does not show the sentence the twenty-two descriptions become');
+
+  // **The sentence, without its argument name — and the omission is the assertion.** This pinned
+  // `id "dpm-spec"` until a `/dpm-spec` run on v1 failed with `SchemaError(Missing key at
+  // ["name"])`. The row is not wrong about what it says: the section cites
+  // `opencode.ai/v2/docs/skills` and records the pattern *as established on v2*, where that was the
+  // key. dpm ships on v1, whose skill tool is `p.Struct({ name: p.String })`, so the sentence the
+  // descriptions carry today names `name` — and a test pinning a v2-era record to today's argument
+  // would be asserting that the port never changed hosts.
+  //
+  // So what is read here is the half that is still this section's to claim: that it shows a worked
+  // invocation sentence carrying the pilot's registered id. Which word the argument takes is
+  // `skill-invocation.test.js`'s, over the live corpus, with a must-NOT on the superseded one.
+  assert.match(projection, /Invoke with the skill tool, \w+ "dpm-spec"/,
+    'the section does not show the sentence the twenty-two descriptions take');
 
   // The wrong premise is written down rather than quietly dropped. Planning concluded from
   // `Skill.Info.slash` that v2 mints slash commands for skills; it does not, and a reader who

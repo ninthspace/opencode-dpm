@@ -125,7 +125,7 @@ test('the reading catches each mechanism it names, and passes their ported forms
     'Call `dpm_list_epic` with `ready: true`.',
     'Then hand off to the `dpm-architect` skill with the epic reference.',
     'Read `dpm/shared/skill-conventions.md` at startup.',
-    'Invoke with the skill tool, id "dpm-do".',
+    'Invoke with the skill tool, name "dpm-do".',
   ];
 
   for (const line of ported) {

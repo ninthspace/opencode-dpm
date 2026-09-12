@@ -1,6 +1,6 @@
 ---
 name: dpm-discover
-description: Facilitated problem discovery. Understand the problem before proposing solutions. Produces a problem brief as typed rows through guided conversation. Use when starting a new product, complex feature, or any work where the problem isn't well-defined yet. Invoke with the skill tool, id "dpm-discover".
+description: Facilitated problem discovery. Understand the problem before proposing solutions. Produces a problem brief as typed rows through guided conversation. Use when starting a new product, complex feature, or any work where the problem isn't well-defined yet. Invoke with the skill tool, name "dpm-discover".
 ---
 
 # Facilitated Problem Discovery
