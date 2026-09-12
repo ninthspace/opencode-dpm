@@ -55,6 +55,7 @@ import type { Plugin } from '@opencode-ai/plugin-v1';
 
 import { skillCommands } from './commands.ts';
 import { SERVER_NAME, serverEntry } from './registration.ts';
+import { announceSession } from './session-id.ts';
 
 /**
  * dpm's tools, as v1 wants them.
@@ -96,5 +97,12 @@ export const server: Plugin = async () => {
         ...config.command,
       };
     },
+
+    // **The third thing this plugin does, and the only one that is not a registration.** The
+    // skills' Session Startup procedure asks for the harness's session id and the host hands the
+    // model none, so a run composes one and the resume path that depends on it cannot work.
+    // `session-id.ts` carries the argument, including why the part must be pushed rather than
+    // assigned.
+    'command.execute.before': announceSession(new Set(Object.keys(commands))),
   };
 };

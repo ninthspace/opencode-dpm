@@ -170,6 +170,7 @@ const ADDED = [
   'readme-symlink.test.js', //         01-04 story 2, rewritten 02-01 story 5 — the link instruction, run against a clone
   'readme-v2.test.js', //              01-04 story 4 — every documented block, classified and run
   'registration-prefix.test.js', //    02-02 story 2 — the name copied not composed, and the constant gone
+  'session-id.test.js', //             the harness session id announced into a `/dpm-…` turn, pushed not assigned
   'session-scratch.test.js', //        01-04 story 3 — the environment audit, and nothing loose in the tree
   'shared-document-round-trip.test.js', // 02-03 story 4 — body to reference to tool to text, both halves
   'shared-document-tool.test.js', //   02-03 story 1 — the bytes, the refusal, and the copy nothing kept
