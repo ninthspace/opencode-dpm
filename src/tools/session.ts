@@ -30,7 +30,12 @@ const ORDER = ['updated_at', 'id'];
 
 /** Everything a caller may set or change. Identity and the supersession link are not among them. */
 const FIELDS = {
-  skill: { type: 'string', minLength: 1, description: 'The CPM skill running, e.g. cpm:do' },
+  // **`dpm:do`, not `cpm:do`, and the divergence from v0.7.0 is declared rather than incidental.**
+  // This description is read by the model choosing what to pass, and v0.7.0's names the product
+  // dpm was forked from and a skill prefix no host here serves. `tool-naming.test.js` holds the
+  // released surface byte-for-byte as a floor, so the entry in its `REWORDED` list is what permits
+  // this one field to differ — and pins the new wording, so a second edit fails the same way.
+  skill: { type: 'string', minLength: 1, description: 'The dpm skill running, e.g. dpm:do' },
   phase: { type: 'string', minLength: 1, description: 'Where in that skill the run has reached' },
   state: { type: 'string', description: 'A JSON blob the skill defines and dpm does not read' },
 };

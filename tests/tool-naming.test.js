@@ -119,6 +119,62 @@ const ADDED = [
   'read_shared_document', // 02-03 story 1 — ADR 02-01, the shared documents through the server
 ];
 
+/**
+ * Fields whose wording deliberately departs from v0.7.0's, each naming the old text and the new.
+ *
+ * **`ADDED`'s shape applied to the other way a surface drifts.** That list exists because the port
+ * may not *grow* silently; this one because it may not *reword* silently either, and until now the
+ * byte-for-byte comparison below was the only thing saying so — which made every deliberate
+ * correction look exactly like an accidental one, and left rewriting the oracle as the obvious way
+ * out. `parity-v070.test.js` forbids that and is right to.
+ *
+ * **An entry is a pin, not an exemption**, which is the whole difference between this and a skip
+ * list. `was` is checked against the oracle, so an entry that no longer describes a real
+ * divergence fails rather than lingering. `now` is applied to the oracle's copy before the
+ * comparison, so the field is still compared byte-for-byte — against this text instead of v0.7.0's.
+ * A second edit to a declared field fails the same way an undeclared one does.
+ */
+const REWORDED = [
+  {
+    // Both session tools take the same `FIELDS` object, so one edit moves two entries here.
+    tools: ['create_session', 'update_session'],
+    at: ['inputSchema', 'properties', 'skill', 'description'],
+    was: 'The CPM skill running, e.g. cpm:do',
+    now: 'The dpm skill running, e.g. dpm:do',
+    // The description is read by the model deciding what to pass. v0.7.0's names the product dpm
+    // was forked from and a skill prefix no host here serves, so a run following it would write
+    // `cpm:do` into a row every dpm skill then reads back.
+    why: 'it named CPM\'s skill prefix, and the model passing it is choosing dpm\'s',
+  },
+];
+
+/** The value at a path, or `undefined` where the path does not lead anywhere. */
+const at = (object, path) => path.reduce((value, key) => (value === undefined ? value : value[key]), object);
+
+/**
+ * One oracle tool with every rewording declared for it applied.
+ *
+ * Structured-cloned rather than spread: the paths reach into nested objects, and a shallow copy
+ * would write `now` through into the oracle this run parsed — leaving the `was` check above
+ * comparing the new text against itself and passing on any wording whatever.
+ *
+ * @param {object} tool
+ * @returns {object}
+ */
+function withRewordings(tool) {
+  const applicable = REWORDED.filter((entry) => entry.tools.includes(tool.name));
+
+  if (applicable.length === 0) return tool;
+
+  const copy = structuredClone(tool);
+
+  for (const { at: path, now } of applicable) {
+    at(copy, path.slice(0, -1))[path.at(-1)] = now;
+  }
+
+  return copy;
+}
+
 test('every tool v0.7.0 advertised is still advertised, byte for byte [integration]', (t) => {
   const oracle = JSON.parse(readFileSync(ORACLE, 'utf8'));
   const ported = spineTools(openPlanningDatabase(t))
@@ -139,13 +195,37 @@ test('every tool v0.7.0 advertised is still advertised, byte for byte [integrati
     .filter((name) => !oracle.some((tool) => tool.name === name)), ADDED,
     'the port advertises a tool that v0.7.0 did not and that no story accounts for');
 
+  // **Each declared rewording is checked against the oracle before it is allowed to license one.**
+  // An entry whose `was` is not what v0.7.0 actually said describes a divergence that is not there
+  // — left behind by a revert, or written from memory — and would otherwise sit in the list
+  // exempting a field nobody is changing.
+  for (const entry of REWORDED) {
+    assert.ok(entry.why, `the rewording of ${entry.tools.join(' and ')} is declared without a reason`);
+    assert.notEqual(entry.was, entry.now, `${entry.tools.join(' and ')} declare a rewording that changes nothing`);
+
+    for (const name of entry.tools) {
+      const tool = oracle.find((candidate) => candidate.name === name);
+
+      assert.ok(tool, `${name} is reworded and is not a tool v0.7.0 advertised`);
+      assert.equal(at(tool, entry.at), entry.was,
+        `${name} is declared as reworded from text v0.7.0 does not carry at ${entry.at.join('.')}`);
+    }
+  }
+
   // Then everything: description text and input schema, tool by tool, so a failure names the tool.
   // **Matched by name rather than by index**, which the equality above could take for granted and
   // this cannot: an added tool sorting into the middle would otherwise offset every comparison
   // after it and report 180 failures for one addition.
-  for (const expected of oracle) {
-    assert.deepEqual(byName.get(expected.name), expected,
-      `${expected.name} differs from what v0.7.0 advertised`);
+  //
+  // The comparison is against the oracle **with the declared rewordings applied**, so a declared
+  // field is still compared byte-for-byte — to `now` rather than to v0.7.0's text. Nothing is
+  // skipped, and a second edit to a declared field fails exactly as an undeclared one does.
+  for (const expected of oracle.map(withRewordings)) {
+    const declared = REWORDED.some((entry) => entry.tools.includes(expected.name));
+
+    assert.deepEqual(byName.get(expected.name), expected, declared
+      ? `${expected.name} differs from v0.7.0 somewhere other than the rewording REWORDED declares`
+      : `${expected.name} differs from what v0.7.0 advertised`);
   }
 
   // The controls on the comparison, and they are what the reshape put most at risk: the reading has
