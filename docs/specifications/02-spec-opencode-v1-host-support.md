@@ -96,7 +96,7 @@ dpm's skills survive v1's flat name keyspace, and a collision is not silent. v1 
 
 ### FR6 (must)
 
-Both hosts documented. README install, first run, guard symlink and "when the guard refuses" cover v1 and v2, with the plugin-package location correct for each host rather than one location presented as the location.
+One host documented. README install, first run, guard symlink and "when the guard refuses" cover v1, each carrying the instruction a reader actually follows, and the Status section states the host, what is built and what is not. Where DPM lives on disk is stated as what it is — a clone whose path the reader chose — rather than a retired packaged path presented as the location. The README names no host DPM does not run under.
 
 - For each of install, first run, guard symlink and "when the guard refuses", the README gives both the v1 and the v2 form. Control: a planted section carrying only one host's form, reported by heading. `[unit]`
 - Following the README's v1 instructions verbatim produces a working install, a guard symlink that resolves, and a refusal on a deliberately stale projection. `[manual]`
@@ -104,7 +104,7 @@ Both hosts documented. README install, first run, guard symlink and "when the gu
 
 ### FR7 (should)
 
-Permission guidance matches what each host evaluates. v1's permission engine evaluates the `skill` key against the front-matter `name` — which carries the `dpm-` prefix, so a `dpm-*` pattern matches every dpm skill and nothing else. The recommended entries are stated per host, against what that host actually matches on.
+Permission guidance matches what the host evaluates. v1's permission engine evaluates the `skill` key against the front-matter `name` — which carries the `dpm-` prefix, so a `dpm-*` pattern matches every dpm skill and nothing else. The recommended entries are stated against what the host actually matches on.
 
 - The permission rule the README recommends matches all twenty-three skill identities on both hosts — one `dpm-*` form once the skills carry their own prefix. Control: a planted rule matching none, reported as a failure rather than passing over an empty match set, which is the shape that passes by doing nothing. `[unit]`
 - Under a running v1 host, a `deny` rule written as the README recommends blocks a dpm skill, and the same session without the rule runs it. The two directions are each other's control: a block that would have happened anyway proves nothing. `[manual]`
@@ -158,7 +158,7 @@ Zero runtime dependencies survives a second SDK. `dependencies` stays empty. Bot
 
 ### NFR3 (must)
 
-The undocumented dependency is declared, isolated, and fails loudly. `Config.skills.paths` is absent from the published SDK types and from the live `opencode.ai/config.json` schema, so building on it is building on something OpenCode has not committed to. dpm may build on it, but from exactly one place, named as unsupported where a maintainer will read it, and with a check that fails when it stops working — because the failure mode of a configuration key the host silently normalises away is twenty-three skills quietly not registering, which reads to a user as dpm being broken rather than as the host having moved.
+The skills route's failure mode is loud, not silent. DPM's skills reach the host through the `skills` configuration key the user sets at install — absent from the published SDK types and from the live `opencode.ai/config.json` schema, so the route is one OpenCode has not committed to. DPM no longer writes that key, so there is no single write site left to isolate; what this requires instead is a check that fails when the route stops working, because the failure mode of a configuration key the host silently normalises away is twenty-three skills quietly not registering, which reads to a user as DPM being broken rather than as the host having moved.
 
 - `skills.paths` is written from exactly one module, and that module carries a marker naming the key as undocumented and saying what to do when it stops working. Control: a planted second write site, reported by file. `[unit]`
 - The post-registration check reports failure when given a host configuration that does not hold dpm's skills path, and passes when it does. The passing direction is the control: a check that always fails would satisfy the first half alone. `[unit]`
@@ -183,9 +183,9 @@ No build step, unchanged. Erasable-syntax TypeScript run natively by Node. The s
 
 Development: an OpenCode v1 CLI on the contributor's machine, at a version matching the v1 SDK the plugin is typed against. Checkable by `opencode --version` reporting a 1.x build matching the version the v1 types are taken from — 1.18.25 at the time of writing — so that the CLI and the types the registrar is checked against are the same release.
 
-### ENVR2 (must)
+### ENVR2 (wont) — out_of_scope
 
-Development: the OpenCode v2 beta CLI retained alongside the v1 one. Checkable by `opencode2 --version` reporting a `0.0.0-beta-*` build matching the v2 SDK. Spec 01's ENVR4 required a v2 CLI; this entry changes it to a requirement for both at once, because parity across two hosts is the deliverable and a regression under v2 introduced while adding v1 is otherwise invisible on this machine.
+Development: the OpenCode v2 beta CLI retained alongside the v1 one. Overtaken by the v1-only retarget recorded on 02-01: with no second host supported there is no second CLI to keep, and 02-05 superseded the criterion that pinned its build against the v2 SDK. ENVR1 already requires a v1 CLI at a version matching the types the registrar is checked against, so dropping this entry loses nothing.
 
 ### ENVR3 (must)
 
