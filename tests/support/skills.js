@@ -405,9 +405,30 @@ const RENDERS = /message body/i;
  * @returns {{heading: string, depth: number}[]}
  */
 export function unrendered(source) {
+  // **A block gated by the preamble is gated, and this reading missed that for a release.** The
+  // filter below used to require `question` in the block's *own* body, so a section whose gate
+  // comes from a blanket rule — `dpm-spec`'s "Gate each section with the `question` tool" — was
+  // never examined for a render at all. `dpm-spec`'s Section 2 said only *Present a draft and
+  // refine*, and a run reached "Approve this requirement set?" with FR1–FR7 nowhere above it. The
+  // block was gated, was proposing, and rendered nothing; it was simply not in the population.
+  //
+  // So the same blanket `ungated` computes is honoured here — and only for the half it bears on.
+  // The asymmetry the tests pin stays exactly as it was: a preamble saying gates are *gated*
+  // excuses a block from naming its own gate, and a preamble saying gates must *render* excuses
+  // nothing. The render is the step that gets dropped, and a rule stated 130 lines above the site
+  // is what it gets dropped in favour of.
+  // **The blanket reaches the steps the rule governs and no further.** "Gate each section" is a
+  // statement about the sections of the process, so it is scoped to the region between `## Process`
+  // and the next `##` — without that bound it also claims `## Guidelines`, `## Input` and
+  // `## Output`, which are prose about the skill rather than steps that gate, and the reading fills
+  // up with blocks that were never going to render anything.
+  const process = (source.split(/^## Process\s*$/m)[1] ?? '').split(/^## /m)[0];
+  const blanket = GATES.test(process.split(/^### /m)[0]);
+  const governed = new Set(blocks(process).map(({ heading }) => heading));
+
   return blocks(source)
     .filter(({ heading, body }) => !BOOKKEEPING.test(heading)
-      && GATES.test(body)
+      && (GATES.test(body) || (blanket && governed.has(heading)))
       && PROPOSES.test(body)
       && !RENDERS.test(body))
     .map(({ heading, depth }) => ({ heading, depth }));

@@ -100,7 +100,11 @@ two or three agents whose expertise bears on the choice.
 ### Phase 3: Vision
 
 What the product is, who it is for, and why it matters, in a paragraph. Not a tagline — an
-articulation of intent that can settle decisions downstream. Present a draft and refine.
+articulation of intent that can settle decisions downstream.
+
+1. **Render the paragraph in the message body**, written out as the section will read rather than
+   described.
+2. **Then gate** and refine.
 
 ### Phase 4: Value propositions
 

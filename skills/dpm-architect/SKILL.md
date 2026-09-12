@@ -109,8 +109,12 @@ decision; "where booking availability is held given concurrent writes" is. If th
 requirement cannot be named from the parent document or the codebase, that is the signal to drop it
 rather than to invent one.
 
-Aim for three to eight. Present the list and refine it — the user will know of decisions already
-taken and of ones not worth taking yet.
+Aim for three to eight, in two steps:
+
+1. **Render the list in the message body**, each decision with its label, why it matters for this
+   product, and the feature or constraint that drives it.
+2. **Then gate** and refine — the user will know of decisions already taken and of ones not worth
+   taking yet.
 
 **Perspectives**: after the list is drafted, follow the shared **Perspectives** procedure — two or
 three agents on what is missing, what is premature, and what is operational rather than structural.
@@ -148,8 +152,9 @@ in production and how anyone would know.
 
 ### Phase 5: Dependencies
 
-Present the decisions as a set: which constrain which, which must be taken first, which are
-independent. Flag any cycle or conflict and work it through with the user.
+1. **Render the decisions as a set in the message body**: which constrain which, which must be
+   taken first, which are independent.
+2. **Then gate**, flagging any cycle or conflict, and work it through with the user.
 
 ### Phase 6: Record the decisions
 

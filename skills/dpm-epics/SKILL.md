@@ -293,10 +293,13 @@ Where one requirement is delivered by several criteria, write a row per criterio
 independently verifiable. Where a criterion is also delivered by a story other than the one that
 declares it, add `dpm_create_coverage_story` naming that story.
 
-Present the bindings for the user to judge: the requirement text and the criterion text side by
-side, both verbatim, with the tags. The judgement of fidelity is theirs; extraction and presentation
-are yours. Where they find a criterion weaker than the requirement, fix the criterion with
-`dpm_update_story_criterion` before moving on.
+The bindings go to the user to judge, in two steps:
+
+1. **Render them in the message body**: the requirement text and the criterion text side by side,
+   both verbatim, with the tags. The judgement of fidelity is theirs; extraction and presentation
+   are yours, and a binding summarised rather than quoted is one they cannot judge.
+2. **Then gate**. Where they find a criterion weaker than the requirement, fix it with
+   `dpm_update_story_criterion` before moving on.
 
 **Nothing here writes a table, and nothing here records a verification.** The matrix is a projection
 of these rows. Verification is `coverage.verified_at`, written during execution, and it is cleared

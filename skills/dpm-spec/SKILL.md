@@ -109,8 +109,12 @@ they still cannot, record both options and move on — **except in Step 3a**, wh
 
 ### Section 1: Problem recap
 
-Summarise the problem from the input and confirm it. From a brief this is quick: verify nothing has
-changed.
+Two steps, as every gate in this skill is:
+
+1. **Render the problem recap in the message body** — the problem, who has it, and what a solution
+   would change — as the section will read.
+2. **Then gate** with the `question` tool. From a brief this is quick: the recap is the brief's, and
+   what is being confirmed is that nothing has changed.
 
 On approval, agree a title and a short kebab-case slug and call `dpm_create_spec` — that call
 assigns the number, which nothing here works out. Everything after hangs off the id it returns,
@@ -128,7 +132,14 @@ this iteration).
 
 Give each requirement its `FRn` label as it is agreed, numbered once across must, should and could
 rather than restarting under each — the label is what the user refers to for the rest of the
-session. Present a draft and refine.
+session.
+
+The draft is two steps, and the first is the one that gets dropped:
+
+1. **Render the requirements in the message body**, every one of them, grouped under must, should,
+   could and won't, each with its `FRn` label and its full text as it will be recorded.
+2. **Then gate** with the `question` tool. Refine in the body and re-render; a gate arriving with
+   nothing above it is asking the user to approve a set they have not been shown.
 
 Each agreed requirement is one `dpm_create_requirement` call:
 
@@ -196,10 +207,17 @@ so the roll-up traces them as it traces the others.
 
 ### Section 4: Architecture decisions
 
-**When decisions already exist**: present each one's choice, rationale and consequences, ask
-whether they still hold for this spec's scope, then identify the **gaps** and facilitate only
-those. **When none exist**: facilitate from scratch, capturing for each decision what was chosen,
-why, and what else was evaluated.
+**When decisions already exist**: render each one's choice, rationale and consequences in the
+message body, then ask whether they still hold for this spec's scope; then identify the **gaps**
+and facilitate only those. **When none exist**: facilitate from scratch, capturing for each
+decision what was chosen, why, and what else was evaluated.
+
+Either way, each decision is agreed in two steps:
+
+1. **Render the decision in the message body** — the choice, the options weighed against it, and
+   the reasoning on each — before anything is recorded.
+2. **Then gate** it with the `question` tool. The rejected options are part of what is shown: a
+   decision presented as a single choice gives the user nothing to decide.
 
 Cover as relevant: stack and framework, data storage, key integrations, deployment model, major
 structural patterns.
@@ -240,7 +258,10 @@ agents on keeping scope tight, on foundational work, and on dependencies that fo
 #### Step 6a: Confirm the vocabulary
 
 `dpm_list_test_approach` returns the approaches this project recognises, each with its meaning.
-Present them and let the user adjust.
+
+1. **Render them in the message body**, each approach with the meaning the tool returned, so what
+   the user is adjusting is a readable list rather than a count.
+2. **Then gate** with the `question` tool, and let the user adjust.
 
 `target` is not a weaker `manual`. The check *is* mechanical; only the environment is missing.
 Self-assessing one from a development machine — confirming "runs on PHP 8.2 or later" on a machine
@@ -300,8 +321,9 @@ driver, test data and a CI job are claims about the machine the work happens on;
 
 #### Step 6e: Present and refine
 
-Present the complete strategy — the tagged criteria, the boundaries, and anything Step 6d sent back
-to Step 3a. Refine before proceeding.
+1. **Render the complete strategy in the message body** — the tagged criteria, the boundaries, and
+   anything Step 6d sent back to Step 3a — in full rather than as a summary of what was agreed.
+2. **Then gate** with the `question` tool, and refine before proceeding.
 
 ### Section 7: Review
 
