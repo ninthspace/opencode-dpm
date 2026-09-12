@@ -1,6 +1,12 @@
 /**
  * The plugin entry — the MCP server, registered through v1's `config` hook. FR2.
  *
+ * **Two keys are set here and they are not the same kind of thing.** `config.mcp` is a
+ * registration: without it dpm serves no tools and the skills have nothing behind them.
+ * `config.command` is a *correction* — the host resolves every skill into a slash command whose
+ * template is the skill's whole body, and these displace those. `commands.ts` carries that
+ * argument; nothing downstream of it depends on the entries existing.
+ *
  * **This is the whole plugin.** dpm shipped a second entry until epic 02-05 story 2, which
  * registered the skills through the object route's `skill.transform`. That route is fed by the
  * `plugins` config key, and 1.18.25 strips the key before any loader sees it — so the module had no
@@ -47,6 +53,7 @@
 
 import type { Plugin } from '@opencode-ai/plugin-v1';
 
+import { skillCommands } from './commands.ts';
 import { SERVER_NAME, serverEntry } from './registration.ts';
 
 /**
@@ -67,6 +74,7 @@ import { SERVER_NAME, serverEntry } from './registration.ts';
  */
 export const server: Plugin = async () => {
   const entry = serverEntry();
+  const commands = skillCommands();
 
   return {
     config: async (config) => {
@@ -76,6 +84,16 @@ export const server: Plugin = async () => {
       config.mcp = {
         ...config.mcp,
         [SERVER_NAME]: { ...entry, command: [...entry.command] },
+      };
+
+      // **dpm's entries go first, so a user's command of the same name wins.** The host resolves a
+      // skill into a command only where no configured command already holds its name, and these
+      // exist to take those names — but a user who has written their own `dpm-do` has said what
+      // they want more recently than this package did, and spreading them second is what lets them
+      // say it. `commands.ts` carries why the entries exist at all.
+      config.command = {
+        ...commands,
+        ...config.command,
       };
     },
   };

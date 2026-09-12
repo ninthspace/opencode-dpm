@@ -153,6 +153,7 @@ const INHERITED = [
 const ADDED = [
   'ci-skill-body.test.js', //          01-03 story 4 — the build check, driven against planted breaches
   'ci.test.js', //                     story 7 — the workflow, and the environment two absences need
+  'commands-route.test.js', //         the per-skill commands that displace the host's body-pasting ones
   'dependency-isolation.test.js', //   01-02 story 4 — the empty production tree, read off the lockfile
   'executables-typescript.test.js', // story 3 — the five binaries under plain node
   'guard-hook-path.test.js', //        01-04 story 1 — the hook fires, and no refusal names a host mechanism
@@ -307,6 +308,10 @@ const CONDITIONAL_SKIPS = {
     "quick 02 — the host's own skill registry, read by running `opencode debug skill`. Absent, the "
     + 'skills config route goes unexercised entirely: every other reading of the skills is over the '
     + 'tree, and the tree cannot say whether the host reached it.',
+  'tests/commands-route.test.js':
+    'the resolved configuration after the plugin hook, read by running `opencode debug config`. '
+    + 'Absent, what is lost is the only reading that shows the command block reaching the host at '
+    + 'all; that the block is built one-per-skill is checked by the unit case beside it.',
 };
 
 test('exactly the recorded files stand a test down when a host binary is missing', () => {

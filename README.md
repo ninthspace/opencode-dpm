@@ -72,6 +72,14 @@ The first should print `✓ dpm connected`; the second should list twenty-three 
 skills. Then do the two things under [First run](#first-run) in each repository DPM will
 keep planning artefacts in.
 
+**Each skill is a slash command.** `/dpm-spec`, `/dpm-do`, `/dpm-status` — twenty-three of
+them, named as the skills are, and whatever you type after one is the skill's input. The
+host makes commands out of skills on its own; what DPM's plugin registers is a one-line
+command for each, replacing the generated one whose whole prompt is the skill's own body.
+That is why `/dpm-epics` does not paste twenty-four thousand characters into your turn. The
+instructions still reach the model — through the `skill` tool, on demand — which is also
+why the `skill` entry under [Permissions](#permissions) is the one that matters.
+
 **Run both, because each answers for one key and a half-install is one of them passing.**
 `opencode mcp list` reports what `plugin` did and `opencode debug skill` reports what
 `skills` did, and neither knows anything about the other's half. Twenty-three skills and no
