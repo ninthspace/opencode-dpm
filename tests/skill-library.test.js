@@ -227,7 +227,9 @@ test('the scope is suggested rather than applied, and every derived field is con
 
   const derive = prose(source, '2. Derive what the library needs');
   assert.match(derive, /\*\*all five presented together before anything is written\*\*/);
-  assert.match(derive, /Render the five in the message body and gate them: accept, adjust, or stop/);
+  assert.match(derive, /\*\*Render the five in the message body\*\*/);
+  assert.match(derive, /\*\*Then gate\*\* them with the `question` tool: accept, adjust, or stop/);
+  assert.ok(derive.indexOf('Render the five') < derive.indexOf('Then gate'));
   assert.match(prose(source, '3. Write it'), /On approval, and in this order/);
 
   // The scope is suggested and adjusted, never applied — and the reason is that both errors are
@@ -263,8 +265,10 @@ test('the scope is suggested rather than applied, and every derived field is con
   assert.match(reconcile, /surface the contradiction and ask which way to go/);
   assert.match(reconcile, /Do not resolve it quietly/);
   assert.match(reconcile, /resolving it in silence spends it/);
-  assert.match(prose(source, '3. Write it back'),
-    /Gate the reconciled version first — save, adjust, or cancel/);
+  const writeBack = prose(source, '3. Write it back');
+  assert.match(writeBack, /\*\*Render the reconciled version in the message body\*\*, showing what changed/);
+  assert.match(writeBack, /\*\*Then gate\*\* it with the `question` tool: save, adjust, or cancel/);
+  assert.ok(writeBack.indexOf('Render the reconciled version') < writeBack.indexOf('Then gate'));
 
   // Nothing to consolidate stops the run rather than rewriting a document nobody asked about.
   assert.match(prose(source, '1. Read what is there'), /If there are none, say so and\s*stop/);

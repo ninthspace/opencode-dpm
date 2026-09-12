@@ -328,7 +328,8 @@ test('no fact is invented, the name is proposed rather than assigned, and a scan
   // The gate precedes the write, which no recorder observes.
   assert.ok(source.indexOf('1. Resolve before creating') < source.indexOf('2. Confirm, then write'));
   assert.match(prose(source, '2. Confirm, then write'),
-    /Render the four facts in the message body and gate them/);
+    /\*\*Render the four facts in the message body\*\*/);
+  assert.match(prose(source, '2. Confirm, then write'), /\*\*Then gate\*\* them with the `question` tool/);
 
   // **The search is declared a scan.** It returns the right rows either way on any fixture, so only
   // the file can tell a reader that the match happens in the run rather than in an index.

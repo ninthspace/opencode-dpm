@@ -71,6 +71,10 @@ Gate each step with the `question` tool, converging in one or two rounds. Where 
 after one clarification round, present a recommended structure and record the decision as
 provisional in the session `state`; it can be revised before execution begins.
 
+**Every one of those gates is two steps, and the first one is the one that gets dropped.** Render
+what is being decided in the message body; *then* call `question` with the decision alone. A gate
+arriving with nothing above it asks the user to approve something they have not been shown.
+
 ### Step 1: Read the source
 
 Read the spec and its parts: `dpm_read_spec`, `dpm_list_requirement` with `include_body`
@@ -94,10 +98,14 @@ reports it afterwards as a broken invariant, at a distance from the step that ca
 Analyse the source for major work areas. For each, agree a name, a one-sentence summary, and a
 short kebab-case slug.
 
-**Gate the grouping before any story is written.** Render the proposed epics — names, summaries,
-slugs — in the message body, then ask: `Approve` / `Request changes` / `Stop`. This is the step
-where the shape of the whole breakdown is decided, and it is far cheaper to reshape here than after
-three epics have their stories. Nothing below this gate runs until it is approved.
+**Gate the grouping before any story is written**, in two steps:
+
+1. **Render the proposed epics in the message body** — names, summaries, slugs.
+2. **Then ask** with the `question` tool: `Approve` / `Request changes` / `Stop`.
+
+This is the step where the shape of the whole breakdown is decided, and it is far cheaper to
+reshape here than after three epics have their stories. Nothing below this gate runs until it is
+approved.
 
 On approval, each agreed epic is one `dpm_create_epic` call, with the spec as `parent_id`.
 **That call assigns the epic's number, which nothing here works out.** Two or five epics for a small
@@ -165,11 +173,16 @@ Where the story goes beyond what the spec rejects and touches authentication, se
 handling, data mutation, or an external system, **propose** one or two further rejections for the
 user to accept, modify or refuse. Proposed, never assumed.
 
-**Gate the story's criteria with the `question` tool before writing any of them**, and carry the
-proposed rejections into that same gate — accept, modify and refuse are the dispositions it offers,
-and a proposal with nowhere to be answered is one the run records on the user's behalf. Step 3's own
-gate closes the step; this one is per story, because that is the unit the criteria belong to and the
-unit whose rows exist once it passes.
+**Gate the story's criteria before writing any of them**, in two steps:
+
+1. **Render that story's criteria in the message body**, each with its polarity, and the proposed
+   rejections alongside them.
+2. **Then gate** with the `question` tool, carrying the proposed rejections into that same gate —
+   accept, modify and refuse are the dispositions it offers, and a proposal with nowhere to be
+   answered is one the run records on the user's behalf.
+
+Step 3's own gate closes the step; this one is per story, because that is the unit the criteria
+belong to and the unit whose rows exist once it passes.
 
 #### Approach tags
 
@@ -195,10 +208,10 @@ a runner, a driver, a test database and a CI job are claims about the machine th
 they are checkable here. `target` withholds a criterion from verification permanently, so applying
 it to something this run can check leaves a story no amount of work completes.
 
-Render the stories and their tagged criteria in the message body, then a per-story count of
-automated against manual tags so any drift toward manual is visible at a glance. Flag a story with
-no automated tag at all — that flag is a record, not a question. Then gate: `Approve` /
-`Request changes` / `Stop`.
+1. **Render the stories and their tagged criteria in the message body**, then a per-story count of
+   automated against manual tags so any drift toward manual is visible at a glance. Flag a story
+   with no automated tag at all — that flag is a record, not a question.
+2. **Then gate** with the `question` tool: `Approve` / `Request changes` / `Stop`.
 
 ### Step 3b: Tasks within stories
 
@@ -220,7 +233,8 @@ the **last** task of the story — unless a criterion carries `tdd`, in which ca
 which is what makes the red-green loop possible. Where every criterion is `manual`, there is nothing
 to automate and no testing task.
 
-Render the tasks per story, then gate: `Approve` / `Request changes` / `Stop`.
+1. **Render the tasks per story in the message body**, in the order they will be done.
+2. **Then gate** with the `question` tool: `Approve` / `Request changes` / `Stop`.
 
 ### Step 3c: Integration testing story (when warranted)
 
@@ -326,8 +340,11 @@ recorded one.
 Resolve each gap before finishing: add it to an existing epic, raise a story for it, or defer it
 with a stated reason. Should-have requirements with no cover are warnings rather than blockers.
 
-Then present the whole tree — epics, their stories, their tasks, the dependencies between them, a
-suggested order, and the gap-check result — and gate it. Approval ends the run.
+Then, in two steps:
+
+1. **Render the whole tree in the message body** — epics, their stories, their tasks, the
+   dependencies between them, a suggested order, and the gap-check result.
+2. **Then gate** it with the `question` tool. Approval ends the run.
 
 **Read the tree back rather than repeating what was sent.** `dpm_list_story` per epic,
 `dpm_list_task` and `dpm_list_story_criterion` per story, both with `include_body`. A

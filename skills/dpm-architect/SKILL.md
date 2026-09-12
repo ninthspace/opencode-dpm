@@ -89,6 +89,10 @@ finding rather than a failure.
 
 Work through the phases **one at a time**, one gate per turn, each with the `question` tool.
 
+**A gate is two steps, and the first one is the one that gets dropped.** Render what is being
+decided in the message body; *then* call `question` with the decision alone. A gate arriving with
+nothing above it asks the user to approve something they have not been shown.
+
 ### Phase 1: Context
 
 Summarise what already exists — stack, patterns, deployment shape, and the decisions already
@@ -125,8 +129,13 @@ were not is an option nobody can weigh.
 Then the recommendation and why, and what the choice constrains or depends on among the other
 decisions.
 
-Gate each decision before moving to the next. Record what was settled in the session `state` as it
-is settled.
+Each decision takes two steps, and neither is the other:
+
+1. **Render the options, their assessments and the recommendation in the message body**, laid out
+   so the options can be compared against the same axes.
+2. **Then gate** that decision with the `question` tool, before moving to the next.
+
+Record what was settled in the session `state` as it is settled.
 
 ### Phase 4: Operational architecture
 
@@ -144,8 +153,14 @@ independent. Flag any cycle or conflict and work it through with the user.
 
 ### Phase 6: Record the decisions
 
-One ADR per decision. Render it in the message body from what the phases settled, then gate:
-"Approve this decision?" with `Approve` / `Request changes` / `Stop`. On approval, write it:
+One ADR per decision, and each one takes two steps before any row exists:
+
+1. **Render the ADR in the message body**, from what the phases settled — its context, the options
+   with the reasoning for each, the decision, and the consequences.
+2. **Then gate**, with the `question` tool: "Approve this decision?" with `Approve` /
+   `Request changes` / `Stop`.
+
+On approval, write it:
 
 1. `dpm_create_adr` with the resolved parent as `parent_id`, a short kebab-case `slug`, a
    `title`, and the choice in one sentence as `decision`.

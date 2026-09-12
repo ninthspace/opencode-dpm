@@ -98,6 +98,11 @@ above reaches sections and a step inside a section is not one. Work through such
 a time, one gate per turn. A rendered proposal is not an approved one, and a turn that ends on one
 has recorded nothing and asked nothing.
 
+**Every one of those gates is two steps, and the first one is the one that gets dropped.** Render
+what is being decided in the message body; *then* call `question` with the decision alone. The
+failure has no error in it — a gate arriving with nothing above it reads as a run awaiting an
+answer, while the user is being asked to approve something they have not been shown.
+
 Where the user needs information the session does not hold, note the gap, carry on, and raise it at
 Section 7. Where they cannot decide after one clarification round, offer a recommended default; if
 they still cannot, record both options and move on — **except in Step 3a**, which blocks.
@@ -178,8 +183,12 @@ checkable form. That is a refinement round, not a rejection of the concern.
 and **blocks this step**. Never dropped, never silently reclassified, never recorded without its
 class.
 
-**Gate the entries before recording them**, with the `question` tool. An entry refused above comes
-back through the same gate in its checkable form.
+**Gate the entries before recording them**, in two steps:
+
+1. **Render the entries in the message body**, each with its class, so what is being approved is a
+   readable list rather than a count.
+2. **Then gate** them with the `question` tool. An entry refused above comes back through the same
+   gate in its checkable form.
 
 Record each as `dpm_create_requirement` with `class: 'environmental_requirement'` for something that
 must be available and `class: 'environmental_restriction'` for something that must not be required,
@@ -212,8 +221,13 @@ procedure — two or three agents whose expertise bears on it.
 ### Section 5: Scope boundary
 
 Consolidate what is **in scope**, what is **explicitly out of scope**, and what is **deferred**.
-Gate the boundary before recording it: this is the section where a spec grows past what anyone
-intended, and the gate is what stops it.
+Then, before recording it:
+
+1. **Render the three lists in the message body**, item by item.
+2. **Then gate** the boundary with the `question` tool.
+
+This is the section where a spec grows past what anyone intended, and the gate is what stops it —
+which it can only do if Step 1 put the boundary somewhere the user could read it.
 
 Record the three with `dpm_create_document_section`. A requirement that turns out to be out of
 scope takes `exclusion` on its own row rather than moving into prose here.
@@ -235,9 +249,12 @@ where it does — is the false pass it exists to stop.
 #### Step 6b: Give each requirement a criterion and a tag
 
 For each must-have functional requirement **and each non-functional requirement**, propose
-acceptance criteria and an approach for each. Work through them one at a time, one gate per turn:
-present one requirement's criteria, approaches and must-not clauses together, then ask with
-the `question` tool before taking up the next.
+acceptance criteria and an approach for each. Work through them one at a time, one gate per turn,
+and each turn is two steps:
+
+1. **Render one requirement's criteria, approaches and must-not clauses in the message body**,
+   together, with the requirement's own text above them so the two can be compared.
+2. **Then ask** with the `question` tool, before taking up the next requirement.
 
 **Default to automation.** Boundary-crossing is `integration`, isolated logic is `unit`, a
 user-visible workflow is `feature`. Propose `manual` only where automation is genuinely infeasible,
@@ -263,8 +280,10 @@ carries two of them.
 #### Step 6c: Integration boundaries
 
 Identify the seams between components — contracts, event shapes, data flows — from the decisions
-recorded in Section 4. These are where integration coverage belongs. Present, refine, gate with
-the `question` tool, then record with `dpm_create_document_section`.
+recorded in Section 4. These are where integration coverage belongs.
+
+1. **Render the seams in the message body** and refine them there.
+2. **Then gate** with the `question` tool, and record with `dpm_create_document_section`.
 
 #### Step 6d: Reconcile the tags against the constraints
 
@@ -286,11 +305,17 @@ to Step 3a. Refine before proceeding.
 
 ### Section 7: Review
 
-Render the complete spec in the message body from the rows just written, reading them back with
-`dpm_read_spec`, `dpm_list_requirement`, `dpm_list_acceptance_criterion`, `dpm_list_adr` and
-`dpm_list_document_section`, each list carrying a `limit` above what the spec just wrote, and
-`include_body` wherever the tool takes it. Then gate: "Approve this spec?" with `Approve` /
-`Request changes` / `Stop`.
+Two steps, and the second one is not this section's product:
+
+1. **Render the complete spec in the message body**, from the rows just written — read them back
+   with `dpm_read_spec`, `dpm_list_requirement`, `dpm_list_acceptance_criterion`, `dpm_list_adr`
+   and `dpm_list_document_section`, each list carrying a `limit` above what the spec just wrote,
+   and `include_body` wherever the tool takes it.
+2. **Then gate**, with the `question` tool: "Approve this spec?" with `Approve` /
+   `Request changes` / `Stop`.
+
+Step 1 is the whole of what this section delivers. A run that reaches Section 7 and asks the
+question without rendering anything has ended the spec on a gate about a document nobody read.
 
 On approval, `dpm_update_spec` sets `status` to `complete`. On *Request changes*, return to the
 section the change belongs to and leave the status alone.

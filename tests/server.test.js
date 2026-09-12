@@ -22,6 +22,7 @@ import { advertisedTools, main, open, serve } from '../src/server/index.ts';
 import { IGNORE_FILE, IGNORE_PATTERN } from '../src/server/ignore.ts';
 import { dispatch, methods, negotiate, PREFERRED_PROTOCOL, SERVER_INFO, serverIdentity, SUPPORTED_PROTOCOLS, UNKNOWN_VERSION } from '../src/server/mcp.ts';
 import { takeLines } from '../src/server/transport.ts';
+import { ToolError } from '../src/tools/convention.ts';
 import { targetVersion } from '../src/schema/migrate.ts';
 import { assertNodeFloor, floorMessage, meetsFloor, REQUIRED_NODE } from '../src/server/node-floor.ts';
 import { filterWarnings, isSqliteExperimental } from '../src/server/warnings.ts';
@@ -209,6 +210,67 @@ test('a tool that throws becomes an error response rather than stopping the serv
   assert.equal(replies[0].error.code, -32603);
   assert.match(replies[0].error.data.message, /the tool failed/);
   assert.deepEqual(replies[1].result, {}, 'and the session continues');
+});
+
+test('a refusal says what was wrong in `message`, which is the half a host renders', async () => {
+  // **The one field the model reads, established from the host rather than assumed.** OpenCode
+  // composes the string it hands the model as `MCP error ${code}: ${message}` and keeps `data` as
+  // a field on the error object, so a diagnosis written only into `data` is one nothing can act
+  // on. dpm wrote only into `data` until this test, and every refusal it has ever made reached a
+  // model as the four content-free words below.
+  const { replies } = await session(
+    [{ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'refuses', arguments: {} } }],
+    [
+      {
+        name: 'refuses',
+        description: 'refuses',
+        inputSchema: { type: 'object', properties: {} },
+        handler: () => {
+          throw new ToolError("create_document_section: unknown argument 'parent_id'");
+        },
+      },
+    ],
+  );
+
+  const { error } = replies[0];
+
+  assert.equal(error.code, -32602, 'the code still says which kind of failure this is');
+  assert.match(error.message, /unknown argument 'parent_id'/,
+    'the argument that was wrong is not in `message`, so the host renders nothing actionable');
+  assert.match(error.message, /create_document_section/,
+    'and the tool that refused is not in `message` either');
+
+  // Driven the way the host would read it, because an assertion on the field is satisfied by a
+  // message the renderer never reaches.
+  assert.equal(`MCP error ${error.code}: ${error.message}`,
+    "MCP error -32602: create_document_section: unknown argument 'parent_id'");
+
+  assert.notEqual(error.message, 'Invalid params',
+    'the generic wording is back, and a model reading it cannot correct the call');
+
+  // `data` keeps its copy for clients that do read it, so this is an addition rather than a move.
+  assert.match(error.data.message, /unknown argument 'parent_id'/);
+});
+
+test('an error with nothing to say keeps the code\'s own wording', async () => {
+  // Otherwise the host renders `MCP error -32603: `, which reads as a broken server rather than
+  // as one that refused something. The empty message is the case the ternary exists for.
+  const { replies } = await session(
+    [{ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'mute', arguments: {} } }],
+    [
+      {
+        name: 'mute',
+        description: 'throws silently',
+        inputSchema: { type: 'object', properties: {} },
+        handler: () => {
+          throw new Error('');
+        },
+      },
+    ],
+  );
+
+  assert.equal(replies[0].error.code, -32603);
+  assert.equal(replies[0].error.message, 'Internal error');
 });
 
 test('the real binary serves a session over real pipes', async (t) => {

@@ -106,7 +106,14 @@ what that implies.
 
 ### Step 3: Write the retro
 
-Gate first: "Record this retro?" with `Approve` / `Request changes` / `Stop`. On approval:
+Two steps before any row changes:
+
+1. **Render the retro in the message body** — each category, the observations grouped under it,
+   and the synthesis Step 2 wrote for it.
+2. **Then gate**, with the `question` tool: "Record this retro?" with `Approve` /
+   `Request changes` / `Stop`.
+
+On approval:
 
 1. `dpm_create_retro` with the epic or quick record as `parent_id`, a short kebab-case `slug`
    and a `title`. That call assigns the number, which nothing here works out.
@@ -223,10 +230,12 @@ Three outcomes, and only one of them is actionable:
 
 ### Step T2: Confirm and waive
 
-Present the waivable epics with the one-line reason each reads clean, and support waiving some of
-them rather than all. **Then gate with the `question` tool — which epics to waive — and write only
-what it returns.** Then `dpm_update_epic` with `retro_waived_at` and
-`retro_waived_reason` together.
+1. **Render the waivable epics in the message body**, each with the one-line reason it reads
+   clean, and support waiving some of them rather than all.
+2. **Then gate with the `question` tool** — which epics to waive — **and write only what it
+   returns.**
+
+Then `dpm_update_epic` with `retro_waived_at` and `retro_waived_reason` together.
 
 **Both or neither — the database refuses one without the other.** A waiver with a date and no reason
 is a decision with no record of why it was made, so the pairing is enforced rather than encouraged.

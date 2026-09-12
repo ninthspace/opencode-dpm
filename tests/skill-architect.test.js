@@ -370,7 +370,12 @@ test('the run explores options before choosing, and a refused gate writes nothin
   const options = prose(source, 'Phase 3: Options and trade-offs');
   assert.match(options, /One decision at a time/);
   assert.match(options, /two to four options/i);
-  assert.match(options, /Gate each decision before moving to the next/);
+  // **Two steps, asserted as two.** The render is what a gate can be well-formed without: the
+  // `question` call carries the decision, and a run that never put the options anywhere is asking
+  // the user to weigh a comparison they have not seen.
+  assert.match(options, /\*\*Render the options, their assessments and the recommendation in the message body\*\*/);
+  assert.match(options, /\*\*Then gate\*\* that decision with the `question` tool, before moving to the next/);
+  assert.ok(options.indexOf('Render the options') < options.indexOf('Then gate'));
 
   // The write gate, and that nothing is written before it answers.
   const record = prose(source, 'Phase 6: Record the decisions');

@@ -299,7 +299,9 @@ test('the gates run in turn, and a regeneration updates in place rather than min
 
   // The draft is a gate of its own, and it goes in the body rather than into the question.
   const draft = prose(source, '4. Derive the draft');
-  assert.match(draft, /Render the full draft in the message body, then gate it/);
+  assert.match(draft, /\*\*Render the full draft in the message body\*\*/);
+  assert.match(draft, /\*\*Then gate\*\* it with the `question` tool/);
+  assert.ok(draft.indexOf('Render the full draft') < draft.indexOf('Then gate'));
   assert.match(draft, /approve, request changes, or stop/);
   assert.match(draft, /a gap in the sources is reported as a gap rather than filled in/);
   assert.match(draft, /A draft that reproduces a source's own headings in its own order has transformed nothing/);

@@ -161,7 +161,14 @@ selection from the record, not a filter on it.
 
 ### Step 4: Write the audit
 
-Gate first: "Record this audit?" with `Approve` / `Request changes` / `Stop`. On approval:
+Two steps before any row exists:
+
+1. **Render the audit in the message body** — the ranked findings with their dimensions and
+   severities, and the sections about to be written.
+2. **Then gate**, with the `question` tool: "Record this audit?" with `Approve` /
+   `Request changes` / `Stop`.
+
+On approval:
 
 1. `dpm_create_audit` with a short kebab-case `slug` and a `title`. That call assigns the
    number, which nothing here works out.

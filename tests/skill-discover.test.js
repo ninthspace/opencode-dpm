@@ -28,7 +28,7 @@ import assert from 'node:assert/strict';
 import { openPlanningDatabase, handlers } from './support/planning-database.js';
 import { spineTools } from '../src/tools/index.ts';
 import {
-  skillSource, toolNames, reachable, section, recorder, recoveries, bindings,
+  skillSource, toolNames, reachable, section, prose, recorder, recoveries, bindings,
   seedStartup, driveStartup, CALLABLE,
 } from './support/skills.js';
 
@@ -204,11 +204,22 @@ test('the run explores before it proposes, and a refused gate writes nothing', (
   // The file's own shape: five phases of exploration, then a gate, and the rule that the rows
   // wait for it. Matched as the construction rather than as the words — an assertion on `approved`
   // alone is satisfied by three other sentences in the same file.
-  const summary = section(source, 'Phase 6: Summary');
+  // Read collapsed, per `prose`'s own argument: every assertion below is about the words, and the
+  // gate's options now span a wrap that a raw-section match would break on without the rule having
+  // changed at all.
+  const summary = prose(source, 'Phase 6: Summary');
   assert.notEqual(summary, '', 'the summary phase still exists');
   assert.match(summary, /Write the rows only once the brief is approved/);
   assert.match(summary, /`Approve` \/ `Request changes` \/ `Stop`/);
   assert.match(summary, new RegExp(`${CALLABLE}create_problem_brief`));
+
+  // **The render is a step of its own, which is the half a gate can be well-formed without.** A run
+  // that asks the question and rendered nothing has ended the skill on a brief that exists neither
+  // in the message nor — nothing being written until approval — in a row.
+  assert.match(summary, /\*\*Render the complete brief in the message body\*\*/);
+  assert.match(summary, /\*\*Then gate\*\*/);
+  assert.ok(summary.indexOf('Render the complete brief') < summary.indexOf('Then gate'),
+    'the render is instructed after the gate, so a run following the order writes nothing first');
 
   for (const phase of ['Phase 1: Why', 'Phase 3: Current State', 'Phase 5: Constraints']) {
     assert.notEqual(section(source, phase), '', `${phase} no longer exists`);

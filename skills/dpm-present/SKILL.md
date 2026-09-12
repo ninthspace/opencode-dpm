@@ -106,9 +106,12 @@ that reproduces a source's own headings in its own order has transformed nothing
 to watch for when the sources are good — a well-written spec is the easiest thing in the world to
 lightly reword.
 
-Render the full draft in the message body, then gate it: approve, request changes, or stop. Follow
-the shared **Gate Presentation** convention — the draft goes in the body, and the question carries
-only the decision.
+1. **Render the full draft in the message body** — all of it, as the audience will read it.
+2. **Then gate** it with the `question` tool: approve, request changes, or stop.
+
+Follow the shared **Gate Presentation** convention — the draft goes in the body, and the question
+carries only the decision. A draft this skill never rendered is one the user is being asked to
+approve on the strength of the fact that a tool call happened.
 
 ### 5. Record it
 

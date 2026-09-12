@@ -136,7 +136,14 @@ Present the survivors grouped by category, severity-first within each.
 
 ### Step 4: Write the review
 
-Gate first: "Record this review?" with `Approve` / `Request changes` / `Stop`. On approval:
+Two steps before any row exists:
+
+1. **Render the review in the message body** — the surviving findings grouped by category,
+   severity-first within each, and the panel that produced them.
+2. **Then gate**, with the `question` tool: "Record this review?" with `Approve` /
+   `Request changes` / `Stop`.
+
+On approval:
 
 1. `dpm_create_review` with the epic as `parent_id`, a short kebab-case `slug`, a `title`, and
    — for a story-scoped review — `scope: 'story'` with `scope_story_id`. That call assigns the

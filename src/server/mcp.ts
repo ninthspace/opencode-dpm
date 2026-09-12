@@ -252,6 +252,42 @@ export function dispatch(message: unknown, table: Methods): object | null {
   } catch (cause) {
     const error = cause as { rpc?: { code: number; message: string }; message?: string };
 
-    return failure(request.id ?? null, error.rpc ?? RPC_ERRORS.internal, { message: error.message });
+    return failure(request.id ?? null, diagnosis(error), { message: error.message });
   }
+}
+
+/**
+ * The error envelope's `code` with the tool's own sentence in place of the code's generic text.
+ *
+ * **The generic text is the only half a model ever sees, which is what this exists to fix.** dpm
+ * has always said exactly what was wrong — `create_document_section: unknown argument 'parent_id'`
+ * — and has always said it in `data.message`, leaving `message` as the standard's suggested wording
+ * for the code. OpenCode builds the string it hands the model from the code and `message` alone:
+ *
+ *     class McpError extends Error {
+ *       constructor(code, message, data) { super(`MCP error ${code}: ${message}`); this.data = data }
+ *     }
+ *
+ * `data` becomes a field on an object nothing renders. So every refusal dpm has ever made arrived
+ * as `MCP error -32602: Invalid params` — a string with no argument name, no tool name and nothing
+ * to act on. A model that gets it cannot correct the call, and the one observed doing this went
+ * looking for the plugin's source tree to read the schema out of it instead.
+ *
+ * **JSON-RPC 2.0 is satisfied by this and arguably only by this.** The spec's `message` is "a short
+ * description of the error"; the codes' familiar strings are a convention the spec suggests, not a
+ * required value, and a description of *this* error is more of a description than a description of
+ * the code. `code` is untouched, so anything switching on it is unaffected.
+ *
+ * `data.message` keeps its copy. It costs one short string, it is where a client that does read
+ * `data` already looks, and removing it would be a second change riding along with this one.
+ *
+ * @param {{rpc?: {code: number, message: string}, message?: string}} error The thrown value.
+ * @returns {{code: number, message: string}}
+ */
+function diagnosis(error: { rpc?: { code: number; message: string }; message?: string }) {
+  const rpc = error.rpc ?? RPC_ERRORS.internal;
+
+  // An error with nothing to say keeps the code's own wording rather than an empty message, which
+  // renders as `MCP error -32603: ` and reads as a broken server rather than a silent one.
+  return error.message ? { code: rpc.code, message: error.message } : rpc;
 }

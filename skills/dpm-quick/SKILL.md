@@ -69,8 +69,13 @@ form a specific hypothesis — "the config loader returns null when the file is 
 handling has issues" — and trace the path to confirm it, including what else the same cause
 reaches.
 
-Then present symptom, investigation, root cause and your confidence, and gate on it: `Confirmed` /
-`Partially right` / `Wrong`. On anything but confirmed, take the correction and investigate again.
+Then, in two steps:
+
+1. **Render the diagnosis in the message body** — symptom, investigation, root cause, and your
+   confidence in it.
+2. **Then gate** on it with the `question` tool: `Confirmed` / `Partially right` / `Wrong`.
+
+On anything but confirmed, take the correction and investigate again.
 
 **Nothing is proposed before this gate passes**, because the alternative is a patch on the symptom
 that leaves the cause in place — and a change path skips this step precisely because it starts from
@@ -90,13 +95,17 @@ concern is raised once and not again.
 
 ### Step 2: Propose, confirm, and write the record
 
-Present one tight block: what will change, which files, and the criteria — observable outcomes
-rather than implementation steps. "The config file carries the new key", not "edit the config file".
-
 On the fix path, the criteria come in two kinds and both are written: what now works, and what
 proves the specific failure cannot recur. The second is the one a happy-path check misses.
 
-Gate: "Ready to execute?" with `Execute` / `Adjust`. Iterate until confirmed. Then:
+Two steps before any row exists:
+
+1. **Render one tight block in the message body**: what will change, which files, and the criteria
+   — observable outcomes rather than implementation steps. "The config file carries the new key",
+   not "edit the config file".
+2. **Then gate** with the `question` tool: "Ready to execute?" with `Execute` / `Adjust`.
+
+Iterate until confirmed. Then:
 
 1. `dpm_create_quick` with a short kebab-case `slug` and a `title`. That call assigns the
    number, which nothing here works out. Leave `status` at its default and set `status_note` to say

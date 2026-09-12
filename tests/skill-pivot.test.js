@@ -492,7 +492,8 @@ test('a status change leaves the note, and each downstream change is gated on it
   // **The gating rule is asserted on the numbered step, not on the section.** The paragraph around
   // it can go on forbidding a batch while the step a run follows stops saying so.
   const walk = instructions(source, 'The walk');
-  assert.match(walk, /Gate each change on its own/);
+  assert.match(walk, /\*\*Render each proposed change in the message body\*\*/);
+  assert.match(walk, /\*\*Then gate each change on its own\*\*/);
   assert.match(walk, /one decision per change/);
   assert.match(walk, /never carry an approval forward/);
   assert.match(walk, /⚠️ editing it changes the record of/);

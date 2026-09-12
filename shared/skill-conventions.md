@@ -110,10 +110,26 @@ The host's tool is **`question`**, and every gate in every skill goes through it
 *gate*, not the *content*: the panel that renders it is sized for short prompts and short option
 labels, and long content is truncated there.
 
-Render documents, drafts, alternatives, tables and lists of proposed changes in the message body
-**before** the `question` call. The question itself carries only the decision — "Approve" /
-"Request changes" / "Stop", or "Choose A / B / C". If what the user needs to read runs past a
-sentence or two, it belongs in the message body.
+**A gate is two steps, and every skill writes them as two steps.**
+
+1. **Render** what is being decided in the message body — documents, drafts, alternatives, tables,
+   lists of proposed changes. If what the user needs to read runs past a sentence or two, it
+   belongs here.
+2. **Then call `question`**, carrying only the decision — "Approve" / "Request changes" / "Stop",
+   or "Choose A / B / C".
+
+**Step 1 is the one that gets dropped, and dropping it has no error in it.** A gate that arrives
+with nothing above it looks, in the transcript, exactly like a gate that arrives after a draft: the
+question is well-formed, the options are right, and the run reads as though it is waiting for an
+answer. It is waiting for the user to approve something they have not been shown — and on the
+skills that write nothing before approval, there is no row to go and read instead. So the render is
+numbered as its own step wherever a gate appears, rather than tucked into the clause that names the
+gate, because a clause is what a run under pressure skips.
+
+**The exception is a gate that is only a selection.** Offering the specs in the project, or asking
+whether to sweep evenly or focus, puts every choice in the `options` already; there is no separate
+artefact, and a message body repeating the option labels is noise. The distinction is whether the
+user is choosing *between the options* or judging *something the options refer to*.
 
 **The shape it takes, because getting it wrong costs a round trip each time.** `questions` is an
 array, and each entry requires `question` (the whole question), `header` (a very short label, 30

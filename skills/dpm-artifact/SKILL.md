@@ -90,7 +90,10 @@ Either hit means the same row, updated. One row per artifact.
 
 ### 2. Confirm, then write
 
-Render the four facts in the message body and gate them. On approval:
+1. **Render the four facts in the message body**, each named and with its value.
+2. **Then gate** them with the `question` tool.
+
+On approval:
 
 - **A new entry** — `dpm_create_artifact` with the `url`, `title`, `description` and
   `published_at`, then one `dpm_create_artifact_document` per source.

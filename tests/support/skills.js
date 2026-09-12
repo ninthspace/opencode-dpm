@@ -285,7 +285,14 @@ export function instructions(source, heading) {
   return section(source, heading)
     .split('\n')
     .filter((line) => /^\d+\. |^ {3}/.test(line))
-    .join(' ');
+    .join(' ')
+    // **Collapsed, because joining with a space did not deliver what it promises above.** A
+    // continuation line keeps the three spaces that mark it as one, so `join(' ')` yields *one
+    // decision per change* with four spaces in it — and an assertion written against the phrase
+    // fails on a rewrap that changed nothing it was watching. `prose` collapses for this reason;
+    // this returns a subset of the same lines and needs it for the same reason.
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /** A block puts something to the user for a decision rather than simply executing it. */
@@ -362,6 +369,47 @@ export function ungated(source) {
       && PROPOSES.test(body)
       && !GATES.test(body))
     .filter(({ depth }) => !(depth <= 3 && blanket))
+    .map(({ heading, depth }) => ({ heading, depth }));
+}
+
+/**
+ * A block tells the run to put what is being decided in front of the user before it asks.
+ *
+ * **Anchored on *message body* and nothing looser.** That is the phrase the shared **Gate
+ * Presentation** convention uses, so a skill matching it is using the convention's own words rather
+ * than a synonym a reader has to interpret. Softer evidence — "present", "show", "render" on its
+ * own — is exactly what the flagged sites already said while the content went nowhere: *present the
+ * survivors* sat one paragraph above a gate for three releases and a run could satisfy it by having
+ * thought about the survivors.
+ */
+const RENDERS = /message body/i;
+
+/**
+ * The blocks that gate a proposal without first putting the proposal in the message body.
+ *
+ * **The defect has no error in it, which is why it needs a check rather than a convention.** A gate
+ * that arrives with nothing above it is a well-formed `question` call with the right options, and
+ * the transcript shows a run waiting for an answer. What it is waiting for is approval of something
+ * the user was never shown — and on the skills that write nothing before approval, there is no row
+ * to go and read instead, so the artefact under discussion exists in neither place. It was reached
+ * in `brief` on a 27B host: Phase 6 state, Phase 8's gate, no brief anywhere.
+ *
+ * **Per block, with no blanket rule, and that asymmetry with `ungated` is the finding.** A skill's
+ * `## Process` preamble is a fine place to say that every phase gates, because a run reads it once
+ * and the rule is structural. It is a bad place to put the render, because the render is a thing to
+ * *do* at each gate and a rule stated four hundred lines above the gate is the first thing a model
+ * under pressure drops. So the render is required where the gate is, spelt out as its own numbered
+ * step — which is what this reads for.
+ *
+ * @param {string} source
+ * @returns {{heading: string, depth: number}[]}
+ */
+export function unrendered(source) {
+  return blocks(source)
+    .filter(({ heading, body }) => !BOOKKEEPING.test(heading)
+      && GATES.test(body)
+      && PROPOSES.test(body)
+      && !RENDERS.test(body))
     .map(({ heading, depth }) => ({ heading, depth }));
 }
 

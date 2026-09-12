@@ -50,7 +50,10 @@ having missed something informs Phase 2, where the amendment is drafted.
 Call the lists for the kinds a person pivots, each with a `limit` above what the project plausibly
 holds: `dpm_list_problem_brief`, `dpm_list_product_brief`, `dpm_list_spec`,
 `dpm_list_epic`, `dpm_list_adr`, `dpm_list_discussion`, `dpm_list_quick`.
-Present them and gate the selection.
+Then:
+
+1. **Render them in the message body**, each with its kind, number and title.
+2. **Then gate** the selection with the `question` tool.
 
 The selected row carries its own `kind`, which is what Phase 3 traverses from and the one thing an
 id on its own does not give.
@@ -137,10 +140,11 @@ Closest dependency first. For each document reached:
 1. Compare it against what Phase 2 changed, and identify the parts affected.
 2. **Warn before proposing a change to work that is complete**: ⚠️ editing it changes the record of
    what was delivered. This is a flag on the decision, not a refusal — the user may well want it.
-3. Propose each change with the reason it follows from the amendment.
-4. **Gate each change on its own** — apply, modify, or skip, one decision per change. Never present
-   several for a single approval, and never carry an approval forward: a user who accepted three
-   amendments has not accepted a fourth.
+3. **Render each proposed change in the message body**, with the reason it follows from the
+   amendment.
+4. **Then gate each change on its own** with the `question` tool — apply, modify, or skip, one
+   decision per change. Never present several for a single approval, and never carry an approval
+   forward: a user who accepted three amendments has not accepted a fourth.
 5. Apply what was approved through the same update tools Phase 2 used.
 
 #### Bindings the amendment broke

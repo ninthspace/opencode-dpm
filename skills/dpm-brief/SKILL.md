@@ -68,6 +68,10 @@ Follow the shared **Retro Awareness** procedure. If incorporated:
 
 Work through the phases **one at a time**, one gate per turn, each with the `question` tool.
 
+**A gate is two steps, and the first one is the one that gets dropped.** Render what is being
+decided in the message body; *then* call `question` with the decision alone. A gate arriving with
+nothing above it asks the user to approve something they have not been shown.
+
 ### Phase 1: Problem recap
 
 Summarise the problem from the resolved input and confirm it. From a problem brief this is quick:
@@ -131,8 +135,14 @@ flowcharts.
 
 ### Phase 8: Summary
 
-Render the complete brief in the message body from what the phases settled, then gate: "Approve
-this brief?" with `Approve` / `Request changes` / `Stop`.
+1. **Render the complete brief in the message body**, from what the phases settled — every section
+   in order, as the document will read.
+2. **Then gate**, with the `question` tool: "Approve this brief?" with `Approve` /
+   `Request changes` / `Stop`.
+
+Step 1 is a step rather than a preamble because nothing is written until Step 2 is answered. A gate
+that arrives on its own is asking about a brief that exists nowhere — not in the message, and not
+yet in a row the user could go and read instead.
 
 On approval, agree a title and a short kebab-case slug and call `dpm_create_product_brief`,
 passing the problem brief resolved in Input as `parent_id`. That call assigns the number, which

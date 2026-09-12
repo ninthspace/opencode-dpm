@@ -10,11 +10,27 @@
  * - "must NOT — the check passes over a corpus it failed to read, so a source that parses to
  *   nothing reads as full compliance" [unit]
  *
+ * And the second half of the same property, because a gate can be present and still decide nothing:
+ *
+ * - "Every gate that puts a proposal to the user renders it in the message body first, or is a
+ *   selection whose options are the whole of the choice" [unit]
+ * - "The render is required at the gate rather than in a `## Process` preamble, which is the one
+ *   place `unrendered` deliberately differs from `ungated`" [unit]
+ * - "A selection-only exemption lapses when the file stops bearing it out, in both directions"
+ *   [unit]
+ * - "must NOT — a corpus with no gates in it reads as every gate rendering" [unit]
+ *
  * **The defect this exists for has no error in it.** A run that renders its proposal and ends the
  * turn looks, from the transcript, like a run waiting for the user; the user is waiting for it. And
  * where the block writes before it presents, the rows are already there — so the question, when it
  * finally arrives, is about a decision the run has made. Both were reached in `spec` before anything
  * checked for them.
+ *
+ * **The third shape was reached in `brief`, on a host small enough to drop a clause.** The gate
+ * fired, correctly formed, at Phase 6 — and the brief it asked about had been rendered nowhere,
+ * because Phase 8's instruction to render it was a subordinate clause of the sentence that named
+ * the gate. Nothing is written until approval, so the document existed in neither the message nor
+ * the database. That is what `unrendered` reads for, and why it reads for it per block.
  *
  * **Why a corpus check and not four per-skill ones.** The per-skill files each assert the behaviours
  * their own conversion named. This is a property of *how a skill is constructed*, so the skill that
@@ -24,7 +40,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { skillNames, skillSource, ungated, blocks } from './support/skills.js';
+import { skillNames, skillSource, ungated, unrendered, blocks } from './support/skills.js';
 
 /**
  * Blocks that reach a gate the check cannot see, each with the reason it does and a `bears_out`
@@ -149,4 +165,122 @@ test('must NOT — a corpus that parses to nothing reads as full compliance', ()
 
   const unreadable = new Map([['invented', ''], ['also-invented', '']]);
   assert.ok(audit(unreadable).some((each) => each.includes('heading blocks parsed across 2 skills')));
+});
+
+/**
+ * Selection-only gates, which put every choice in `options` and so have no separate artefact to
+ * render. Each carries what would have to stay true for it to go on being exempt, so the list
+ * cannot quietly become a set of blocks somebody once waved through.
+ */
+const SELECTION_ONLY = new Map([
+  ['dpm-architect ## Input', {
+    reason: 'the gate offers the documents an ADR could hang off and the titles are the options; '
+      + 'there is no proposal, and a body repeating the labels is noise',
+    bears_out: (source) => /offer the results with the `question` tool/.test(source),
+  }],
+  ['dpm-audit ### Step 1: Orient', {
+    reason: 'the gate asks for a sweep weighting — focus somewhere specific, or sweep evenly — '
+      + 'which is a preference between the two options and refers to no artefact',
+    bears_out: (source) => /one `question` call: focus somewhere specific, or sweep evenly/.test(source),
+  }],
+]);
+
+/**
+ * The corpus reconciled in both directions, as `audit` does it for gates: every gate that proposes
+ * renders first or is selection-only, and every exemption still names a block that needs one.
+ *
+ * @param {Map<string, string>} corpus
+ * @returns {string[]}
+ */
+function renders(corpus) {
+  const complaints = [];
+  const found = new Map();
+
+  if (!corpus.size) complaints.push('no skills read, so nothing was checked');
+
+  let gates = 0;
+  for (const [skill, source] of corpus) {
+    gates += blocks(source).filter(({ body }) => /`question`/.test(body)).length;
+    for (const { heading, depth } of unrendered(source)) {
+      found.set(`${skill} ${'#'.repeat(depth)} ${heading}`, skill);
+    }
+  }
+
+  // The floor. A corpus in which nothing gates satisfies every per-block check below, and reads
+  // identically to one in which every gate renders first.
+  if (gates < corpus.size) complaints.push(`${gates} gating blocks parsed across ${corpus.size} skills`);
+
+  for (const key of found.keys()) {
+    if (!SELECTION_ONLY.has(key)) complaints.push(`${key} gates a proposal it never renders`);
+  }
+
+  for (const [key, { bears_out }] of SELECTION_ONLY) {
+    const skill = key.split(' ')[0];
+    if (!corpus.has(skill)) continue;
+    if (!found.has(key)) complaints.push(`${key} is exempt and no longer needs to be`);
+    else if (!bears_out(corpus.get(skill))) complaints.push(`${key} is exempt for a reason the file no longer bears out`);
+  }
+
+  return complaints;
+}
+
+test('every gate that puts a proposal to the user renders it in the message body first', () => {
+  assert.deepEqual(renders(corpus()), []);
+});
+
+test('a gate whose proposal goes nowhere is reported by skill and heading', () => {
+  // Planted, for `audit`'s reason one test up: with the defect fixed everywhere, only a
+  // manufactured source shows the per-block complaint firing at all. On its own corpus, so a
+  // genuine regression fails the live check rather than this one.
+  const planted = new Map([
+    ['invented', '### Phase 8: Summary\n\nPresent the draft, then gate it with the `question` '
+      + 'tool: `Approve` / `Stop`.\n'],
+    ['rendered', '### Phase 8: Summary\n\nRender the draft in the message body, then gate it with '
+      + 'the `question` tool: `Approve` / `Stop`.\n'],
+  ]);
+
+  assert.deepEqual(renders(planted), ['invented ### Phase 8: Summary gates a proposal it never renders'],
+    'the one that only presents is named and the one that renders beside it is not');
+});
+
+test('the render is required at the gate, not in a preamble four hundred lines above it', () => {
+  // The asymmetry with `ungated`, asserted rather than described. A blanket rule covers a `###`
+  // block for *gating*; it must not cover the same block for *rendering*, because a rule that far
+  // from the gate is the one the defect consisted of skipping.
+  const preamble = '## Process\n\nGate each phase with the `question` tool, rendering what is '
+    + 'decided in the message body first.\n\n';
+  const block = '### Phase 8: Summary\n\nPresent the draft, then gate it with the `question` '
+    + 'tool.\n';
+
+  assert.deepEqual(ungated(`${preamble}${block}`), [],
+    'the blanket rule reaches the block for gating, which is `ungated`\'s existing behaviour');
+
+  assert.deepEqual(unrendered(`${preamble}${block}`), [{ heading: 'Phase 8: Summary', depth: 3 }],
+    'and does not reach it for rendering, which is the whole of this check');
+});
+
+test('a selection-only exemption whose premise has lapsed is a complaint, not a pass', () => {
+  const only = (source) => new Map([['dpm-audit', source]]);
+  const audited = skillSource('dpm-audit');
+
+  assert.deepEqual(renders(only(audited)), [], 'the exemption holds on the file as it stands');
+
+  assert.deepEqual(
+    renders(only(audited.replace('one `question` call: focus somewhere specific, or sweep evenly',
+      'one `question` call: choose a weighting'))),
+    ['dpm-audit ### Step 1: Orient is exempt for a reason the file no longer bears out'],
+  );
+
+  assert.deepEqual(
+    renders(only(audited.replace('### Step 1: Orient',
+      '### Step 1: Orient\n\nRender the survey in the message body first.'))),
+    ['dpm-audit ### Step 1: Orient is exempt and no longer needs to be'],
+  );
+});
+
+test('must NOT — a corpus with no gates in it reads as every gate rendering', () => {
+  assert.ok(renders(new Map()).includes('no skills read, so nothing was checked'));
+
+  const ungating = new Map([['invented', '### A step\n\nPresent the draft.\n'], ['also', '### B step\n\nPresent it.\n']]);
+  assert.ok(renders(ungating).some((each) => each.includes('gating blocks parsed across 2 skills')));
 });

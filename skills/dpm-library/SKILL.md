@@ -90,7 +90,8 @@ Five things, derived from the content and **all five presented together before a
 error is silent in both directions: too narrow and the document is never loaded by the skill that
 needed it, too broad and it is loaded by every skill that did not. Neither shows up as a failure.
 
-Render the five in the message body and gate them: accept, adjust, or stop.
+1. **Render the five in the message body**, each named and with the value proposed for it.
+2. **Then gate** them with the `question` tool: accept, adjust, or stop.
 
 ### 3. Write it
 
@@ -145,7 +146,13 @@ finds, and resolving it in silence spends it.
 
 ### 3. Write it back
 
-Gate the reconciled version first — save, adjust, or cancel — showing what changed. Then:
+Two steps before any row changes:
+
+1. **Render the reconciled version in the message body**, showing what changed against what is
+   there now.
+2. **Then gate** it with the `question` tool: save, adjust, or cancel.
+
+Then:
 
 1. `dpm_update_document_section` setting the new `body` on each body section the
    reconciliation changed, and its `heading` where the reconciliation renamed one.
