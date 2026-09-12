@@ -179,6 +179,7 @@ const ADDED = [
   'skill-shared-references.test.js', // 02-03 story 2 — twenty-four references, and no host named
   'skill-supporting-files.test.js', // 01-02 story 3 — the conventions file, and the recorded go/no-go
   'skills-registered.test.js', //      02-05 story 2, replacing v1-skills.test.js — the skills config key
+  'skills-route.test.js', //           quick 02 — the same route, read out of the host that resolves it
   'suite-integrity.test.js', //        story 4 — this file
   'suite-skill-names.test.js', //      02-02 story 3 — the helper, the hand-kept lists, and the cases nothing lost
   'tool-naming.test.js', //            01-02 story 2 — the v2 rendering, and v0.7.0's own surface
@@ -302,6 +303,10 @@ const CONDITIONAL_SKIPS = {
   'tests/v1-integration.test.js':
     '02-01 story 5 — the runtime the removed bun branch would have named. Absent, what is lost is '
     + 'the demonstration against that exact runtime; the reading has its own control beside it.',
+  'tests/skills-route.test.js':
+    "quick 02 — the host's own skill registry, read by running `opencode debug skill`. Absent, the "
+    + 'skills config route goes unexercised entirely: every other reading of the skills is over the '
+    + 'tree, and the tree cannot say whether the host reached it.',
 };
 
 test('exactly the recorded files stand a test down when a host binary is missing', () => {
