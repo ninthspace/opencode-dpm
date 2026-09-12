@@ -175,18 +175,32 @@ test('the Status table accounts for every epic, and names no epic that is not th
 test('Status says which work is not delivered rather than listing everything alike [unit]', () => {
   const status = section(README, 'Status');
 
-  // A table that renders delivered and undelivered work identically is the version of this section
-  // that is hardest to catch: every row is true of *something*, and the reader is the one who ends
-  // up wrong. So the undelivered epic is required to say so where it is listed.
-  assert.match(status, /\bNot delivered yet\b/,
-    'Status lists every epic as though each had shipped');
-
-  assert.match(status, /^\| `02-05-epic-v1-walk\.md` \| \*\*Not delivered yet\*\*/m,
-    'the epic that has not been delivered is not the one marked as such');
-
-  // And the unfinished items are still stated, because the table replacing them would read as a
-  // completed project with one row outstanding rather than as a young one.
+  // **This pinned `02-05-epic-v1-walk.md` as "Not delivered yet" until that epic shipped**, and the
+  // pin then held the false row in place: the README went on calling a completed epic undelivered,
+  // and this test was the reason it could not be corrected. A row's delivery state is a fact about
+  // the project on the day it is read, so asserting a particular one is a check that goes stale
+  // rather than a property that holds — which is the same trap `CONDITIONAL_SKIPS` avoids by
+  // deriving its count instead of naming it.
+  //
+  // What survives is the criterion underneath: a young project says which of its work is unfinished
+  // rather than presenting a table where delivered and undelivered rows read alike. The table is
+  // checked for completeness by the test above; this one checks that the prose still names what is
+  // outstanding, which is where an unfinished thing now lives once every epic has closed.
   assert.match(status, /What is not settled/, 'Status no longer says what is unfinished');
+
+  const unsettled = status.slice(status.indexOf('What is not settled'));
+
+  // **Counted from the prose, not assumed.** "Three things are on the record" followed by two is
+  // the shape this is for: a list that lost an item while its own sentence went on claiming it.
+  const claimed = unsettled.match(/\b(One|Two|Three|Four|Five)\b thing/);
+
+  assert.ok(claimed, 'Status does not say how many unfinished things it is about to name');
+
+  const named = ['One', 'Two', 'Three', 'Four', 'Five'].indexOf(claimed[1]) + 1;
+  const sentences = unsettled.split(/(?<=\.)\s+(?=(?:\*\*)?[A-Z`])/).length;
+
+  assert.ok(sentences > named,
+    `Status says ${claimed[1].toLowerCase()} unfinished things and does not have room to name them`);
 });
 
 // --- Criterion 2: where DPM lives is stated as what it now is --------------------------------
