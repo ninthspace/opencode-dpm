@@ -316,7 +316,12 @@ test('must NOT — a registration writes to the project on disk [integration]', 
 
     const config = {};
 
-    await (await tools.server({}, {})).config(config);
+    // The host's own \`PluginInput\`, as far as the route reads it: dpm destructures \`client\` to
+    // narrow a session's tools. Its writer records nothing here, because \`config\` is the only hook
+    // this drives and narrowing happens on a command.
+    const input = { client: { session: { update: async () => ({}) } } };
+
+    await (await tools.server(input, {})).config(config);
 
     const sources = discoverSkills(${JSON.stringify(ROOT)});
     const after = readdirSync(process.cwd()).filter((name) => name !== 'register.mjs');

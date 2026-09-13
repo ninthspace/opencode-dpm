@@ -53,8 +53,10 @@
 
 import type { Plugin } from '@opencode-ai/plugin-v1';
 
+import { allowances, restrictTools } from './allowlist.ts';
 import { skillCommands } from './commands.ts';
 import { SERVER_NAME, serverEntry } from './registration.ts';
+import { packageRoot } from './root.ts';
 import { announceSession } from './session-id.ts';
 
 /**
@@ -73,9 +75,12 @@ import { announceSession } from './session-id.ts';
  * The existing `mcp` block is spread rather than replaced: it is the user's, and dpm is adding one
  * key to it.
  */
-export const server: Plugin = async () => {
+export const server: Plugin = async ({ client }) => {
   const entry = serverEntry();
   const commands = skillCommands();
+  const tools = allowances(packageRoot());
+  const announce = announceSession(new Set(Object.keys(commands)));
+  const restrict = restrictTools(client.session, tools);
 
   return {
     config: async (config) => {
@@ -98,11 +103,24 @@ export const server: Plugin = async () => {
       };
     },
 
-    // **The third thing this plugin does, and the only one that is not a registration.** The
-    // skills' Session Startup procedure asks for the harness's session id and the host hands the
-    // model none, so a run composes one and the resume path that depends on it cannot work.
-    // `session-id.ts` carries the argument, including why the part must be pushed rather than
-    // assigned.
-    'command.execute.before': announceSession(new Set(Object.keys(commands))),
+    // **The two things this plugin does that are not registrations, on the one hook the host
+    // offers for them.** Both need a `/dpm-` command's name and its session id, and the host takes
+    // a single function per hook, so they are sequenced here rather than each having its own.
+    //
+    // The order is the load-bearing part: the narrowing is written to the session before the
+    // announcement is pushed onto the turn, because the host reads the session row when it builds
+    // the prompt that follows this hook. Sequential `await`s, not `Promise.all` — the second must
+    // not start filling `parts` while the first may still throw.
+    //
+    // - `allowlist.ts` narrows the session's tools to the ones this skill names, which is what
+    //   keeps a 116.5 KB registry out of the request on a model that cannot carry it.
+    // - `session-id.ts` announces the harness session id, because the skills' Session Startup
+    //   procedure asks for one and the host hands the model none — so a run composes an id and the
+    //   resume path that depends on it cannot work. It also carries why the part must be pushed
+    //   rather than assigned.
+    'command.execute.before': async (input, output) => {
+      await restrict(input, output);
+      await announce(input, output);
+    },
   };
 };

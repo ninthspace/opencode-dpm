@@ -230,6 +230,20 @@ rule — `"skill": { "dpm-publish": "ask" }` — governs whether the *procedure*
 into the conversation, which gets you a confirmation for reading a set of instructions and
 none at all for the deletion: the wrong half of the pair, and it reads like the right one.
 
+**A `/dpm-` command narrows the session's tools to the ones that skill names, and it does
+that after your rules rather than instead of them.** DPM registers 184 tools and their
+schemas are 138 KB on every request; no skill uses more than a quarter of them, and on a
+small local model the difference is measurable — `/dpm-publish` sends 34 KB where an
+unrestricted turn sends 138 KB. So when one of these commands runs, DPM writes a rule to
+the *session* denying `dpm_*` and allowing back the tools that skill's body calls.
+
+Session rules are evaluated after configuration ones, and the last match wins, so this
+narrowing overrides a top-level `"dpm_*": "allow"` — which is the point, and is worth
+knowing if you are looking at a tool that was available a moment ago and is not now. It
+lasts until the next command replaces it. Nothing outside `dpm_*` is touched: `read`,
+`edit`, `bash` and `question` are exactly as you configured them, and a command that is
+not DPM's is left alone entirely.
+
 **`permissions` — plural, an array of `{ action, resource, effect }` — is the shape the
 host's next major version takes, and v1 does not merely ignore it.** It refuses the whole
 configuration, and the session does not start:

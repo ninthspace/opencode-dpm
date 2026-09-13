@@ -71,6 +71,21 @@ export const V1_CONTEXT = {
 export const V1_DOMAINS = Object.keys(V1_CONTEXT).sort();
 
 /**
+ * As much of v1's `PluginInput` as dpm's route reaches for.
+ *
+ * **The empty object it used to be was a host that could not have worked.** v1 always hands the
+ * route a `PluginInput`, and dpm's now destructures `client` out of it to narrow a session's tools
+ * — so a stub with nothing in it was not a smaller host, it was one that throws before `config` is
+ * ever reached. The session writer records rather than writes, because `registerServer` drives the
+ * `config` hook and nothing here executes a command.
+ *
+ * @returns {{ client: { session: { update: Function } } }}
+ */
+export const pluginInput = () => ({
+  client: { session: { update: async () => ({}) } },
+});
+
+/**
  * Drive the callable route: call `server`, then its `config` hook against a configuration object.
  *
  * The configuration is the caller's, so a test can hand in one that already holds an `mcp` block and
@@ -81,7 +96,7 @@ export const V1_DOMAINS = Object.keys(V1_CONTEXT).sort();
  * @returns {Promise<object>} The same configuration, after the hook.
  */
 export async function registerServer(entry, config = {}) {
-  const hooks = await entry.server({}, {});
+  const hooks = await entry.server(pluginInput(), {});
 
   await hooks.config(config);
 

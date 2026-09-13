@@ -151,6 +151,7 @@ const INHERITED = [
 
 /** What this epic added, one line per story, so a seventh file is a decision somebody writes here. */
 const ADDED = [
+  'allowlist.test.js', //              the per-skill tool allow-list, derived from the bodies and ordered for findLast
   'ci-skill-body.test.js', //          01-03 story 4 — the build check, driven against planted breaches
   'ci.test.js', //                     story 7 — the workflow, and the environment two absences need
   'commands-route.test.js', //         the per-skill commands that displace the host's body-pasting ones
