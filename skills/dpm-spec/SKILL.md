@@ -155,8 +155,14 @@ an outstanding gap.
 
 ### Section 3: Non-functional requirements
 
-Cover only what applies — performance, security, scalability, reliability, usability. Each is a
-`dpm_create_requirement` call with `class: 'non_functional'`.
+Cover only what applies — performance, security, scalability, reliability, usability.
+
+1. **Render the non-functional requirements in the message body**, each with its `NFRn` label and
+   its full text as it will be recorded. Where none apply, say so in the body and say why, rather
+   than gating on an empty set the user cannot see.
+2. **Then gate** with the `question` tool.
+
+Each agreed one is a `dpm_create_requirement` call with `class: 'non_functional'`.
 
 #### Step 3a: Environmental constraints
 

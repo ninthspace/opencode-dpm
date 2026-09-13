@@ -197,10 +197,14 @@ back as settled, and nothing on it says which of its options were real.
 
 #### Revisiting a decision
 
-When a decision replaces an earlier one, three calls in this order: `dpm_create_adr` for the
-new decision, then `dpm_create_dependency` with `kind: 'supersedes'`, the new ADR as
-`source_document_id` and the old one as `target_document_id`, then `dpm_update_adr` moving the
-old one's `decision_status` to `superseded`.
+When a decision replaces an earlier one, **render both in the message body first** — the decision
+being superseded and the one replacing it, with the reasoning that changed — and gate on that.
+Superseding is not a correction to be applied quietly; it is the decision.
+
+On approval, three calls in this order: `dpm_create_adr` for the new decision, then
+`dpm_create_dependency` with `kind: 'supersedes'`, the new ADR as `source_document_id` and the old
+one as `target_document_id`, then `dpm_update_adr` moving the old one's `decision_status` to
+`superseded`.
 
 **The edge comes before the status, because the old decision is only findable through it.** A
 superseded ADR with nothing pointing at it is a decision a reader can see was abandoned and cannot

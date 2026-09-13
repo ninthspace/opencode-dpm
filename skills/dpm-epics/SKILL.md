@@ -124,7 +124,13 @@ For each epic, break the work into **stories** — coherent units of value. A st
 we delivering?", not "what file are we editing?". Two to five tasks is typical; a title describing a
 single function is a task, so push it down to Step 3b.
 
-Each agreed story is one `dpm_create_story` call under its epic, taking `number` (ordinal
+Agreeing them is two steps:
+
+1. **Render the proposed stories in the message body**, each with its title and the value it
+   delivers, so the breakdown is readable before any row exists.
+2. **Then gate** with the `question` tool.
+
+Each agreed story is then one `dpm_create_story` call under its epic, taking `number` (ordinal
 within the epic, from 1), `title`, and `position`.
 
 **A story that needs designing in full before any of it is built takes `plan: 1`.** It is a workflow

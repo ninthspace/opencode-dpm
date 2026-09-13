@@ -426,10 +426,23 @@ export function unrendered(source) {
   const blanket = GATES.test(process.split(/^### /m)[0]);
   const governed = new Set(blocks(process).map(({ heading }) => heading));
 
+  // **Writing rows counts as proposing, and the word list alone did not see that.** `PROPOSES` is a
+  // vocabulary check — *draft*, *facilitate*, *present the* — so a block that gates without using
+  // any of those words is invisible to it however much it decides. `dpm-spec`'s Section 3 opens
+  // "Cover only what applies" and then calls `dpm_create_requirement`: gated, recording rows, and
+  // matching not one word of the list. A run reached "Do these NFRs apply?" with NFR1-NFR3 shown
+  // nowhere, one section after the same failure was fixed in Section 2.
+  //
+  // So the signal `ungated` already trusts is trusted here too: a block that writes rows is putting
+  // something to the user whatever verbs it uses, because the rows are the decision. The word list
+  // stays beside it for the blocks that decide without writing — a boundary agreed, a vocabulary
+  // confirmed — which is a real population and not one `create_` would catch.
+  const WRITES = new RegExp(`${CALLABLE}(create|update)_`);
+
   return blocks(source)
     .filter(({ heading, body }) => !BOOKKEEPING.test(heading)
       && (GATES.test(body) || (blanket && governed.has(heading)))
-      && PROPOSES.test(body)
+      && (PROPOSES.test(body) || WRITES.test(body))
       && !RENDERS.test(body))
     .map(({ heading, depth }) => ({ heading, depth }));
 }

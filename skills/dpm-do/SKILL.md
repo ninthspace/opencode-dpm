@@ -202,7 +202,9 @@ A criterion whose `polarity` is `must_not` is met when the rejected thing is **a
 needs a control: something that would have caught it had it been present. A must-NOT with no control
 has not been verified, it has been asserted.
 
-Unmet criteria go to the `question` tool — keep working, or complete anyway.
+Unmet criteria go to the `question` tool — keep working, or complete anyway. **Render them in the
+message body first**: each unmet criterion in full, with what the assessment actually found. A
+choice between carrying on and accepting a shortfall is one nobody can make from a count.
 
 **Recording the verification.** When a story's criteria are met, for each criterion call
 `dpm_list_coverage` with its `story_criterion_id` and, for each row, `dpm_update_coverage`
@@ -263,7 +265,8 @@ epics whose `status` is `complete` and can only ever see an empty set without th
 
 Two cases are not a count and are not this run's to decide. Where any story is `superseded` or
 `withdrawn`, whether the retired work was part of what the epic promised is a judgement the rows do
-not answer — put it to the `question` tool and leave the status until it is answered. Where any story is
+not answer — **render the retired story and what it promised in the message body**, then put it to
+the `question` tool and leave the status until it is answered. Where any story is
 still `pending`, the epic is unfinished: `dpm_list_dependency` on that story says
 what holds it, and that is the report rather than a status.
 
